@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Appteka TV</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="safe-area">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-text">Appteka</span><span class="logo-tv">TV</span>
+            </div>
+            <div class="search-box" tabindex="0">
+                <span class="search-icon">🔍</span>
+                <span class="search-placeholder">Rechercher des apps TV...</span>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="content">
+            <section class="section">
+                <h2 class="section-title">Applications TV</h2>
+                <div class="apps-row" id="apps-container">
+                    <!-- Apps will be injected here by JS -->
+                    <div class="loading">Chargement des applications TV...</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer / status -->
+        <footer class="footer">
+            <span id="status">Prêt</span>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
