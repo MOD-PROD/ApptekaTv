@@ -341,7 +341,10 @@ class InstalledPresenterImpl(
             .toList()
         // Rows of an update in progress keep their state until its relays answer.
         newItems.forEach { item ->
-            item.update?.appId?.let { appId -> item.updateState = updateStates[appId] ?: IDLE }
+            item.update?.appId?.let { appId ->
+                item.updateState = updateStates[appId] ?: IDLE
+                item.installStatus = installStatuses[appId] ?: InstallStatus.Idle
+            }
         }
 
         this.items = newItems
@@ -397,7 +400,7 @@ class InstalledPresenterImpl(
 
             else -> downloadsStarted.add(appId)
         }
-        setUpdateState(item, updateStateOf(appId, downloadState, installStatus))
+        setUpdateState(item, updateStateOf(appId, downloadState, installStatus), installStatus)
     }
 
     private fun updateStateOf(appId: String, downloadState: Int, installStatus: InstallStatus): Int {
@@ -406,10 +409,11 @@ class InstalledPresenterImpl(
         return installStatus.asDownloadState(downloadState)
     }
 
-    private fun setUpdateState(item: AppItem, state: Int) {
+    private fun setUpdateState(item: AppItem, state: Int, installStatus: InstallStatus = item.installStatus) {
         item.update?.appId?.let { updateStates[it] = state }
-        if (item.updateState == state) return
+        if (item.updateState == state && item.installStatus == installStatus) return
         item.updateState = state
+        item.installStatus = installStatus
         val position = displayedItems.indexOfFirst { it.id == item.id }
         if (position >= 0) view?.contentUpdated(position)
     }
@@ -517,6 +521,10 @@ class InstalledPresenterImpl(
         val app = items?.find { it.id == item.id } ?: return
         val update = app.update ?: return
         val appId = update.appId
+        if (app.installStatus == InstallStatus.Confirming) {
+            appInstaller.confirm(appId)
+            return
+        }
         setUpdateState(app, AWAIT)
         lateinit var request: Disposable
         request = interactor.getDetails(appId)
