@@ -13,7 +13,6 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
-import com.tomclaw.appsend.appComponent
 import com.tomclaw.appsend.core.HOST_URL
 import com.tomclaw.appsend.core.StoreApi
 import com.tomclaw.appsend.dto.AppEntity
@@ -74,7 +73,7 @@ class TvWebActivity : AppCompatActivity() {
         val api = createStoreApi()
         val locale = Locale.getDefault().language.ifBlank { "en" }
 
-        // Filter by TV-related tags (comma-separated)
+        // Filter by TV-related tags
         val tags = "tv,android tv,live tv"
 
         val disposable = api.searchApps(
@@ -90,7 +89,6 @@ class TvWebActivity : AppCompatActivity() {
                 injectAppsIntoWebView(apps)
             }, { error ->
                 Log.e(TAG, "Failed to load TV apps", error)
-                // Fallback: keep mock data already shown by JS
                 webView.evaluateJavascript(
                     "document.getElementById('status').textContent = 'Erreur réseau – données de démo';",
                     null
@@ -113,7 +111,6 @@ class TvWebActivity : AppCompatActivity() {
         }
 
         val json = gson.toJson(simplified)
-        // Escape for safe injection into JS string
         val safeJson = json
             .replace("\\", "\\\\")
             .replace("'", "\\'")
@@ -159,7 +156,7 @@ class TvWebActivity : AppCompatActivity() {
                     val intent = createDetailsActivityIntent(
                         context = this@TvWebActivity,
                         appId = appId,
-                        label = null,
+                        label = "",
                         moderation = false,
                         finishOnly = false
                     )
