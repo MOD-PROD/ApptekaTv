@@ -3,7 +3,6 @@
 const APPS_CONTAINER = document.getElementById('apps-container');
 const STATUS = document.getElementById('status');
 
-// Placeholder data (shown only if API fails)
 const MOCK_TV_APPS = [
     { id: 1, name: "IPTV Pro", icon: "", downloads: "12k", size: "8.2 MB" },
     { id: 2, name: "TiviMate", icon: "", downloads: "45k", size: "15 MB" },
@@ -29,14 +28,31 @@ function createAppCard(app) {
         <div class="app-info">
             <div class="app-name">${escapeHtml(app.name || 'App')}</div>
             <div class="app-meta">${app.downloads || ''} · ${app.size || ''}</div>
+            <div class="app-actions">
+                <button class="btn-download" type="button" tabindex="-1">Télécharger</button>
+            </div>
         </div>
     `;
 
-    card.addEventListener('click', () => onAppSelected(app));
+    const downloadBtn = card.querySelector('.btn-download');
+
+    card.addEventListener('click', (e) => {
+        if (e.target === downloadBtn) return;
+        onAppSelected(app);
+    });
+
+    downloadBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onDownload(app);
+    });
+
     card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === 'Enter') {
             e.preventDefault();
             onAppSelected(app);
+        } else if (e.key === 'd' || e.key === 'D' || e.key === 'MediaPlay' || e.key === 'ColorF0Red') {
+            e.preventDefault();
+            onDownload(app);
         }
     });
 
@@ -50,12 +66,19 @@ function escapeHtml(text) {
 }
 
 function onAppSelected(app) {
-    STATUS.textContent = `Sélectionné : ${app.name}`;
-
+    STATUS.textContent = `Détails : ${app.name}`;
     if (window.Android && typeof window.Android.openAppDetails === 'function') {
         window.Android.openAppDetails(String(app.id));
+    }
+}
+
+function onDownload(app) {
+    STATUS.textContent = `Téléchargement : ${app.name}…`;
+    if (window.Android && typeof window.Android.downloadApp === 'function') {
+        window.Android.downloadApp(String(app.id));
     } else {
-        console.log('Native bridge not available. App ID:', app.id);
+        console.log('downloadApp not available', app.id);
+        STATUS.textContent = 'Bridge téléchargement indisponible';
     }
 }
 
@@ -73,11 +96,9 @@ function renderApps(apps) {
     });
 
     const firstCard = APPS_CONTAINER.querySelector('.app-card');
-    if (firstCard) {
-        firstCard.focus();
-    }
+    if (firstCard) firstCard.focus();
 
-    STATUS.textContent = `${apps.length} applications TV`;
+    STATUS.textContent = `${apps.length} applications TV · OK = détails · D = télécharger`;
 }
 
 function setupFocusManagement() {
@@ -101,7 +122,6 @@ function setupFocusManagement() {
     });
 }
 
-// Called by native side when data is ready
 window.loadTvApps = function(appsJson) {
     try {
         const apps = typeof appsJson === 'string' ? JSON.parse(appsJson) : appsJson;
@@ -112,11 +132,12 @@ window.loadTvApps = function(appsJson) {
     }
 };
 
-// Init
+window.onDownloadStarted = function(appId) {
+    STATUS.textContent = `Téléchargement lancé (${appId})`;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     setupFocusManagement();
-
-    // Show mock briefly, then native will replace with real data
     setTimeout(() => {
         if (APPS_CONTAINER.querySelector('.loading') || APPS_CONTAINER.children.length === 0) {
             renderApps(MOCK_TV_APPS);
