@@ -12,7 +12,7 @@ android {
         applicationId "app.modprod.apptekatv"
         minSdkVersion 23
         targetSdkVersion 36
-        versionCode project.hasProperty("versionCode") ? Integer.parseInt(project.versionCode) : 1197
+        versionCode project.hasProperty("versionCode") ? Integer.parseInt(project.versionCode) : 1206
         versionName = "24.0"
         manifestPlaceholders = [tvOrientation: "unspecified", launcherLabel: "@string/app_name", phoneLabel: "@string/app_name_phone"]
     }
