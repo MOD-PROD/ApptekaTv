@@ -26,7 +26,6 @@ html, body {
 }
 
 /* Header */
-*
 .header {
     display: flex;
     align-items: center;
