@@ -15,6 +15,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import com.tomclaw.appsend.core.HOST_URL
 import com.tomclaw.appsend.core.StoreApi
+import com.tomclaw.appsend.download.DownloadLauncher
+import com.tomclaw.appsend.download.DownloadParams
 import com.tomclaw.appsend.dto.AppEntity
 import com.tomclaw.appsend.screen.details.createDetailsActivityIntent
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -28,14 +30,18 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
- * Android TV entry point that loads the local HTML interface
- * and feeds it with real apps filtered by TV-related tags.
+ * Android TV entry point: HTML UI + real TV apps + download via native pipeline.
  */
 class TvWebActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private val disposables = CompositeDisposable()
     private val gson = Gson()
+
+    // Must be created while the activity is being constructed (registers permission launcher)
+    private val downloadLauncher = DownloadLauncher(this) {
+        Toast.makeText(this, "Téléchargement démarré", Toast.LENGTH_SHORT).show()
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,8 +78,6 @@ class TvWebActivity : AppCompatActivity() {
     private fun loadTvApps() {
         val api = createStoreApi()
         val locale = Locale.getDefault().language.ifBlank { "en" }
-
-        // Filter by TV-related tags
         val tags = "tv,android tv,live tv"
 
         val disposable = api.searchApps(
@@ -85,7 +89,7 @@ class TvWebActivity : AppCompatActivity() {
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ response ->
-                val apps = response.result?.files.orEmpty()
+                val apps = response.result.files
                 injectAppsIntoWebView(apps)
             }, { error ->
                 Log.e(TAG, "Failed to load TV apps", error)
@@ -117,6 +121,48 @@ class TvWebActivity : AppCompatActivity() {
             .replace("\n", "")
 
         webView.evaluateJavascript("window.loadTvApps('$safeJson');", null)
+    }
+
+    private fun startDownloadForApp(appId: String) {
+        val api = createStoreApi()
+        val locale = Locale.getDefault().language.ifBlank { "en" }
+
+        Toast.makeText(this, "Préparation du téléchargement…", Toast.LENGTH_SHORT).show()
+
+        val disposable = api.getInfo(
+            appId = appId,
+            packageName = null,
+            locale = locale
+        )
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ response ->
+                val details = response.result
+                val info = details.info
+                val params = DownloadParams(
+                    label = info.label ?: info.packageName,
+                    version = info.version,
+                    icon = info.icon,
+                    appId = info.appId,
+                    url = details.url,
+                    sha1 = info.sha1
+                )
+                downloadLauncher.launch(params)
+                // Notify HTML
+                webView.evaluateJavascript(
+                    "window.onDownloadStarted && window.onDownloadStarted('${info.appId}');",
+                    null
+                )
+            }, { error ->
+                Log.e(TAG, "Failed to get app info for download", error)
+                Toast.makeText(
+                    this,
+                    "Impossible de démarrer le téléchargement",
+                    Toast.LENGTH_SHORT
+                ).show()
+            })
+
+        disposables.add(disposable)
     }
 
     private fun formatDownloads(count: Int): String {
@@ -164,11 +210,18 @@ class TvWebActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     Toast.makeText(
                         this@TvWebActivity,
-                        "Impossible d'ouvrir l'app: $appId",
+                        "Impossible d'ouvrir l'app",
                         Toast.LENGTH_SHORT
                     ).show()
                     Log.e(TAG, "openAppDetails failed", e)
                 }
+            }
+        }
+
+        @JavascriptInterface
+        fun downloadApp(appId: String) {
+            runOnUiThread {
+                startDownloadForApp(appId)
             }
         }
 
