@@ -172,6 +172,8 @@ interface AppComponent {
 
     fun inject(service: InstallService)
 
+    fun tvStoreApi(): com.tomclaw.appsend.core.StoreApi
+
     fun analytics(): Analytics
 
     fun bananalytics(): Bananalytics
