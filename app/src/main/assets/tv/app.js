@@ -24,6 +24,13 @@ const SETTINGS_PANEL = document.getElementById('settings-panel');
 
 const GRID_COLS = 9;
 const IS_MOBILE = document.documentElement.classList.contains('mobile');
+// Tactile : pas d'anneau de sélection « télécommande » qui reste après un appui
+if (IS_MOBILE) {
+    document.addEventListener('click', () => setTimeout(() => {
+        const a = document.activeElement;
+        if (a && a !== document.body && a.tagName !== 'INPUT' && a.tagName !== 'TEXTAREA') a.blur();
+    }, 0), true);
+}
 const PAIR_MODAL = document.getElementById('pair-modal');
 const DEFAULT_SOURCES = ['cat:37', 'cat:27']; // TV, Entertainment
 const LONG_PRESS_MS = 600;
@@ -270,6 +277,7 @@ function buildRows() {
                 <span class="row-count"></span>
                 <span class="row-arrow down">▼</span>
             </div>
+            <span class="row-label">${escapeHtml(ic.name)}</span>
             <div class="apps-row"></div>`;
         ROWS.appendChild(row);
         fillRow(key);
@@ -321,6 +329,7 @@ function fillRow(key) {
     box.scrollLeft = scroll;
     const hidden = raw && apps ? raw.length - apps.length : 0;
     row.querySelector('.row-count').textContent = apps && apps.length ? apps.length : '';
+    const lbl = row.querySelector('.row-label'); if (lbl) lbl.textContent = iconFor(key).name;
     row.querySelector('.row-icon').title = iconFor(key).name + (hidden > 0 ? ` · ${hidden} masquées (architecture)` : '');
 
     if (focusedId) {

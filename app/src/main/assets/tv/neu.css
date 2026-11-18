@@ -24,8 +24,8 @@ html.neu-skin {
     --ok: #1e8e4e;
     --warn: #b26a00;
     --danger: #c0392b;
-    --overlay: var(--overlay);
-    --line: var(--line);
+    --overlay: rgba(224, 229, 236, 0.86);
+    --line: rgba(184, 190, 199, 0.6);
     color-scheme: light;
 }
 

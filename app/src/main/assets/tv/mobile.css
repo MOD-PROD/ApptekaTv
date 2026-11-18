@@ -37,47 +37,87 @@
 }
 
 /* En-tête : logo + boutons sur une ligne, recherche pleine largeur dessous */
-.mobile .header { flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
-.mobile .logo-main { font-size: 20px; letter-spacing: 4px; }
-.mobile .header-right { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.mobile .search-box { order: 10; flex: 1 1 100%; width: auto !important; }
-.mobile .hbtn { width: 40px; height: 40px; }
+.mobile .header { flex-wrap: wrap; align-items: center; gap: 8px clamp(6px, 2vw, 10px); margin-bottom: 6px; }
+.mobile .header > .logo { flex: 1 1 auto; min-width: 0; gap: 6px; }
+.mobile .logo-capsule { width: clamp(28px, 8vw, 38px); height: clamp(28px, 8vw, 38px); }
+.mobile .logo-main { font-size: clamp(16px, 4.6vw, 22px); letter-spacing: clamp(2px, 0.9vw, 4px); }
+.mobile .logo-tv { font-size: clamp(11px, 3vw, 14px); padding: 2px 7px; }
+.mobile .header-right { display: contents; }
+.mobile .hbtn { width: clamp(36px, 10vw, 44px); height: clamp(36px, 10vw, 44px); flex: 0 0 auto; }
+.mobile .hbtn svg { width: 46%; height: 46%; }
+.mobile .search-box { order: 10; flex: 1 1 100%; width: auto !important; height: 44px; }
 .mobile #btn-exit { display: none; }
-.mobile .header > .logo { flex: 1; }
 
-/* Rangées : défilement au doigt, cartes plus compactes */
-.mobile .content { margin-right: -12px; }
-.mobile .row { gap: 6px; margin-bottom: 0; }
-.mobile .row-icon { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 14px; }
-.mobile .row-icon .icon-svg { width: 22px; height: 22px; }
+/* Rangées : titre (icône + nom) au-dessus, cartes sur toute la largeur, défilement au doigt */
+.row-label { display: none; }
+.mobile .content { margin-right: -12px; margin-left: -12px; padding-left: 0 !important; }
+.mobile .row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0 10px;
+    margin: 4px 0 2px;
+    padding-left: 12px;
+}
+.mobile .row-icon { flex: none; width: 34px; height: 34px; border-radius: 11px; }
+.mobile .row-icon .icon-svg { width: 18px; height: 18px; }
+.mobile .row-count { font-size: 10px; min-width: 18px; height: 16px; bottom: -6px; right: -8px; }
+.mobile .row-label {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .mobile .apps-row {
-    gap: 10px;
-    padding: 12px 12px 14px 8px !important;
+    grid-column: 1 / -1;
+    gap: clamp(10px, 3vw, 16px);
+    margin-left: -12px;
+    padding: 14px 14px 18px 14px !important;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x proximity;
+    scroll-padding-left: 14px;
 }
+/* environ 3,3 cartes visibles en portrait, plus en paysage / tablette */
 .mobile .app-card {
-    flex: 0 0 calc(104px * var(--cs, 1));
-    width: calc(104px * var(--cs, 1));
+    --card-width: calc(clamp(92px, min((100vw - 28px) / 3.4, 34vh), 150px) * var(--cs, 1));
+    flex: 0 0 var(--card-width);
+    width: var(--card-width);
+    aspect-ratio: 0.95;
+    padding: 10px 6px 8px;
     scroll-snap-align: start;
 }
 .mobile .app-card:focus { transform: none; }
-.mobile .app-icon { width: calc(56px * var(--cs, 1)); height: calc(56px * var(--cs, 1)); }
-.mobile .row-arrow { width: 36px; height: 28px; font-size: 14px; }
-.mobile .row-arrow.up { top: -32px; }
-.mobile .row-arrow.down { bottom: -32px; }
+.mobile .app-icon { width: calc(var(--card-width) * 0.52); height: calc(var(--card-width) * 0.52); border-radius: 22%; }
+.mobile .app-name { font-size: clamp(11.5px, 3.3vw, 14px); }
+.mobile .app-meta { font-size: clamp(10px, 2.8vw, 12px); }
+.mobile .row-arrow { width: 32px; height: 24px; font-size: 12px; left: 50%; transform: translateX(-50%); }
+.mobile .row-arrow.up { top: -28px; }
+.mobile .row-arrow.down { bottom: -28px; }
+/* ombres plus courtes : elles ne se font pas couper par le défilement horizontal */
+.mobile.neu-skin .app-card, .mobile.neu-skin .row-icon, .mobile.neu-skin .hbtn { box-shadow: var(--raised-sm) !important; }
 
-/* Damier des catégories : 4 colonnes, défilement vertical */
+/* Damier des catégories : autant de colonnes que la largeur permet */
 .mobile .picker { padding: max(12px, env(safe-area-inset-top)) 12px 12px !important; }
 .mobile .picker-head { align-items: center; }
+.mobile .picker-title { font-size: clamp(20px, 6vw, 28px); }
 .mobile .picker-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(76px, 22vw, 110px), 1fr)) !important;
     grid-template-rows: none !important;
-    grid-auto-rows: 86px;
+    grid-auto-rows: clamp(72px, 21vw, 96px);
+    gap: 10px !important;
     overflow-y: auto;
-    padding-bottom: 20px;
+    padding: 8px 6px 24px;
+    margin: 0 -6px;
 }
-.mobile .cell .icon-svg { width: 26px; height: 26px; }
+.mobile .cell { padding: 6px 4px; }
+.mobile .cell .icon-svg { width: 24px; height: 24px; }
+.mobile .cell-name { font-size: clamp(10px, 2.9vw, 13px); line-height: 1.15; }
+.mobile .cell-check { width: 18px; height: 18px; top: 6px; right: 6px; font-size: 11px; }
+.mobile.neu-skin .cell { box-shadow: var(--raised-sm) !important; }
+.mobile.neu-skin .cell.checked { box-shadow: var(--recessed) !important; }
 
 /* Réglages plein écran */
 .mobile .settings { align-items: stretch; }
@@ -92,6 +132,16 @@
 }
 .mobile .settings-panel > .close-btn { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 14px; }
 .mobile .set-input { min-width: 0; }
+.mobile .set-title { font-size: clamp(20px, 6vw, 26px); }
+.mobile .set-disclosure { padding: 12px 16px; font-size: 16px; }
+.mobile .account-card { flex-wrap: wrap; gap: 12px; }
+.mobile .account-avatar { width: 52px; height: 52px; font-size: 20px; }
+.mobile .account-stats { display: grid !important; grid-template-columns: repeat(4, minmax(0, auto)); gap: 4px 14px; margin-top: 8px; }
+.mobile .account-stats b { font-size: 17px; }
+.mobile .account-stats span { font-size: 11px; white-space: nowrap; }
+.mobile .set-row { flex-wrap: wrap; gap: 10px; }
+.mobile .set-row .btn, .mobile .settings-panel .btn { font-size: 15px; padding: 11px 14px; }
+.mobile .chip-toggle { font-size: 14px; padding: 8px 12px; }
 .mobile .set-row .btn { flex: 1 1 auto; }
 
 /* Fiche d'une app : une colonne */
@@ -102,7 +152,8 @@
 .mobile .d-name { font-size: 24px; }
 .mobile .d-actions .btn { flex: 1 1 auto; padding: 11px 14px; font-size: 15px; }
 .mobile .d-actions .btn:focus { transform: none; }
-.mobile .d-stats { gap: 18px; }
+.mobile .d-stats { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 12px; }
+.mobile .d-actions { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 .mobile .stat-value { font-size: 18px; }
 .mobile .d-block { padding: 14px 16px; }
 .mobile .info-grid { grid-template-columns: 1fr; gap: 2px; }
@@ -125,4 +176,17 @@
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
+}
+
+/* Paysage et tablettes : fiche en deux colonnes d'actions plus larges, réglages centrés */
+@media (min-width: 700px) {
+    .mobile .settings-panel { max-width: 720px !important; margin: 0 auto; border-radius: 0 !important; }
+    .mobile .d-head { flex-direction: row; align-items: center; }
+    .mobile .d-icon { width: 104px; height: 104px; }
+    .mobile .d-name { font-size: 28px; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+    .mobile .header { flex-wrap: nowrap; }
+    .mobile .search-box { order: 0; flex: 1 1 auto; height: 40px; }
+    .mobile .header > .logo { flex: 0 0 auto; }
 }
