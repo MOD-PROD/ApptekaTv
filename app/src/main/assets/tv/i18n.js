@@ -57,6 +57,7 @@ window.TvI18n = (function () {
         "Compte Appteka": ["Appteka account", "Cuenta de Appteka", "Appteka-Konto", "Account Appteka", "Conta Appteka", "Аккаунт Appteka", "Appteka hesabı", "حساب Appteka"],
         "Apparence": ["Appearance", "Apariencia", "Darstellung", "Aspetto", "Aparência", "Оформление", "Görünüm", "المظهر"],
         "Noir et or": ["Black & gold", "Negro y oro", "Schwarz & Gold", "Nero e oro", "Preto e dourado", "Чёрный и золотой", "Siyah ve altın", "أسود وذهبي"],
+        "Néumorphisme clair": ["Light neumorphism", "Neumorfismo claro", "Heller Neumorphismus", "Neumorfismo chiaro", "Neumorfismo claro", "Светлый неоморфизм", "Açık nöomorfizm", "نيومورفيزم فاتح"],
         "Néumorphisme vert": ["Green neumorphism", "Neumorfismo verde", "Grüner Neumorphismus", "Neumorfismo verde", "Neumorfismo verde", "Зелёный неоморфизм", "Yeşil nöomorfizm", "نيومورفيزم أخضر"],
         "Couleur d’accent": ["Accent color", "Color de acento", "Akzentfarbe", "Colore d'accento", "Cor de destaque", "Акцентный цвет", "Vurgu rengi", "لون التمييز"],
         "Affichage": ["Display", "Pantalla", "Anzeige", "Visualizzazione", "Exibição", "Отображение", "Görüntü", "العرض"],

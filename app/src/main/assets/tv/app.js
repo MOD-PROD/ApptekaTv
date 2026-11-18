@@ -70,9 +70,11 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'classic', accent: 'default', archs: null, margin: 20 },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'neu', accent: 'default', archs: null, margin: 20 },
     loadJson('settings', {}) || {}
 );
+// bascule unique vers le néumorphisme clair (nouveau skin par défaut)
+if (settings.skinV !== 2) { settings.skin = 'neu'; settings.accent = 'default'; settings.skinV = 2; }
 let favorites = loadJson('favorites', []);
 const rowData = {};           // key -> [apps] | null (erreur) | undefined (en cours)
 const rowLoading = {};
@@ -633,9 +635,12 @@ const ACCENTS = {
 };
 
 function applySkin() {
-    const green = settings.skin === 'green';
+    // « neu » (néumorphisme clair) se pose par-dessus les feuilles du skin néumorphique
+    const neu = settings.skin === 'neu';
+    const green = settings.skin === 'green' || neu;
     const root = document.documentElement;
     root.classList.toggle('green-skin', green);
+    root.classList.toggle('neu-skin', neu);
     const rgb = ACCENTS[settings.accent]?.rgb;
     root.classList.toggle('custom-accent', Boolean(rgb));
     for (const property of ['--accent-rgb', '--accent-light-rgb', '--accent-dark']) {
@@ -648,6 +653,7 @@ function applySkin() {
     }
     document.querySelectorAll('link.skin-classic').forEach(link => { link.media = green ? 'not all' : 'all'; });
     document.querySelectorAll('link.skin-green').forEach(link => { link.media = green ? 'all' : 'not all'; });
+    document.querySelectorAll('link.skin-neu').forEach(link => { link.media = neu ? 'all' : 'not all'; });
 }
 
 function settingsSection(key, label, content) {
@@ -711,7 +717,7 @@ function renderSettings(focusKey) {
             <div class="set-sub">L'interface et le contenu Appteka (catégories, descriptions) suivent la langue choisie.</div>`)}
         ${settingsSection('appearance', 'Apparence', `
             <div class="set-row" role="group" aria-label="Skin">
-                ${[['classic', 'Noir et or'], ['green', 'Néumorphisme vert']].map(([id, label]) => `
+                ${[['classic', 'Noir et or'], ['green', 'Néumorphisme vert'], ['neu', 'Néumorphisme clair']].map(([id, label]) => `
                     <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}
