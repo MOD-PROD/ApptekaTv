@@ -23,6 +23,8 @@ const SETTINGS = document.getElementById('settings');
 const SETTINGS_PANEL = document.getElementById('settings-panel');
 
 const GRID_COLS = 9;
+const IS_MOBILE = document.documentElement.classList.contains('mobile');
+const PAIR_MODAL = document.getElementById('pair-modal');
 const DEFAULT_SOURCES = ['cat:37', 'cat:27']; // TV, Entertainment
 const LONG_PRESS_MS = 600;
 const ALL_ABIS = [
@@ -322,7 +324,8 @@ function fillRow(key) {
     if (focusedId) {
         const again = box.querySelector(`.app-card[data-id="${CSS.escape(focusedId)}"]`);
         (again || box.querySelector('.app-card') || row.querySelector('.row-icon')).focus({ preventScroll: true });
-    } else if (!overlayOpen() && !isMainFocused()) {
+    } else if (!IS_MOBILE && !overlayOpen() && !isMainFocused()) {
+        // TV : la télécommande a besoin d'une sélection de départ (inutile au toucher)
         const first = firstCard();
         if (first) focusCard(first);
     }
@@ -687,7 +690,8 @@ function renderSettings(focusKey) {
 
     SETTINGS_PANEL.innerHTML = `
         <div class="set-title">Réglages</div>
-        <div class="set-hint">Retour pour fermer</div>
+        <div class="set-hint">${IS_MOBILE ? '' : 'Retour pour fermer'}</div>
+        <button class="close-btn mobile-only" type="button" data-act="close-settings" aria-label="Fermer">✕</button>
 
         <div class="set-section">
             <div class="set-label">Compte Appteka</div>
@@ -745,6 +749,8 @@ function renderSettings(focusKey) {
             <div class="set-sub">Les apps sans architecture compatible sont masquées dans les rangées et dans les versions
                 d'une fiche. Cette TV : ${escapeHtml(deviceAbis.join(', '))}.</div>
         `)}
+        ${IS_MOBILE ? '' : settingsSection('tvlink', 'Liaison portable', tvLinkHtml())}
+        ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
         <div class="set-section">
             <button class="btn focusable" type="button" data-k="export-config" data-act="export-config">
                 Télécharger la configuration
@@ -752,7 +758,7 @@ function renderSettings(focusKey) {
         </div>`;
 
     SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { if (values[i.dataset.k] != null) i.value = values[i.dataset.k]; });
-    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent], [data-lang]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
+    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent], [data-lang], [data-classic]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
     SETTINGS_PANEL.querySelectorAll('form').forEach(f => f.addEventListener('submit', (e) => { e.preventDefault(); onSettingsSubmit(f.dataset.form); }));
 
     const target = (keep && SETTINGS_PANEL.querySelector(`[data-k="${keep}"]`)) || SETTINGS_PANEL.querySelector('.focusable');
@@ -810,8 +816,54 @@ function loginHtml() {
         </form>`;
 }
 
+// Liaison portable -> TV (affiché sur la TV)
+function tvLinkHtml() {
+    let info = {};
+    try { info = JSON.parse((window.Android && window.Android.tvLinkInfo && window.Android.tvLinkInfo()) || '{}'); } catch (e) { /* */ }
+    const devices = info.devices || [];
+    return `
+        <div class="set-sub">Dans Appteka sur ton portable, ouvre une app puis « Envoyer à la TV ». La TV est trouvée toute seule sur le Wi-Fi ; un code s'affiche ici la première fois.</div>
+        <div class="set-row" style="margin-top:10px">
+            <div class="set-value" data-no-i18n style="min-width:0">${escapeHtml(info.name || '')}</div>
+            <div class="set-sub" data-no-i18n style="margin:0">${info.ip ? escapeHtml(info.ip + (info.port && info.port !== 8336 ? ':' + info.port : '')) : ''}</div>
+        </div>
+        <div class="set-label set-spacing">Appareils associés</div>
+        <div class="set-sub" data-no-i18n>${devices.length ? devices.map(escapeHtml).join(' · ') : '—'}</div>
+        ${devices.length ? '<div class="set-row" style="margin-top:10px"><button class="btn focusable" type="button" data-k="tvlink-forget" data-act="tvlink-forget">Oublier les appareils</button></div>' : ''}`;
+}
+
+// Connecteurs vers l'interface classique (fonctions pas encore refaites en HTML)
+const CLASSIC = [
+    ['upload', 'Publier un APK', false],
+    ['uploads', 'Mes publications', true],
+    ['downloads', 'Mes téléchargements', true],
+    ['installed', 'Apps installées', false],
+    ['favorites', 'Favoris du compte', true],
+    ['reviews', 'Mes avis', true],
+    ['feed', 'Fil d\u2019actualité', true],
+    ['profile', 'Mon profil', true],
+    ['home', 'Discussions et accueil classique', false],
+    ['moderation', 'Modération', false],
+    ['settings', 'Réglages avancés', false],
+    ['about', 'À propos', false],
+];
+function classicHtml() {
+    const uid = account.profile && account.profile.userId;
+    return `
+        <div class="set-sub">Ces écrans s'ouvrent encore dans l'interface d'origine, en attendant leur version HTML.</div>
+        <div class="set-row" style="margin-top:10px">${CLASSIC.map(([id, label, needsUser]) => `
+            <button class="btn focusable" type="button" data-k="classic-${id}" data-classic="${id}"
+                    ${needsUser && !uid ? 'disabled' : ''}>${label}</button>`).join('')}
+        </div>`;
+}
+
 function onSettingsAction(b) {
     const { section, skin, accent } = b.dataset;
+    if (b.dataset.classic) {
+        const uid = account.profile && account.profile.userId;
+        call('openClassic', b.dataset.classic, uid || '');
+        return;
+    }
     if (b.dataset.lang) {
         if (window.TvI18n && b.dataset.lang !== window.TvI18n.choice) window.TvI18n.setLang(b.dataset.lang);
         return;
@@ -841,6 +893,13 @@ function onSettingsAction(b) {
         return;
     }
     switch (act) {
+        case 'close-settings':
+            closeSettings();
+            return;
+        case 'tvlink-forget':
+            call('tvLinkForget');
+            setTimeout(() => renderSettings('section-tvlink'), 200);
+            return;
         case 'export-config': {
             const { skin, accent, cardScale, margin, archs, sources, searchCats, profile } = settings;
             const json = JSON.stringify({
@@ -1003,7 +1062,26 @@ function onRowIconKey(e, icon) {
     } else if (e.key === 'ArrowLeft') e.preventDefault();
 }
 
+// Portable : appui long = favori (carte) ou déplacement (icône de rangée), flèches cliquables
+function setupTouch() {
+    document.addEventListener('contextmenu', (e) => {
+        const card = e.target.closest && e.target.closest('.app-card');
+        const icon = e.target.closest && e.target.closest('.row-icon');
+        if (card && card._app) { e.preventDefault(); TvFavorites.toggle(card._app); }
+        else if (icon && !movingKey) { e.preventDefault(); startMove(icon.closest('.row').dataset.key); }
+    });
+    ROWS.addEventListener('click', (e) => {
+        const arrow = e.target.closest('.row-arrow');
+        if (arrow && movingKey) { e.stopPropagation(); moveRow(arrow.classList.contains('up') ? -1 : 1); return; }
+        const icon = e.target.closest('.row-icon');
+        if (icon && movingKey) endMove();
+    });
+    SEARCH_BOX.addEventListener('click', () => { if (document.activeElement !== SEARCH_INPUT) startEditing(); });
+    document.getElementById('picker-close').addEventListener('click', closePicker);
+}
+
 function setupFocusManagement() {
+    setupTouch();
     SEARCH_BOX.addEventListener('submit', (e) => { e.preventDefault(); submitSearch(); });
     HEADER_ITEMS.forEach(el => { if (el !== SEARCH_BOX) el.addEventListener('click', () => onHeaderEnter(el)); });
 
@@ -1152,7 +1230,33 @@ window.onTvLongPress = function () {
 };
 
 // Touche Retour (appelée par Android). Renvoie true si géré ici.
+let pairTimer = null;
+window.onPairCode = function (json) {
+    const o = typeof json === 'string' ? JSON.parse(json) : json;
+    document.getElementById('pair-text').textContent = `« ${o.device} » veut se connecter à cette TV.`;
+    document.getElementById('pair-code').textContent = o.code;
+    PAIR_MODAL.classList.remove('hidden');
+    clearTimeout(pairTimer);
+    pairTimer = setTimeout(() => PAIR_MODAL.classList.add('hidden'), 120000);
+};
+window.onPaired = function (json) {
+    const o = typeof json === 'string' ? JSON.parse(json) : json;
+    PAIR_MODAL.classList.add('hidden');
+    STATUS.textContent = `Portable associé : ${o.device}`;
+};
+// Un portable associé envoie une app : la fiche s'ouvre (et l'installation démarre si demandé)
+window.onRemoteOpen = function (json) {
+    const o = typeof json === 'string' ? JSON.parse(json) : json;
+    PAIR_MODAL.classList.add('hidden');
+    if (!PICKER.classList.contains('hidden')) closePicker();
+    if (!SETTINGS.classList.contains('hidden')) closeSettings();
+    if (!STORE_EDITOR.classList.contains('hidden')) closeStoreEditor();
+    window.TvDetails.open(o.id, null);
+    STATUS.textContent = o.install ? `Installation demandée par ${o.device}` : `Envoyé par ${o.device}`;
+};
+
 window.onTvBack = function () {
+    if (!PAIR_MODAL.classList.contains('hidden')) { PAIR_MODAL.classList.add('hidden'); return true; }
     if (window.TvDetails && window.TvDetails.back()) return true;
     if (endMove()) return true;
     if (!SETTINGS.classList.contains('hidden')) {

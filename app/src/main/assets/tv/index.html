@@ -5,11 +5,23 @@
     <!-- Mise en page de référence 960 px de large, mise à l’échelle de tout écran (720p, 1080p, 4K, box basse densité) -->
     <meta name="viewport" content="width=960, user-scalable=no">
     <title>Appteka TV</title>
+    <!-- Portable : largeur réelle de l'écran et interface tactile ; TV : référence 960 px -->
+    <script>
+        (function () {
+            var tv = true;
+            try { tv = !window.Android || typeof window.Android.isTv !== 'function' || window.Android.isTv(); } catch (e) { /* TV par défaut */ }
+            if (!tv) {
+                document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, viewport-fit=cover');
+                document.documentElement.classList.add('mobile');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="style.css" class="skin-classic">
     <link rel="stylesheet" href="details.css" class="skin-classic">
     <link rel="stylesheet" href="green.css" class="skin-green" media="not all">
     <link rel="stylesheet" href="green-details.css" class="skin-green" media="not all">
     <link rel="stylesheet" href="settings.css">
+    <link rel="stylesheet" href="mobile.css">
 </head>
 <body>
     <div class="bg-glow"></div>
@@ -48,6 +60,7 @@
     <div id="picker" class="picker hidden">
         <div class="picker-head">
             <div class="picker-title" id="picker-title">Catégories</div>
+            <button class="close-btn mobile-only" type="button" id="picker-close" aria-label="Fermer">✕</button>
             <div class="picker-hint" id="picker-hint">OK : afficher / masquer · Retour : valider</div>
         </div>
         <div class="picker-grid" id="picker-grid"></div>
@@ -64,6 +77,16 @@
                        enterkeyhint="done" placeholder="N° de profil" tabindex="0">
                 <button id="store-save" class="btn primary" type="submit">Enregistrer</button>
             </form>
+        </div>
+    </div>
+
+    <!-- TV : association d'un portable -->
+    <div id="pair-modal" class="modal hidden">
+        <div class="modal-box glass pair-box">
+            <div class="modal-title">Associer un portable</div>
+            <div class="modal-text" id="pair-text"></div>
+            <div class="pair-code" id="pair-code" data-no-i18n></div>
+            <div class="modal-text">Saisis ce code dans Appteka sur le portable. Retour pour refuser.</div>
         </div>
     </div>
 

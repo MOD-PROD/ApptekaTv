@@ -129,6 +129,7 @@
 
         const html = [];
         html.push(`
+          <button class="close-btn back-btn mobile-only" type="button" data-action="back" aria-label="Retour">←</button>
           <div class="d-head">
             ${iconHtml(d.icon, 'd-icon')}
             <div class="d-title">
@@ -176,6 +177,7 @@
                 ${d.scores ? `<div class="score-bars">${d.scores.map((n, i) =>
                     `<span>${5 - i}</span><div class="score-bar"><div style="width:${(n / total * 100).toFixed(0)}%"></div></div><span>${n}</span>`
                 ).join('')}</div>` : ''}
+                <div class="mini-row" style="justify-content:flex-start;margin:0 0 6px"><button class="mini-btn focusable" data-fk="classic-reviews" data-action="classic-reviews">Tous les avis et la discussion</button></div>
                 ${(d.reviews || []).map(r => `
                   <div class="review"><span class="stars">${stars(r.score)}</span><span class="who">${esc(r.author || '')}</span>
                   ${r.text ? `<div class="txt">${esc(r.text)}</div>` : ''}</div>`).join('')}
@@ -410,6 +412,7 @@
         }
         const fav = window.TvFavorites && window.TvFavorites.has(d.id);
         btns.push(['fav', fav ? '★ Favori' : '☆ Favori', fav ? 'fav-on' : '']);
+        if (document.documentElement.classList.contains('mobile')) btns.push(['send-tv', '📺 Envoyer à la TV', '']);
         if (d.authorId) btns.push(['author', 'Store de ' + (d.author || 'l\'auteur'), '']);
 
         box.innerHTML = btns.map(([act, label, cls]) =>
@@ -452,6 +455,9 @@
             case 'cancel': call('cancel', d.id); break;
             case 'launch': call('launch', d.package); break;
             case 'uninstall': call('uninstall', d.package); break;
+            case 'send-tv': call('sendToTv', d.id, d.name || ''); break;
+            case 'back': back(); break;
+            case 'classic-reviews': call('openClassic', 'details', d.id); break;
             case 'author': if (window.TvAuthor) window.TvAuthor.open(d.authorId, d.author); break;
             case 'desc': {
                 showDesc = !showDesc;
@@ -486,7 +492,8 @@
 
     function bindEvents() {
         root.querySelectorAll('[data-action="ai"]').forEach(b => b.addEventListener('click', () => onAction('ai')));
-        root.querySelectorAll('[data-action="desc"]').forEach(b => b.addEventListener('click', () => onAction('desc')));
+        root.querySelectorAll('[data-action="desc"], [data-action="back"], [data-action="classic-reviews"]').forEach(b =>
+            b.addEventListener('click', (e) => { e.stopPropagation(); onAction(b.dataset.action); }));
         root.querySelectorAll('.shot').forEach(img => img.addEventListener('click', () => openViewer(Number(img.dataset.shot))));
         root.querySelectorAll('.expandable').forEach(b => b.addEventListener('click', () => expand(b)));
     }
@@ -503,6 +510,8 @@
     }
 
     // ------------------------------------------------------------ visionneuse
+
+    viewer.addEventListener('click', () => { if (!viewer.classList.contains('hidden')) closeViewer(); });
 
     function openViewer(i) {
         viewerShots = (data && data.screenshots) || [];
@@ -665,7 +674,8 @@
         const hidden = all && apps ? all.length - apps.length : 0;
         authorEl.innerHTML = `
             <div class="author-head">
-              <div>
+              <button class="close-btn back-btn mobile-only" type="button" data-fk="author-back" aria-label="Retour">←</button>
+              <div style="flex:1;min-width:0">
                 <div class="author-title">Store de ${esc(author.name)}</div>
                 <div class="author-sub">Profil ${esc(author.id)}${apps ? ' · ' + apps.length + ' app(s)' : ''}${hidden ? ' · ' + hidden + ' masquée(s) (architecture)' : ''}</div>
               </div>
@@ -680,6 +690,8 @@
             }</div>`;
         const grid = authorEl.querySelector('.author-grid');
         (apps || []).forEach(app => grid.appendChild(window.TvCards.create(app)));
+        const backBtn = authorEl.querySelector('[data-fk="author-back"]');
+        if (backBtn) backBtn.addEventListener('click', () => closeAuthor(true));
         authorEl.querySelector('[data-fk="author-home"]').addEventListener('click', () => {
             if (window.TvStore) window.TvStore.setProfile(author.id);
             const s = document.getElementById('status');

@@ -1,0 +1,128 @@
+/* Appteka — interface portable (tactile, portrait ou paysage). Chargée après les skins. */
+
+/* Éléments réservés au tactile (masqués sur TV) */
+.mobile-only { display: none !important; }
+.mobile .mobile-only { display: flex !important; }
+
+.close-btn {
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(var(--accent-rgb, 212, 175, 55), 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--accent, #d4af37);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* Code d'association affiché sur la TV */
+.pair-box { text-align: center; }
+.pair-code {
+    font-size: 64px;
+    font-weight: 800;
+    letter-spacing: 18px;
+    margin: 12px 0 14px 18px;
+    color: var(--accent, #d4af37);
+    text-shadow: 0 0 24px rgba(var(--accent-rgb, 212, 175, 55), 0.45);
+}
+
+/* ------------------------------------------------------------------ portable */
+.mobile body { -webkit-tap-highlight-color: transparent; }
+.mobile .safe-area {
+    padding: max(10px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom)) !important;
+}
+
+/* En-tête : logo + boutons sur une ligne, recherche pleine largeur dessous */
+.mobile .header { flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.mobile .logo-main { font-size: 20px; letter-spacing: 4px; }
+.mobile .header-right { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.mobile .search-box { order: 10; flex: 1 1 100%; width: auto !important; }
+.mobile .hbtn { width: 40px; height: 40px; }
+.mobile #btn-exit { display: none; }
+.mobile .header > .logo { flex: 1; }
+
+/* Rangées : défilement au doigt, cartes plus compactes */
+.mobile .content { margin-right: -12px; }
+.mobile .row { gap: 6px; margin-bottom: 0; }
+.mobile .row-icon { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 14px; }
+.mobile .row-icon .icon-svg { width: 22px; height: 22px; }
+.mobile .apps-row {
+    gap: 10px;
+    padding: 12px 12px 14px 8px !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+}
+.mobile .app-card {
+    flex: 0 0 calc(104px * var(--cs, 1));
+    width: calc(104px * var(--cs, 1));
+    scroll-snap-align: start;
+}
+.mobile .app-card:focus { transform: none; }
+.mobile .app-icon { width: calc(56px * var(--cs, 1)); height: calc(56px * var(--cs, 1)); }
+.mobile .row-arrow { width: 36px; height: 28px; font-size: 14px; }
+.mobile .row-arrow.up { top: -32px; }
+.mobile .row-arrow.down { bottom: -32px; }
+
+/* Damier des catégories : 4 colonnes, défilement vertical */
+.mobile .picker { padding: max(12px, env(safe-area-inset-top)) 12px 12px !important; }
+.mobile .picker-head { align-items: center; }
+.mobile .picker-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: 86px;
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+.mobile .cell .icon-svg { width: 26px; height: 26px; }
+
+/* Réglages plein écran */
+.mobile .settings { align-items: stretch; }
+.mobile .settings-panel {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: 100%;
+    border-radius: 0 !important;
+    padding: max(14px, env(safe-area-inset-top)) 16px 30px !important;
+    position: relative;
+}
+.mobile .settings-panel > .close-btn { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 14px; }
+.mobile .set-input { min-width: 0; }
+.mobile .set-row .btn { flex: 1 1 auto; }
+
+/* Fiche d'une app : une colonne */
+.mobile .details { padding: max(12px, env(safe-area-inset-top)) 14px 40px !important; }
+.mobile .back-btn { margin-bottom: 10px; }
+.mobile .d-head { flex-direction: column; gap: 14px; align-items: flex-start; }
+.mobile .d-icon { width: 84px; height: 84px; border-radius: 20px; }
+.mobile .d-name { font-size: 24px; }
+.mobile .d-actions .btn { flex: 1 1 auto; padding: 11px 14px; font-size: 15px; }
+.mobile .d-actions .btn:focus { transform: none; }
+.mobile .d-stats { gap: 18px; }
+.mobile .stat-value { font-size: 18px; }
+.mobile .d-block { padding: 14px 16px; }
+.mobile .info-grid { grid-template-columns: 1fr; gap: 2px; }
+.mobile .info-grid .k { margin-top: 8px; }
+.mobile .version { flex-direction: column; align-items: flex-start; gap: 4px; }
+.mobile .v-head { flex-direction: column; align-items: flex-start; }
+.mobile .v-tools { flex-wrap: wrap; }
+.mobile .shot { height: 180px; }
+.mobile .author { padding: max(12px, env(safe-area-inset-top)) 14px 30px !important; }
+.mobile .author-head { flex-wrap: wrap; }
+.mobile .author-title { font-size: 22px; }
+.mobile .author-grid { grid-template-columns: repeat(auto-fill, minmax(calc(100px * var(--cs, 1)), 1fr)); gap: 10px; }
+
+.mobile .modal-box { width: 92%; padding: 20px; }
+.mobile .modal-row { flex-direction: column; }
+.mobile .footer { bottom: max(18px, env(safe-area-inset-bottom)); white-space: normal; text-align: center; }
+
+/* Appui long : pas de sélection de texte ni de menu système sur les cartes */
+.mobile .app-card, .mobile .row-icon, .mobile .cell {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
