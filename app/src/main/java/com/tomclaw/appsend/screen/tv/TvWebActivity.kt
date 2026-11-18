@@ -171,8 +171,13 @@ class TvWebActivity : AppCompatActivity() {
         splashHidden = true
         webView.alpha = 0f
         webView.visibility = View.VISIBLE
-        js("playGravitySplash", null)
-        webView.animate().alpha(1f).setDuration(400).start()
+        webView.animate().alpha(1f).setDuration(400).withEndAction {
+            webView.postOnAnimation {
+                if (!isFinishing && !isDestroyed && webView.isShown) {
+                    js("playGravitySplash", null)
+                }
+            }
+        }.start()
         splashView?.animate()?.alpha(0f)?.setDuration(400)?.withEndAction {
             (splashView?.drawable as? AnimatedImageDrawable)?.stop()
             splashView?.visibility = View.GONE
