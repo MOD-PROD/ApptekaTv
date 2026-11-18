@@ -1,8 +1,7 @@
-/* Appteka — néumorphisme clair
-   Même construction que le skin néumorphique vert (green.css / green-details.css) :
-   surfaces en dégradé éclairé, liseré lumineux, relief, halo coloré à la sélection,
-   bordures teintées d'accent. Seule la palette passe en clair
-   (fond #e0e5ec, ombre #b8bec7, reflet #ffffff). Ce fichier se pose par-dessus green*.css. */
+/* Appteka — néumorphisme clair (soft UI)
+   Valeurs de référence : fond #e0e5ec, ombre sombre #b8bec7, reflet #ffffff,
+   relief 8px 8px 16px / -8px -8px 16px, enfoncé = mêmes ombres en « inset », rayon 12px.
+   Se pose par-dessus le skin néumorphique (green.css / green-details.css). */
 
 html.neu-skin {
     --bg: #e0e5ec;
@@ -15,42 +14,193 @@ html.neu-skin {
     --accent-dark: #3a56c9;
     --text: #2d3440;
     --muted: #6d7584;
-    --surface: linear-gradient(145deg, #f1f4f8, #e2e7ee 66%, #d7dce4);
-    --raised: inset 1px 1px 2px #ffffffd0, -6px -6px 14px #ffffff, 7px 8px 15px #b8bec7;
-    --recessed: inset 4px 4px 8px #b8bec7, inset -4px -4px 8px #ffffff;
-    --glass-border: rgba(255, 255, 255, 0.75);
-    --focus-glow: 0 0 0 2px rgba(var(--accent-rgb), 0.75), 0 0 18px rgba(var(--accent-rgb), 0.45), var(--raised);
+    --surface: #e0e5ec;
+    --raised: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+    --raised-sm: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+    --recessed: inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+    --glass-border: transparent;
+    --focus-glow: 0 0 0 2px rgba(var(--accent-rgb), 0.85), var(--raised);
+    --on-accent: #fff;
+    --ok: #1e8e4e;
+    --warn: #b26a00;
+    --danger: #c0392b;
+    --overlay: var(--overlay);
+    --line: var(--line);
     color-scheme: light;
 }
 
-/* Texte sur la couleur d'accent : blanc (le vert utilisait du noir) */
-.neu-skin .logo-tv, .neu-skin .hbtn-badge, .neu-skin .row-count, .neu-skin .row-arrow,
-.neu-skin .cell.checked .cell-check, .neu-skin .account-avatar,
-.neu-skin .btn.primary, .neu-skin .btn.update, .neu-skin .mini-btn.on { color: #fff; }
+/* Variante sombre (skin « Néumorphisme vert ») : même effet, palette graphite + vert */
+html.neu-skin.neu-dark {
+    --bg: #25272a;
+    --neu-dark: #17181a;
+    --neu-light: #34373b;
+    --accent-rgb: 144, 243, 72;
+    --accent-light-rgb: 195, 255, 132;
+    --accent-dark: #6bc336;
+    --text: #f2f3f4;
+    --muted: #a7abb0;
+    --surface: #25272a;
+    --on-accent: #0a0a0a;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --danger: #ff8a7a;
+    --overlay: rgba(37, 39, 42, 0.88);
+    --line: rgba(255, 255, 255, 0.07);
+    color-scheme: dark;
+}
 
-/* Fonds sombres codés en dur dans le skin vert */
-.neu-skin .search-box { background: #dde2e9; box-shadow: var(--recessed); }
-.neu-skin .app-card { border-color: rgba(255, 255, 255, 0.75); }
-.neu-skin .app-icon { background: #dfe4eb; }
-.neu-skin .picker { background: rgba(224, 229, 236, 0.94); }
-.neu-skin .settings { background: rgba(224, 229, 236, 0.8); }
-.neu-skin .modal { background: rgba(200, 206, 215, 0.6); }
-.neu-skin .viewer { background: rgba(224, 229, 236, 0.97); }
-.neu-skin .modal-input, .neu-skin .set-input { background: #dde2e9; color: var(--text); }
-.neu-skin .chip-toggle { background: rgba(255, 255, 255, 0.35); }
-.neu-skin .d-icon, .neu-skin .shot { background: rgba(255, 255, 255, 0.45); }
-.neu-skin .badge, .neu-skin .btn:not(.primary):not(.update):not(.warn):not(.danger) { background: rgba(255, 255, 255, 0.4); }
-.neu-skin .d-block, .neu-skin .version { background: var(--surface); box-shadow: var(--raised); }
-.neu-skin .d-progress-bar, .neu-skin .score-bar { background: #d3d9e1; box-shadow: var(--recessed); }
-.neu-skin .d-text.clamped::after { background: linear-gradient(transparent, #e2e7ee); }
+/* Fond uni : en néumorphisme, les éléments ont exactement la couleur du fond */
+.neu-skin body, .neu-skin .bg-glow { background: var(--bg) !important; }
+.neu-skin .bg-glow { display: none; }
 
-/* Couleurs d'état lisibles sur fond clair */
-.neu-skin .badge.green { background: rgba(34, 197, 94, 0.14); color: #15803d; }
-.neu-skin .badge.orange { background: rgba(245, 158, 11, 0.16); color: #a15c00; }
-.neu-skin .badge.red { background: rgba(239, 68, 68, 0.14); color: #b91c1c; }
-.neu-skin .btn.danger { background: rgba(239, 68, 68, 0.1); color: #b91c1c; border-color: rgba(239, 68, 68, 0.3); }
-.neu-skin .set-msg.err, .neu-skin .version.incompatible .v-meta::after { color: #c0392b; }
-.neu-skin .hbtn.exit svg { stroke: #c0392b; }
+/* Relief par défaut */
+.neu-skin .glass,
+.neu-skin .app-card,
+.neu-skin .row-icon,
+.neu-skin .hbtn,
+.neu-skin .cell,
+.neu-skin .btn,
+.neu-skin .d-block,
+.neu-skin .version,
+.neu-skin .modal-box,
+.neu-skin .settings-panel,
+.neu-skin .close-btn {
+    background: var(--surface) !important;
+    border-color: transparent !important;
+    box-shadow: var(--raised) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+.neu-skin .app-card { border-radius: 16px; }
+.neu-skin .btn, .neu-skin .hbtn, .neu-skin .close-btn { box-shadow: var(--raised-sm) !important; }
+.neu-skin .version { box-shadow: var(--raised-sm) !important; border-radius: 12px; }
 
-/* Le logo « APPTEKA » garde son dégradé, en version plus foncée pour le contraste */
-.neu-skin .logo-main { filter: saturate(1.2) brightness(0.8); }
+/* Creusé : champs de saisie, barre de recherche, icône d'app, barres de progression */
+.neu-skin .search-box,
+.neu-skin .set-input,
+.neu-skin .modal-input,
+.neu-skin .app-icon,
+.neu-skin .d-progress-bar,
+.neu-skin .score-bar {
+    background: var(--surface) !important;
+    border-color: transparent !important;
+    box-shadow: var(--recessed) !important;
+}
+.neu-skin .search-input, .neu-skin .set-input, .neu-skin .modal-input { color: var(--text) !important; }
+.neu-skin .search-input::placeholder { color: var(--muted); }
+
+/* Sélection télécommande : relief + anneau de couleur ; état actif = « enfoncé » */
+.neu-skin .app-card:focus,
+.neu-skin .row-icon:focus,
+.neu-skin .hbtn:focus,
+.neu-skin .cell:focus,
+.neu-skin .btn:focus,
+.neu-skin .d-block:focus,
+.neu-skin .version:focus,
+.neu-skin .search-box:focus,
+.neu-skin .close-btn:focus {
+    box-shadow: var(--focus-glow) !important;
+}
+.neu-skin .btn:active,
+.neu-skin .hbtn:active,
+.neu-skin .app-card:active,
+.neu-skin .cell:active,
+.neu-skin .chip-toggle:active,
+.neu-skin .mini-btn:active,
+.neu-skin .close-btn:active {
+    box-shadow: var(--recessed) !important;
+    transform: none !important;
+}
+
+/* Éléments « activés » (cochés, choisis) : enfoncés, comme un interrupteur */
+.neu-skin .cell.checked,
+.neu-skin .chip-toggle.on,
+.neu-skin .mini-btn.on,
+.neu-skin .version.current,
+.neu-skin .row.moving .row-icon {
+    background: var(--surface) !important;
+    box-shadow: var(--recessed) !important;
+}
+.neu-skin .chip-toggle, .neu-skin .mini-btn {
+    background: var(--surface) !important;
+    border-color: transparent !important;
+    box-shadow: var(--raised-sm) !important;
+    color: var(--text) !important;
+}
+.neu-skin .chip-toggle.on, .neu-skin .mini-btn.on { color: var(--accent) !important; }
+.neu-skin .cell-name { color: var(--muted); }
+.neu-skin .cell.checked .cell-name { color: var(--text); }
+
+/* Boutons principaux : couleur d'accent pleine, texte blanc */
+.neu-skin .btn.primary,
+.neu-skin .btn.update {
+    background: var(--accent) !important;
+    color: var(--on-accent) !important;
+    box-shadow: var(--raised-sm) !important;
+}
+.neu-skin .btn.danger { color: var(--danger) !important; }
+.neu-skin .btn.warn { background: #f0a43a !important; color: #fff !important; }
+.neu-skin .btn.fav-on { color: var(--accent) !important; box-shadow: var(--recessed) !important; }
+.neu-skin .cell-check { border-color: rgba(var(--accent-rgb), 0.5); }
+.neu-skin .cell.checked .cell-check,
+.neu-skin .hbtn-badge,
+.neu-skin .row-count,
+.neu-skin .logo-tv,
+.neu-skin .row-arrow {
+    background: var(--accent) !important;
+    color: var(--on-accent) !important;
+}
+
+/* Textes */
+.neu-skin .logo-main,
+.neu-skin .d-name,
+.neu-skin .author-title {
+    background: none !important;
+    -webkit-background-clip: border-box !important;
+    background-clip: border-box !important;
+    color: var(--text) !important;
+}
+.neu-skin .app-name, .neu-skin .stat-value, .neu-skin .account-name, .neu-skin .v-name { color: var(--text) !important; }
+.neu-skin .app-meta, .neu-skin .d-sub, .neu-skin .stat-label, .neu-skin .set-sub,
+.neu-skin .info-grid .k, .neu-skin .v-meta, .neu-skin .author-sub, .neu-skin .modal-text,
+.neu-skin .account-meta, .neu-skin .review .who { color: var(--muted) !important; }
+.neu-skin .d-text, .neu-skin .info-grid .v, .neu-skin .review .txt { color: var(--text) !important; }
+.neu-skin .d-text.clamped::after { background: linear-gradient(transparent, var(--bg)) !important; }
+.neu-skin .d-block h3, .neu-skin .set-title, .neu-skin .picker-title,
+.neu-skin .modal-title, .neu-skin .d-more { color: var(--accent) !important; }
+.neu-skin .badge { background: var(--surface) !important; box-shadow: var(--raised-sm); color: var(--text) !important; border-color: transparent !important; }
+.neu-skin .badge.green { color: var(--ok) !important; }
+.neu-skin .badge.orange { color: var(--warn) !important; }
+.neu-skin .badge.red { color: var(--danger) !important; }
+.neu-skin .chip { background: var(--surface) !important; box-shadow: var(--raised-sm); color: var(--accent) !important; border-color: transparent !important; }
+.neu-skin .icon-svg.api svg, .neu-skin .icon-svg.api svg *:not([fill="none"]) { fill: var(--accent) !important; }
+.neu-skin .icon-svg.line svg, .neu-skin .hbtn svg, .neu-skin .search-icon { stroke: var(--accent) !important; }
+.neu-skin .hbtn.exit svg { stroke: var(--danger) !important; }
+.neu-skin .fav-badge { color: var(--accent) !important; text-shadow: none !important; }
+.neu-skin .d-progress-fill { background: var(--accent) !important; }
+.neu-skin .score-bar > div { background: var(--accent) !important; }
+.neu-skin .version.installed .v-name::after { color: var(--accent) !important; }
+.neu-skin .d-note, .neu-skin .set-msg { color: var(--accent-dark) !important; }
+.neu-skin .set-msg.err { color: var(--danger) !important; }
+.neu-skin .pair-code { color: var(--accent) !important; text-shadow: none !important; }
+
+/* Plans superposés (damier, réglages, fiche, store d'un auteur, fenêtres) : fond clair */
+.neu-skin .picker,
+.neu-skin .details,
+.neu-skin .author { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.neu-skin .settings,
+.neu-skin .modal { background: var(--overlay) !important; }
+.neu-skin .set-section { border-top-color: var(--line) !important; }
+.neu-skin .review { border-bottom-color: var(--line) !important; }
+
+/* Bulle de message en bas */
+.neu-skin .footer {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border-color: transparent !important;
+    box-shadow: var(--raised) !important;
+}
+
+/* Cartes d'app : un peu plus d'air pour laisser respirer les ombres */
+.neu-skin .apps-row { gap: 22px; }
+.mobile.neu-skin .apps-row { gap: 14px; }

@@ -636,11 +636,13 @@ const ACCENTS = {
 
 function applySkin() {
     // « neu » (néumorphisme clair) se pose par-dessus les feuilles du skin néumorphique
-    const neu = settings.skin === 'neu';
-    const green = settings.skin === 'green' || neu;
+    // les deux néumorphismes partagent neu.css ; le vert ajoute la palette sombre (neu-dark)
+    const green = settings.skin === 'green' || settings.skin === 'neu';
+    const neu = green;
     const root = document.documentElement;
     root.classList.toggle('green-skin', green);
     root.classList.toggle('neu-skin', neu);
+    root.classList.toggle('neu-dark', settings.skin === 'green');
     const rgb = ACCENTS[settings.accent]?.rgb;
     root.classList.toggle('custom-accent', Boolean(rgb));
     for (const property of ['--accent-rgb', '--accent-light-rgb', '--accent-dark']) {
