@@ -60,3 +60,36 @@
 /* Arabe : texte de droite à gauche, disposition inchangée pour la télécommande */
 .lang-rtl .d-text, .lang-rtl .set-sub, .lang-rtl .empty-hint, .lang-rtl .footer,
 .lang-rtl .d-note, .lang-rtl .modal-text, .lang-rtl .review .txt { direction: rtl; unicode-bidi: plaintext; }
+
+/* ---- Bords : le zoom et le halo de sélection ne sont plus coupés à gauche / en haut ---- */
+.content {
+    padding-left: 16px !important;
+    margin-left: -16px;
+    padding-top: 12px !important;
+    margin-top: -8px;
+}
+
+/* ---- Plus de textes d'aide permanents ---- */
+.picker-hint { display: none !important; }
+.footer {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translate(-50%, 12px);
+    max-width: 80%;
+    padding: 9px 18px !important;
+    border-radius: 999px;
+    font-size: 13px !important;
+    color: #f1ece0 !important;
+    background: rgba(8, 8, 10, 0.82);
+    border: 1px solid rgba(var(--accent-rgb, 212, 175, 55), 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 300;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.footer.show, .footer.sticky { opacity: 1; transform: translate(-50%, 0); }

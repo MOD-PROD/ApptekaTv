@@ -178,6 +178,7 @@ function createAppCard(app) {
     card.className = 'app-card';
     card.tabIndex = 0;
     card.dataset.id = app.id;
+    card._app = app;
 
     const fallback = '<div class="app-icon app-icon-fallback">📺</div>';
     const icon = app.icon ? `<img class="app-icon" src="${escapeHtml(app.icon)}" alt="" loading="lazy">` : fallback;
@@ -361,14 +362,22 @@ function overlayOpen() {
         (window.TvDetails && window.TvDetails.isOpen());
 }
 
+// Plus de barre d'aide permanente : la ligne du bas n'apparaît que pour un message,
+// quelques secondes (bulle), ou pendant le déplacement d'une rangée.
 function updateStatus() {
-    if (movingKey) {
-        STATUS.textContent = '▲ ▼ : déplacer la rangée · OK ou Retour : terminer';
-        return;
-    }
-    const total = ROWS.querySelectorAll('.app-card').length;
-    STATUS.textContent = `${total} applications · OK : fiche · ▶ : installer · jaune : favori · appui long sur une icône : déplacer la rangée`;
+    STATUS.classList.toggle('sticky', !!movingKey);
+    if (movingKey) STATUS.textContent = '▲ ▼ : déplacer la rangée · OK ou Retour : terminer';
+    else if (STATUS.classList.contains('sticky-was')) STATUS.textContent = '';
+    STATUS.classList.toggle('sticky-was', !!movingKey);
 }
+
+let statusTimer = null;
+new MutationObserver(() => {
+    const has = STATUS.textContent.trim().length > 0;
+    STATUS.classList.toggle('show', has);
+    clearTimeout(statusTimer);
+    if (has && !movingKey) statusTimer = setTimeout(() => STATUS.classList.remove('show'), 3200);
+}).observe(STATUS, { childList: true, characterData: true, subtree: true });
 
 // ------------------------------------------------------------ déplacement des rangées
 
@@ -1124,6 +1133,23 @@ function setupFocusManagement() {
         }
     });
 }
+
+// Appui long sur OK (détecté côté Android) : déplacer une rangée ou mettre une app en favori.
+window.onTvLongPress = function () {
+    const a = document.activeElement;
+    if (!a) return;
+    if (a.classList.contains('row-icon') && !movingKey) {
+        startMove(a.closest('.row').dataset.key);
+    } else if (a.classList.contains('app-card') && a._app) {
+        const row = a.closest('.row');
+        TvFavorites.toggle(a._app);
+        // la sélection reste sur la même carte (ou sa remplaçante dans la même rangée)
+        const same = document.body.contains(a) ? a
+            : row && row.querySelector(`.app-card[data-id="${CSS.escape(String(a._app.id))}"]`);
+        const target = same || (row && row.querySelector('.app-card')) || firstCard();
+        if (target) target.focus({ preventScroll: true });
+    }
+};
 
 // Touche Retour (appelée par Android). Renvoie true si géré ici.
 window.onTvBack = function () {

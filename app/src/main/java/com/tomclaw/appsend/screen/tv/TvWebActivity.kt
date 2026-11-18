@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.KeyEvent
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -740,6 +741,50 @@ class TvWebActivity : AppCompatActivity() {
         fun getVersion(): String = "1.1-tv"
     }
 
+    // ------------------------------------------------- Appui long sur OK
+
+    private var okDownAt = 0L
+    private var okLongFired = false
+    private val okLongPress = Runnable {
+        okLongFired = true
+        webView.evaluateJavascript("window.onTvLongPress && window.onTvLongPress();", null)
+    }
+
+    private fun isOkKey(code: Int) = code == KeyEvent.KEYCODE_DPAD_CENTER ||
+        code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER
+
+    /**
+     * Android ne transmet pas l'appui long de la télécommande à la page web.
+     * On garde donc la touche OK : appui court -> rejoué tel quel à la page,
+     * appui long (0,6 s) -> window.onTvLongPress() (favori, déplacement de rangée).
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!::webView.isInitialized || !isOkKey(event.keyCode)) return super.dispatchKeyEvent(event)
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (event.repeatCount == 0) {
+                    okDownAt = event.downTime
+                    okLongFired = false
+                    handler.removeCallbacks(okLongPress)
+                    handler.postDelayed(okLongPress, LONG_PRESS_MS)
+                }
+                return true
+            }
+            KeyEvent.ACTION_UP -> {
+                handler.removeCallbacks(okLongPress)
+                if (!okLongFired) {
+                    // appui court : on rejoue OK (bas + haut) vers la page
+                    val now = android.os.SystemClock.uptimeMillis()
+                    webView.dispatchKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, event.keyCode, 0))
+                    webView.dispatchKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, event.keyCode, 0))
+                }
+                okLongFired = false
+                return true
+            }
+        }
+        return true
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         // La page gère d'abord Retour (fermer la fiche, sortir de la saisie…)
@@ -765,6 +810,7 @@ class TvWebActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "TvWebActivity"
+        private const val LONG_PRESS_MS = 600L
         private const val PREFS_NAME = "tv_web"
         private const val KEY_CATEGORIES_CACHE = "categories_cache"
         private const val SEARCH_PAGES = 4
