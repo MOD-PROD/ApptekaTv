@@ -6,4 +6,7 @@
     <style name="AppTheme.Splash">
         <item name="android:windowBackground">@drawable/splash_background</item>
     </style>
+    <style name="AppTheme.TvStartup" parent="AppTheme">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
 </resources>

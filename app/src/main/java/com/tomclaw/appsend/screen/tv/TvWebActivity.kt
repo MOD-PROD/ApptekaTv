@@ -6,18 +6,11 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.ImageDecoder
-import android.graphics.drawable.AnimatedImageDrawable
 import android.os.Build
-import android.view.Gravity
-import android.widget.FrameLayout
-import android.widget.ImageView
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.util.Log
-import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -29,7 +22,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.google.gson.Gson
-import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
 import com.tomclaw.appsend.categories.Category
 import com.tomclaw.appsend.core.StoreApi
@@ -81,9 +73,7 @@ class TvWebActivity : AppCompatActivity() {
     private val disposables = CompositeDisposable()
     private val gson = Gson()
     private val handler = Handler(Looper.getMainLooper())
-    private var splashStart = 0L
-    private var splashHidden = false
-    private var splashView: ImageView? = null
+    private var gravitySplashStarted = false
 
     /** Fiche actuellement ouverte dans la page HTML. */
     private var currentDetails: Details? = null
@@ -139,17 +129,9 @@ class TvWebActivity : AppCompatActivity() {
         pendingConfig = savedInstanceState?.getString("pendingTvConfig")
 
         webView = WebView(this)
-        // Le splash (capsule animée) reste visible jusqu'au 1er chargement des apps
-        webView.visibility = View.INVISIBLE
-        splashView = createSplashView()
-        setContentView(FrameLayout(this).apply {
-            addView(webView, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
-            ))
-            addView(splashView)
-        })
-        splashStart = SystemClock.uptimeMillis()
-        handler.postDelayed({ hideSplash() }, SPLASH_MAX_MS)
+        webView.setBackgroundColor(0xff07070a.toInt())
+        setContentView(webView)
+        webView.requestFocus()
 
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
@@ -161,56 +143,12 @@ class TvWebActivity : AppCompatActivity() {
         currentDetails?.let { subscribeState(it) }
     }
 
-    private fun hideSplash() {
-        if (splashHidden) return
-        val elapsed = SystemClock.uptimeMillis() - splashStart
-        if (elapsed < SPLASH_MIN_MS) {
-            handler.postDelayed({ hideSplash() }, SPLASH_MIN_MS - elapsed)
-            return
+    private fun playStartupAnimation() {
+        if (gravitySplashStarted || isFinishing || isDestroyed) return
+        gravitySplashStarted = true
+        webView.postOnAnimation {
+            if (!isFinishing && !isDestroyed) js("playGravitySplash", null)
         }
-        splashHidden = true
-        webView.alpha = 0f
-        webView.visibility = View.VISIBLE
-        webView.animate().alpha(1f).setDuration(400).withEndAction {
-            webView.postOnAnimation {
-                if (!isFinishing && !isDestroyed && webView.isShown) {
-                    js("playGravitySplash", null)
-                }
-            }
-        }.start()
-        splashView?.animate()?.alpha(0f)?.setDuration(400)?.withEndAction {
-            (splashView?.drawable as? AnimatedImageDrawable)?.stop()
-            splashView?.visibility = View.GONE
-        }?.start()
-        webView.requestFocus()
-    }
-
-    /**
-     * Capsule animée centrée, à la même taille (en pixels) que l'image fixe
-     * du fond de fenêtre : la transition fond fixe -> animation est invisible.
-     */
-    private fun createSplashView(): ImageView {
-        val view = ImageView(this)
-        view.layoutParams = FrameLayout.LayoutParams(SPLASH_SIZE_PX, SPLASH_SIZE_PX, Gravity.CENTER)
-        view.scaleType = ImageView.ScaleType.FIT_CENTER
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                val source = ImageDecoder.createSource(resources, R.raw.capsule_anim)
-                val drawable = ImageDecoder.decodeDrawable(source) { decoder, _, _ ->
-                    decoder.setTargetSize(SPLASH_SIZE_PX, SPLASH_SIZE_PX)
-                }
-                view.setImageDrawable(drawable)
-                (drawable as? AnimatedImageDrawable)?.apply {
-                    repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
-                    start()
-                }
-                return view
-            } catch (e: Exception) {
-                Log.e(TAG, "Animated splash failed", e)
-            }
-        }
-        view.setImageResource(R.drawable.splash_capsule)
-        return view
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -226,7 +164,7 @@ class TvWebActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // La page demande elle-même ses rangées (catégories cochées)
+                handler.postDelayed({ playStartupAnimation() }, GRAVITY_FALLBACK_MS)
             }
         }
 
@@ -326,7 +264,7 @@ class TvWebActivity : AppCompatActivity() {
                 .subscribe({ files ->
                     val all = (accumulated + files).distinctBy { it.appId }
                     js("loadTvAppsJson", mapOf("key" to key, "apps" to all.map(TvDetailsMapper::card)))
-                    hideSplash()
+                    if (all.isNotEmpty()) playStartupAnimation()
                     if (files.isNotEmpty() && page + 1 < MAX_PAGES) {
                         loadPages(key, fetch, files.last().appId, all, page + 1)
                     }
@@ -334,7 +272,6 @@ class TvWebActivity : AppCompatActivity() {
                     Log.e(TAG, "Failed to load source $key", error)
                     if (accumulated.isEmpty()) {
                         webView.evaluateJavascript("window.onCategoryError && window.onCategoryError('$key');", null)
-                        hideSplash()
                     }
                 })
         )
@@ -830,12 +767,10 @@ class TvWebActivity : AppCompatActivity() {
         private const val TAG = "TvWebActivity"
         private const val PREFS_NAME = "tv_web"
         private const val KEY_CATEGORIES_CACHE = "categories_cache"
-        private const val SPLASH_SIZE_PX = 540
         private const val SEARCH_PAGES = 4
         private const val MAX_VERSIONS_INFO = 40
         private const val MAX_PAGES = 5
-        private const val SPLASH_MIN_MS = 2500L
-        private const val SPLASH_MAX_MS = 8000L
+        private const val GRAVITY_FALLBACK_MS = 1500L
         private const val AI_STATUS_PENDING = "pending"
         private const val AI_POLL_INTERVAL_MS = 4000L
         private const val AI_POLL_TIMEOUT_MS = 3 * 60 * 1000L
