@@ -172,6 +172,8 @@ interface AppComponent {
 
     fun inject(service: InstallService)
 
+    fun inject(activity: com.tomclaw.appsend.screen.tv.TvWebActivity)
+
     fun analytics(): Analytics
 
     fun bananalytics(): Bananalytics

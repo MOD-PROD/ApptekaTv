@@ -33,7 +33,7 @@ function createAppCard(app) {
             <div class="app-name">${escapeHtml(app.name || 'App')}</div>
             <div class="app-meta">${app.downloads || ''} · ${app.size || ''}</div>
             <div class="app-actions">
-                <button class="btn-download" type="button" tabindex="-1">Télécharger</button>
+                <button class="btn-download" type="button" tabindex="-1">Installer</button>
             </div>
         </div>
     `;
@@ -66,16 +66,14 @@ function escapeHtml(text) {
 }
 
 function onAppSelected(app) {
-    STATUS.textContent = `Détails : ${app.name}`;
-    if (window.Android && typeof window.Android.openAppDetails === 'function') {
-        window.Android.openAppDetails(String(app.id));
-    }
+    // Fiche HTML (remplace l'écran de détails natif)
+    window.TvDetails.open(app.id, app);
 }
 
 function onDownload(app) {
     STATUS.textContent = `Téléchargement : ${app.name}…`;
-    if (window.Android && typeof window.Android.downloadApp === 'function') {
-        window.Android.downloadApp(String(app.id));
+    if (window.Android && typeof window.Android.install === 'function') {
+        window.Android.install(String(app.id));
     } else {
         STATUS.textContent = 'Bridge téléchargement indisponible';
     }
@@ -110,7 +108,8 @@ function renderRow(key, apps) {
     if (focusedId) {
         const again = row.querySelector(`.app-card[data-id="${CSS.escape(focusedId)}"]`);
         if (again) again.focus({ preventScroll: true });
-    } else if (!document.activeElement || !document.activeElement.classList.contains('app-card')) {
+    } else if ((!window.TvDetails || !window.TvDetails.isOpen()) &&
+               (!document.activeElement || !document.activeElement.classList.contains('app-card'))) {
         // Premier chargement : focus sur la 1re carte de la 1re rangée remplie
         for (const k of rowKeys()) {
             const first = rowEl(k) && rowEl(k).querySelector('.app-card');
@@ -122,7 +121,7 @@ function renderRow(key, apps) {
 
 function updateStatus() {
     const total = rowKeys().reduce((n, k) => n + (rowEl(k) ? rowEl(k).querySelectorAll('.app-card').length : 0), 0);
-    STATUS.textContent = `${total} applications · ◀ ▶ ▲ ▼ naviguer · OK = détails · D = télécharger`;
+    STATUS.textContent = `${total} applications · ◀ ▶ ▲ ▼ naviguer · OK = détails · D = installer`;
 }
 
 function firstCardOfTopRow() {
@@ -179,6 +178,9 @@ function setupFocusManagement() {
     SEARCH_BOX.addEventListener('submit', (e) => { e.preventDefault(); submitSearch(); });
 
     document.addEventListener('keydown', (e) => {
+        // La fiche app (et sa visionneuse) gère ses propres touches
+        if (window.TvDetails && window.TvDetails.handleKey(e)) return;
+        if (window.TvDetails && window.TvDetails.isOpen()) return;
         const focused = document.activeElement;
 
         // 1) Saisie en cours dans le champ : on laisse le clavier faire,
@@ -244,6 +246,7 @@ function setupFocusManagement() {
 
 // Touche Retour (appelée par Android). Renvoie true si géré ici.
 window.onTvBack = function() {
+    if (window.TvDetails && window.TvDetails.back()) return true;
     const focused = document.activeElement;
     if (focused === SEARCH_INPUT) { focusSearchBox(); return true; }
     if (closeSearch()) {
@@ -290,8 +293,23 @@ window.onCategoryError = function(key) {
     if (row) row.innerHTML = '<div class="loading">Erreur réseau</div>';
 };
 
-window.onDownloadStarted = function(appId) {
-    STATUS.textContent = `Téléchargement lancé (${appId})`;
+window.onDownloadStarted = function(json) {
+    let name = json;
+    try { const o = JSON.parse(json); name = o.name || o.id; } catch (e) {}
+    STATUS.textContent = `Téléchargement lancé : ${name} — installation automatique à la fin`;
 };
+
+// Nouveau format envoyé par Android : { key, apps }
+window.loadTvAppsJson = function(json) {
+    try {
+        const o = typeof json === 'string' ? JSON.parse(json) : json;
+        renderRow(o.key, o.apps);
+    } catch (e) {
+        console.error('Failed to parse apps', e);
+    }
+};
+
+// Les cartes sont réutilisées dans la fiche (apps similaires)
+window.TvCards = { create: createAppCard };
 
 document.addEventListener('DOMContentLoaded', setupFocusManagement);

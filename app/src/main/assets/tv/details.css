@@ -1,0 +1,246 @@
+/* Appteka TV - fiche application (remplace l'écran de détails natif) */
+
+.details {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #0a0e17;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 27px 48px 60px;
+    scroll-behavior: smooth;
+}
+.details::-webkit-scrollbar { width: 0; }
+
+.d-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 22px;
+    color: #64748b;
+}
+
+/* ---- En-tête ---- */
+.d-head {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+.d-icon {
+    width: 140px;
+    height: 140px;
+    border-radius: 28px;
+    object-fit: cover;
+    background: #1e293b;
+    flex-shrink: 0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+.d-title { flex: 1; min-width: 0; }
+.d-name {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 6px;
+}
+.d-sub { font-size: 17px; color: #94a3b8; margin-bottom: 12px; }
+.d-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.badge {
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #1e293b;
+    color: #cbd5e1;
+}
+.badge.green { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.badge.orange { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.badge.red { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+.badge.blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+
+/* ---- Statistiques ---- */
+.d-stats {
+    display: flex;
+    gap: 36px;
+    margin: 6px 0 22px;
+    flex-wrap: wrap;
+}
+.stat-value { font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 13px; color: #64748b; margin-top: 2px; }
+
+/* ---- Actions ---- */
+.d-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.btn {
+    border: 3px solid transparent;
+    border-radius: 12px;
+    padding: 12px 26px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #e2e8f0;
+    background: #1e293b;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.btn.primary { background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff; }
+.btn.update { background: linear-gradient(135deg, #2563eb, #3b82f6); color: #fff; }
+.btn.danger { background: #3f1d24; color: #fca5a5; }
+.btn.warn { background: linear-gradient(135deg, #b45309, #f59e0b); color: #fff; }
+
+.focusable:focus { outline: none; }
+.btn:focus,
+.btn.focused {
+    border-color: #f8fafc;
+    transform: scale(1.06);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35);
+}
+
+.d-progress { flex: 1; min-width: 260px; max-width: 480px; }
+.d-progress-label { font-size: 15px; color: #cbd5e1; margin-bottom: 6px; }
+.d-progress-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: #1e293b;
+    overflow: hidden;
+}
+.d-progress-fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #22c55e, #4ade80);
+    transition: width 0.3s ease;
+}
+.d-progress-fill.indeterminate {
+    width: 35%;
+    animation: indet 1.2s ease-in-out infinite;
+}
+@keyframes indet { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+
+.d-note { font-size: 15px; color: #fbbf24; margin-top: 10px; }
+
+/* ---- Blocs ---- */
+.d-block {
+    background: #111827;
+    border: 3px solid transparent;
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-top: 22px;
+}
+.d-block:focus { border-color: #3b82f6; }
+.d-block h3 {
+    font-size: 19px;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.d-text {
+    font-size: 17px;
+    line-height: 1.55;
+    color: #cbd5e1;
+    white-space: pre-line;
+}
+.d-text.clamped { max-height: 8.5em; overflow: hidden; position: relative; }
+.d-text.clamped::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2.5em;
+    background: linear-gradient(transparent, #111827);
+}
+.d-more { font-size: 14px; color: #60a5fa; margin-top: 8px; }
+
+.ai-block {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(59, 130, 246, 0.10));
+    border-color: rgba(139, 92, 246, 0.35);
+}
+.ai-block:focus { border-color: #a78bfa; }
+.ai-icon { font-size: 22px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip {
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.18);
+    color: #c4b5fd;
+}
+
+/* ---- Captures ---- */
+.shots { display: flex; gap: 18px; overflow-x: auto; padding: 8px 4px 12px; }
+.shots::-webkit-scrollbar { height: 0; }
+.shot {
+    flex: 0 0 auto;
+    height: 200px;
+    border-radius: 12px;
+    border: 3px solid transparent;
+    background: #1e293b;
+    outline: none;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.shot:focus { border-color: #3b82f6; transform: scale(1.05); }
+
+/* ---- Versions ---- */
+.versions { display: flex; flex-direction: column; gap: 8px; }
+.version {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    border-radius: 12px;
+    background: #1e293b;
+    border: 3px solid transparent;
+    font-size: 16px;
+    outline: none;
+}
+.version:focus { border-color: #3b82f6; transform: scale(1.01); }
+.version .v-name { font-weight: 600; }
+.version .v-meta { color: #94a3b8; font-size: 14px; }
+.version.current { background: rgba(34, 197, 94, 0.12); }
+.version.installed .v-name::after {
+    content: "  · installée";
+    color: #4ade80;
+    font-weight: 400;
+}
+
+/* ---- Infos techniques ---- */
+.info-grid {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 8px 20px;
+    font-size: 15px;
+}
+.info-grid .k { color: #64748b; }
+.info-grid .v { color: #cbd5e1; word-break: break-all; }
+
+/* ---- Avis ---- */
+.review { padding: 10px 0; border-bottom: 1px solid #1e293b; }
+.review:last-child { border-bottom: none; }
+.review .stars { color: #fbbf24; font-size: 15px; }
+.review .who { color: #94a3b8; font-size: 14px; margin-left: 8px; }
+.review .txt { font-size: 15px; color: #cbd5e1; margin-top: 4px; }
+
+.score-bars { display: grid; grid-template-columns: 20px 1fr 50px; gap: 6px 10px; align-items: center; font-size: 14px; color: #94a3b8; max-width: 520px; }
+.score-bar { height: 8px; background: #1e293b; border-radius: 999px; overflow: hidden; }
+.score-bar > div { height: 100%; background: #fbbf24; }
+
+/* ---- Visionneuse de captures ---- */
+.viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.94);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.viewer img { max-width: 92%; max-height: 92%; border-radius: 8px; }
+.viewer .viewer-hint {
+    position: absolute;
+    bottom: 24px;
+    width: 100%;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 15px;
+}

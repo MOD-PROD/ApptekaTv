@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Appteka TV</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="details.css">
 </head>
 <body>
     <div class="safe-area">
@@ -46,6 +47,14 @@
         </footer>
     </div>
 
+    <!-- Fiche application (remplace l'écran de détails natif) -->
+    <div id="details" class="details hidden"></div>
+    <div id="viewer" class="viewer hidden" tabindex="-1">
+        <img alt="">
+        <div class="viewer-hint"></div>
+    </div>
+
     <script src="app.js"></script>
+    <script src="details.js"></script>
 </body>
 </html>
