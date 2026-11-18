@@ -4,6 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.view.View
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -37,6 +41,23 @@ class TvWebActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private val disposables = CompositeDisposable()
     private val gson = Gson()
+    private val handler = Handler(Looper.getMainLooper())
+    private var splashStart = 0L
+    private var splashHidden = false
+
+    private fun hideSplash() {
+        if (splashHidden) return
+        val elapsed = SystemClock.uptimeMillis() - splashStart
+        if (elapsed < SPLASH_MIN_MS) {
+            handler.postDelayed({ hideSplash() }, SPLASH_MIN_MS - elapsed)
+            return
+        }
+        splashHidden = true
+        webView.alpha = 0f
+        webView.visibility = View.VISIBLE
+        webView.animate().alpha(1f).setDuration(300).start()
+        webView.requestFocus()
+    }
 
     // Must be created while the activity is being constructed (registers permission launcher)
     private val downloadLauncher = DownloadLauncher(this) {
@@ -48,7 +69,11 @@ class TvWebActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
+        // La bannière (fond de fenêtre) reste visible jusqu'au 1er chargement des apps
+        webView.visibility = View.INVISIBLE
         setContentView(webView)
+        splashStart = SystemClock.uptimeMillis()
+        handler.postDelayed({ hideSplash() }, SPLASH_MAX_MS)
 
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
@@ -110,6 +135,7 @@ class TvWebActivity : AppCompatActivity() {
                 Log.e(TAG, "Failed to load category $categoryId", error)
                 if (accumulated.isEmpty()) {
                     webView.evaluateJavascript("window.onCategoryError('$key');", null)
+                    hideSplash()
                 }
             })
 
@@ -175,6 +201,7 @@ class TvWebActivity : AppCompatActivity() {
             .replace("\n", "")
 
         webView.evaluateJavascript("window.loadTvApps('$key', '$safeJson');", null)
+        hideSplash()
     }
 
     private fun startDownloadForApp(appId: String) {
@@ -309,6 +336,7 @@ class TvWebActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         disposables.clear()
         super.onDestroy()
     }
@@ -318,6 +346,8 @@ class TvWebActivity : AppCompatActivity() {
         private const val CATEGORY_TV = 37
         private const val CATEGORY_ENTERTAINMENT = 27
         private const val MAX_PAGES = 5
+        private const val SPLASH_MIN_MS = 1500L
+        private const val SPLASH_MAX_MS = 6000L
 
         fun createIntent(context: Context): Intent {
             return Intent(context, TvWebActivity::class.java)

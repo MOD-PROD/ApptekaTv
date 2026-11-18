@@ -70,6 +70,8 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
             finish()
             return
         }
+        // Fin du splash : retour au thème normal de l'appli
+        setTheme(R.style.AppTheme)
         val presenterState = savedInstanceState?.getBundle(KEY_PRESENTER_STATE)
         appComponent
             .homeComponent(HomeModule(context = this, startAction = intent.action, presenterState))

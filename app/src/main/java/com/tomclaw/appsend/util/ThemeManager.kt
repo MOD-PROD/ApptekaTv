@@ -39,6 +39,11 @@ class ThemeManager(private val app: Application) : Application.ActivityLifecycle
         } else {
             AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY
         }
+        // Thème sombre par défaut : on l'enregistre au 1er lancement
+        // pour que l'écran Paramètres affiche le bon choix.
+        if (!prefs.contains(modeKey)) {
+            prefs.edit().putInt(modeKey, AppCompatDelegate.MODE_NIGHT_YES).apply()
+        }
         var mode = prefs.getInt(modeKey, defaultMode)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
             && mode == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
