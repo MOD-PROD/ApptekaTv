@@ -68,7 +68,7 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, archs: null },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, archs: null, margin: 20 },
     loadJson('settings', {}) || {}
 );
 let favorites = loadJson('favorites', []);
@@ -137,7 +137,12 @@ function iconFor(source) {
 }
 
 function applyCardScale() {
-    document.documentElement.style.setProperty('--cs', String(settings.cardScale || 1));
+    const root = document.documentElement.style;
+    root.setProperty('--cs', String(settings.cardScale || 1));
+    // Marges d'écran : 0 pour une TV récente, jusqu'à 60 si la TV rogne les bords
+    const m = settings.margin == null ? 20 : settings.margin;
+    root.setProperty('--sx', m + 'px');
+    root.setProperty('--sy', Math.max(8, Math.round(m * 0.7)) + 'px');
 }
 
 // ------------------------------------------------------------ favoris
@@ -640,6 +645,16 @@ function renderSettings(focusKey) {
         </div>
 
         <div class="set-section">
+            <div class="set-label">Marges de l'écran</div>
+            <div class="set-row">
+                <button class="btn focusable" data-k="mar-minus" data-act="mar-minus">−</button>
+                <div class="set-value">${settings.margin == null ? 20 : settings.margin} px</div>
+                <button class="btn focusable" data-k="mar-plus" data-act="mar-plus">+</button>
+            </div>
+            <div class="set-sub">Baisse jusqu'à 0 si l'image paraît trop étroite ; monte si les bords sont coupés par ta TV.</div>
+        </div>
+
+        <div class="set-section">
             <div class="set-label">Architectures affichées</div>
             <div class="set-row">${chips}
                 <button class="chip-toggle focusable" data-k="abi-reset" data-act="abi-reset">↺ Cette TV</button>
@@ -733,6 +748,15 @@ function onSettingsAction(b) {
             applyCardScale();
             renderSettings();
             break;
+        case 'mar-minus':
+        case 'mar-plus': {
+            const cur = settings.margin == null ? 20 : settings.margin;
+            settings.margin = Math.min(60, Math.max(0, cur + (act === 'mar-plus' ? 10 : -10)));
+            saveSettings();
+            applyCardScale();
+            renderSettings();
+            break;
+        }
         case 'abi-reset':
             settings.archs = null;
             saveSettings();

@@ -10,6 +10,8 @@
     --glass: rgba(255, 255, 255, 0.045);
     --glass-strong: rgba(255, 255, 255, 0.075);
     --glass-border: rgba(212, 175, 55, 0.16);
+    --sx: 20px; /* marge gauche/droite (réglable) */
+    --sy: 14px; /* marge haut/bas (réglable) */
     --focus-glow: 0 0 0 2px rgba(212, 175, 55, 0.75), 0 6px 20px rgba(212, 175, 55, 0.28);
 }
 
@@ -51,7 +53,7 @@ html, body {
     z-index: 1;
     width: 100%;
     height: 100%;
-    padding: 22px 44px 14px;
+    padding: var(--sy) var(--sx) calc(var(--sy) * 0.6);
     display: flex;
     flex-direction: column;
 }
@@ -144,6 +146,7 @@ html, body {
 /* ---------------- Rangées ---------------- */
 .content {
     flex: 1;
+    margin-right: calc(-1 * var(--sx)); /* les rangées vont jusqu'au bord droit */
     overflow-y: auto;
     overflow-x: hidden;
     padding: 4px 0 20px;
@@ -196,7 +199,7 @@ html, body {
     gap: 16px;
     overflow-x: auto;
     overflow-y: visible;
-    padding: 18px 16px 22px;
+    padding: 18px var(--sx) 22px 16px;
     scroll-behavior: smooth;
 }
 .apps-row::-webkit-scrollbar { height: 0; }
@@ -273,7 +276,7 @@ html, body {
     position: fixed;
     inset: 0;
     z-index: 50;
-    padding: 18px 30px 22px;
+    padding: var(--sy) var(--sx);
     display: flex;
     flex-direction: column;
     background: rgba(4, 4, 6, 0.82);
