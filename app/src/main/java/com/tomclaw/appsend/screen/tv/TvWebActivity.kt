@@ -330,9 +330,9 @@ class TvWebActivity : AppCompatActivity() {
     private fun loadVersionsInfo(ids: List<String>) {
         disposables.add(
             Observable.fromIterable(ids.take(MAX_VERSIONS_INFO))
-                .flatMapSingle({ id ->
+                .flatMap({ id: String ->
                     api.getInfo(appId = id, packageName = null, locale = locale)
-                        .map { r ->
+                        .map<Map<String, Any?>> { r ->
                             mapOf(
                                 "id" to id,
                                 "abi" to r.result.info.abi.orEmpty(),
@@ -340,10 +340,11 @@ class TvWebActivity : AppCompatActivity() {
                             )
                         }
                         .onErrorReturnItem(mapOf("id" to id, "error" to true))
-                }, false, 3)
+                        .toObservable()
+                }, 3)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ info -> js("onVersionInfo", info) }, { Log.e(TAG, "versions info", it) })
+                .subscribe({ info: Map<String, Any?> -> js("onVersionInfo", info) }, { e: Throwable -> Log.e(TAG, "versions info", e) })
         )
     }
 
