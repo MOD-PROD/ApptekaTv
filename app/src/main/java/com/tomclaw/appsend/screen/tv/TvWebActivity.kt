@@ -462,14 +462,14 @@ class TvWebActivity : AppCompatActivity() {
 
         /** Ouvre la fiche HTML (remplace l'écran de détails natif). */
         @JavascriptInterface
-        fun openAppDetails(appId: String) = runOnUiThread { loadDetails(appId) }
+        fun openAppDetails(appId: String): Unit = runOnUiThread { loadDetails(appId) }
 
         @JavascriptInterface
-        fun reloadDetails(appId: String) = runOnUiThread { loadDetails(appId, silent = true) }
+        fun reloadDetails(appId: String): Unit = runOnUiThread { loadDetails(appId, silent = true) }
 
         /** La fiche HTML est fermée : on arrête le suivi. */
         @JavascriptInterface
-        fun closeDetails() = runOnUiThread {
+        fun closeDetails(): Unit = runOnUiThread {
             currentDetails = null
             stateSubscription?.dispose()
             aiPollSubscription?.dispose()
@@ -477,32 +477,32 @@ class TvWebActivity : AppCompatActivity() {
 
         /** Écran natif complet (avis, discussion…), en secours. */
         @JavascriptInterface
-        fun openNativeDetails(appId: String) = runOnUiThread { this@TvWebActivity.openNativeDetails(appId) }
+        fun openNativeDetails(appId: String): Unit = runOnUiThread { this@TvWebActivity.openNativeDetails(appId) }
 
         @JavascriptInterface
-        fun install(appId: String) = runOnUiThread { installApp(appId) }
+        fun install(appId: String): Unit = runOnUiThread { installApp(appId) }
 
         /** Ancien nom, utilisé par les cartes. */
         @JavascriptInterface
-        fun downloadApp(appId: String) = runOnUiThread { installApp(appId) }
+        fun downloadApp(appId: String): Unit = runOnUiThread { installApp(appId) }
 
         @JavascriptInterface
-        fun cancel(appId: String) = runOnUiThread { cancelDownload(appId) }
+        fun cancel(appId: String): Unit = runOnUiThread { cancelDownload(appId) }
 
         @JavascriptInterface
-        fun launch(packageName: String) = runOnUiThread { launchApp(packageName) }
+        fun launch(packageName: String): Unit = runOnUiThread { launchApp(packageName) }
 
         @JavascriptInterface
-        fun uninstall(packageName: String) = runOnUiThread { uninstallApp(packageName) }
+        fun uninstall(packageName: String): Unit = runOnUiThread { uninstallApp(packageName) }
 
         @JavascriptInterface
-        fun requestAISummary(appId: String) = runOnUiThread { requestAISummary(appId) }
+        fun requestAISummary(appId: String): Unit = runOnUiThread { requestAISummary(appId) }
 
         @JavascriptInterface
-        fun search(query: String) = runOnUiThread { searchApps(query) }
+        fun search(query: String): Unit = runOnUiThread { searchApps(query) }
 
         @JavascriptInterface
-        fun showToast(message: String) = runOnUiThread { toast(message) }
+        fun showToast(message: String): Unit = runOnUiThread { toast(message) }
 
         @JavascriptInterface
         fun getVersion(): String = "1.1-tv"
