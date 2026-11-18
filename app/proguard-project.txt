@@ -58,3 +58,11 @@
 -dontwarn org.xmlpull.v1.**
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# Interface TV (WebView) : les fonctions appelées depuis le JavaScript
+# doivent garder leur nom, sinon la page HTML ne peut plus les appeler.
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keep class com.tomclaw.appsend.screen.tv.TvWebActivity$TvJsBridge { *; }

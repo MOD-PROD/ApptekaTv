@@ -43,6 +43,44 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: appteka-tv-debug
-          path: app/build/outputs/apk/**/*.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      # Release compactée (R8) et signée avec la clé ModProd d'apk-factory.
+      # Secrets : ANDROID_KEYSTORE_B64 (.p12 en base64), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS.
+      - name: Build signed release APK
+        id: release
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_B64:-}" ]; then
+            echo "::warning::Secrets de signature absents : release non construite (ajoute ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS au dépôt)."
+            echo "built=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "$ANDROID_KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > modprod-release.p12
+          ./gradlew assembleRelease --stacktrace \
+            -PstoreFile=modprod-release.p12 \
+            -PstorePassword="$ANDROID_KEYSTORE_PASSWORD" \
+            -PkeyAlias="$ANDROID_KEY_ALIAS" \
+            -PkeyPassword="$ANDROID_KEYSTORE_PASSWORD"
+          rm -f modprod-release.p12
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          "$BT/apksigner" verify --print-certs "$APK"
+          unzip -l "$APK" | grep -c "classes.*\.dex" | xargs echo "Fichiers dex :"
+          ls -la app/build/outputs/apk/release/
+          echo "built=true" >> $GITHUB_OUTPUT
+
+      - name: Upload release APK
+        if: steps.release.outputs.built == 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: appteka-tv-release
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
