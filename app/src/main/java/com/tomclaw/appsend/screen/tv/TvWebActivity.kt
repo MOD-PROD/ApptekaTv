@@ -5,6 +5,12 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.ImageDecoder
+import android.graphics.drawable.AnimatedImageDrawable
+import android.os.Build
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,7 +28,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.google.gson.Gson
+import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
+import com.tomclaw.appsend.categories.Category
 import com.tomclaw.appsend.core.StoreApi
 import com.tomclaw.appsend.download.ApkStorage
 import com.tomclaw.appsend.download.COMPLETED
@@ -38,6 +46,7 @@ import com.tomclaw.appsend.screen.details.createDetailsActivityIntent
 import com.tomclaw.appsend.util.PackageObserver
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
@@ -73,6 +82,7 @@ class TvWebActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var splashStart = 0L
     private var splashHidden = false
+    private var splashView: ImageView? = null
 
     /** Fiche actuellement ouverte dans la page HTML. */
     private var currentDetails: Details? = null
@@ -105,9 +115,15 @@ class TvWebActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         webView = WebView(this)
-        // La bannière (fond de fenêtre) reste visible jusqu'au 1er chargement des apps
+        // Le splash (capsule animée) reste visible jusqu'au 1er chargement des apps
         webView.visibility = View.INVISIBLE
-        setContentView(webView)
+        splashView = createSplashView()
+        setContentView(FrameLayout(this).apply {
+            addView(webView, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+            ))
+            addView(splashView)
+        })
         splashStart = SystemClock.uptimeMillis()
         handler.postDelayed({ hideSplash() }, SPLASH_MAX_MS)
 
@@ -131,8 +147,40 @@ class TvWebActivity : AppCompatActivity() {
         splashHidden = true
         webView.alpha = 0f
         webView.visibility = View.VISIBLE
-        webView.animate().alpha(1f).setDuration(300).start()
+        webView.animate().alpha(1f).setDuration(400).start()
+        splashView?.animate()?.alpha(0f)?.setDuration(400)?.withEndAction {
+            (splashView?.drawable as? AnimatedImageDrawable)?.stop()
+            splashView?.visibility = View.GONE
+        }?.start()
         webView.requestFocus()
+    }
+
+    /**
+     * Capsule animée centrée, à la même taille (en pixels) que l'image fixe
+     * du fond de fenêtre : la transition fond fixe -> animation est invisible.
+     */
+    private fun createSplashView(): ImageView {
+        val view = ImageView(this)
+        view.layoutParams = FrameLayout.LayoutParams(SPLASH_SIZE_PX, SPLASH_SIZE_PX, Gravity.CENTER)
+        view.scaleType = ImageView.ScaleType.FIT_CENTER
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                val source = ImageDecoder.createSource(resources, R.raw.capsule_anim)
+                val drawable = ImageDecoder.decodeDrawable(source) { decoder, _, _ ->
+                    decoder.setTargetSize(SPLASH_SIZE_PX, SPLASH_SIZE_PX)
+                }
+                view.setImageDrawable(drawable)
+                (drawable as? AnimatedImageDrawable)?.apply {
+                    repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
+                    start()
+                }
+                return view
+            } catch (e: Exception) {
+                Log.e(TAG, "Animated splash failed", e)
+            }
+        }
+        view.setImageResource(R.drawable.splash_capsule)
+        return view
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -148,7 +196,7 @@ class TvWebActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                loadTvApps()
+                // La page demande elle-même ses rangées (catégories cochées)
             }
         }
 
@@ -174,36 +222,79 @@ class TvWebActivity : AppCompatActivity() {
 
     // ---------------------------------------------------------- Listes
 
-    private fun loadTvApps() {
-        // Catégories Appteka : 37 = TV, 27 = Entertainment
-        loadCategory(key = "tv", categoryId = CATEGORY_TV)
-        loadCategory(key = "entertainment", categoryId = CATEGORY_ENTERTAINMENT)
-    }
+    private val prefs by lazy { getSharedPreferences(PREFS_NAME, MODE_PRIVATE) }
 
-    private fun loadCategory(
-        key: String,
-        categoryId: Int,
-        offsetAppId: String? = null,
-        accumulated: List<AppEntity> = emptyList(),
-        page: Int = 0
-    ) {
+    /** Les 42 catégories Appteka (nom localisé + icône SVG), avec cache hors ligne. */
+    private fun loadCategories() {
         disposables.add(
-            api.getTopList(appId = offsetAppId, locale = locale, categoryId = categoryId)
+            api.getCategories()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ response ->
-                    val files = response.result.files
-                    val all = accumulated + files
-                    // Affiche dès la 1re page, puis complète avec les suivantes
+                    val list = response.result.categories.map { categoryJson(it) }
+                    prefs.edit().putString(KEY_CATEGORIES_CACHE, gson.toJson(list)).apply()
+                    js("onCategories", list)
+                }, { error ->
+                    Log.e(TAG, "Failed to load categories", error)
+                    val cache = prefs.getString(KEY_CATEGORIES_CACHE, null)
+                    if (cache != null) {
+                        js("onCategories", gson.fromJson(cache, List::class.java))
+                    } else {
+                        js("onCategories", emptyList<Any>())
+                    }
+                })
+        )
+    }
+
+    private fun categoryJson(category: Category): Map<String, Any> = mapOf(
+        "id" to category.id,
+        "name" to (category.name[locale] ?: category.name["en"] ?: category.name.values.firstOrNull() ?: ""),
+        "icon" to category.icon,
+    )
+
+    /**
+     * Charge une rangée. type = "category" (param = id), "all", "profile" (param = n° de profil).
+     * Plusieurs pages sont enchaînées ; la 1re s'affiche immédiatement.
+     */
+    private fun loadSource(key: String, type: String, param: String) {
+        val fetch: (String?) -> Single<List<AppEntity>> = when (type) {
+            "category" -> { offset ->
+                api.getTopList(appId = offset, locale = locale, categoryId = param.toIntOrNull())
+                    .map { it.result.files }
+            }
+            "profile" -> { offset ->
+                api.getUserApps(userId = param.toIntOrNull(), appId = offset)
+                    .map { it.result.files }
+            }
+            else -> { offset ->
+                api.getTopList(appId = offset, locale = locale).map { it.result.files }
+            }
+        }
+        loadPages(key, fetch, offset = null, accumulated = emptyList(), page = 0)
+    }
+
+    private fun loadPages(
+        key: String,
+        fetch: (String?) -> Single<List<AppEntity>>,
+        offset: String?,
+        accumulated: List<AppEntity>,
+        page: Int,
+    ) {
+        disposables.add(
+            fetch(offset)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ files ->
+                    val all = (accumulated + files).distinctBy { it.appId }
                     js("loadTvAppsJson", mapOf("key" to key, "apps" to all.map(TvDetailsMapper::card)))
                     hideSplash()
                     if (files.isNotEmpty() && page + 1 < MAX_PAGES) {
-                        loadCategory(key, categoryId, files.last().appId, all, page + 1)
+                        loadPages(key, fetch, files.last().appId, all, page + 1)
                     }
                 }, { error ->
-                    Log.e(TAG, "Failed to load category $categoryId", error)
+                    Log.e(TAG, "Failed to load source $key", error)
                     if (accumulated.isEmpty()) {
-                        webView.evaluateJavascript("window.onCategoryError('$key');", null)
+                        webView.evaluateJavascript("window.onCategoryError && window.onCategoryError('$key');", null)
                         hideSplash()
                     }
                 })
@@ -499,6 +590,22 @@ class TvWebActivity : AppCompatActivity() {
         fun requestAISummary(appId: String): Unit = runOnUiThread { this@TvWebActivity.requestAISummary(appId) }
 
         @JavascriptInterface
+        fun loadCategories(): Unit = runOnUiThread { this@TvWebActivity.loadCategories() }
+
+        @JavascriptInterface
+        fun loadSource(key: String, type: String, param: String): Unit =
+            runOnUiThread { this@TvWebActivity.loadSource(key, type, param) }
+
+        /** Préférences de la page (catégories cochées, favoris, profil Store). */
+        @JavascriptInterface
+        fun getPref(key: String): String? = prefs.getString("js_$key", null)
+
+        @JavascriptInterface
+        fun setPref(key: String, value: String) {
+            prefs.edit().putString("js_$key", value).apply()
+        }
+
+        @JavascriptInterface
         fun search(query: String): Unit = runOnUiThread { searchApps(query) }
 
         @JavascriptInterface
@@ -532,11 +639,12 @@ class TvWebActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "TvWebActivity"
-        private const val CATEGORY_TV = 37
-        private const val CATEGORY_ENTERTAINMENT = 27
+        private const val PREFS_NAME = "tv_web"
+        private const val KEY_CATEGORIES_CACHE = "categories_cache"
+        private const val SPLASH_SIZE_PX = 540
         private const val MAX_PAGES = 5
-        private const val SPLASH_MIN_MS = 1500L
-        private const val SPLASH_MAX_MS = 6000L
+        private const val SPLASH_MIN_MS = 2500L
+        private const val SPLASH_MAX_MS = 8000L
         private const val AI_STATUS_PENDING = "pending"
         private const val AI_POLL_INTERVAL_MS = 4000L
         private const val AI_POLL_TIMEOUT_MS = 3 * 60 * 1000L

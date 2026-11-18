@@ -303,6 +303,8 @@
                 ? '⛔ L\'analyse a détecté un logiciel malveillant. Appuie encore pour installer quand même.'
                 : '⚠ L\'analyse juge cette app suspecte. Appuie encore pour installer quand même.';
         }
+        const fav = window.TvFavorites && window.TvFavorites.has(d.id);
+        btns.push(['fav', fav ? '★ Favori' : '☆ Favori', fav ? 'fav-on' : '']);
         btns.push(['more', 'Plus…', '']);
 
         box.innerHTML = btns.map(([act, label, cls]) =>
@@ -346,6 +348,15 @@
             case 'launch': call('launch', d.package); break;
             case 'uninstall': call('uninstall', d.package); break;
             case 'more': call('openNativeDetails', d.id); break;
+            case 'fav':
+                if (window.TvFavorites) {
+                    window.TvFavorites.toggle({
+                        id: d.id, name: d.name, icon: d.icon, downloads: d.downloadsText,
+                        size: d.size, package: d.package,
+                    });
+                }
+                renderActions();
+                break;
             case 'ai':
                 data.aiStatus = 'pending';
                 render(false);
@@ -459,6 +470,12 @@
             const el = document.activeElement;
             if (el && el.classList.contains('app-card')) return false; // géré par la carte
             if (el && root.contains(el)) { e.preventDefault(); el.click(); }
+            return true;
+        }
+        // Raccourci : touche jaune / F = favori
+        if (e.key === 'ColorF2Yellow' || e.key === 'Yellow' || e.key === 'f' || e.key === 'F') {
+            const el = document.activeElement;
+            if (!(el && el.classList.contains('app-card'))) onAction('fav');
             return true;
         }
         // Raccourci : touche D / lecture = installer
