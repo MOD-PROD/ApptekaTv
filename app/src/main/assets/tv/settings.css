@@ -56,3 +56,7 @@
     transform: none;
     box-shadow: inset 0 0 0 2px var(--accent);
 }
+
+/* Arabe : texte de droite à gauche, disposition inchangée pour la télécommande */
+.lang-rtl .d-text, .lang-rtl .set-sub, .lang-rtl .empty-hint, .lang-rtl .footer,
+.lang-rtl .d-note, .lang-rtl .modal-text, .lang-rtl .review .txt { direction: rtl; unicode-bidi: plaintext; }

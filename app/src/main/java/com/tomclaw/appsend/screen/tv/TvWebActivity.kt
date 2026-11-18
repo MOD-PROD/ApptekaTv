@@ -97,8 +97,10 @@ class TvWebActivity : AppCompatActivity() {
 
     private var pendingStorageAction: (() -> Unit)? = null
 
+    /** Langue de l'API Appteka : celle choisie dans les réglages TV, sinon celle de la TV. */
     private val locale: String
-        get() = Locale.getDefault().language.ifBlank { "en" }
+        get() = prefs.getString("js_lang", null)?.takeIf { it.isNotBlank() && it != "auto" }
+            ?: Locale.getDefault().language.ifBlank { "en" }
 
     // Doivent être créés pendant la construction de l'activité
     private val downloadLauncher = DownloadLauncher(this)
@@ -239,8 +241,17 @@ class TvWebActivity : AppCompatActivity() {
         webView.evaluateJavascript("window.$function && window.$function('$json');", null)
     }
 
+    /** Message court, traduit par le dictionnaire de la page (i18n.js) quand il existe. */
     private fun toast(text: String) {
-        Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+        if (!::webView.isInitialized) {
+            Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val quoted = gson.toJson(text)
+        webView.evaluateJavascript("(window.TvI18n ? window.TvI18n.t($quoted) : $quoted)") { result ->
+            val translated = runCatching { gson.fromJson(result, String::class.java) }.getOrNull()
+            Toast.makeText(this, translated?.takeIf { it.isNotBlank() } ?: text, Toast.LENGTH_SHORT).show()
+        }
     }
 
     // ---------------------------------------------------------- Listes
@@ -741,6 +752,13 @@ class TvWebActivity : AppCompatActivity() {
                     toast("Sélecteur de fichiers indisponible sur cette TV")
                 }
             }
+        }
+
+        /** Recharge la page (changement de langue). */
+        @JavascriptInterface
+        fun reloadUi(): Unit = runOnUiThread {
+            disposables.clear()
+            webView.reload()
         }
 
         @JavascriptInterface

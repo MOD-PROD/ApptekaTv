@@ -685,6 +685,17 @@ function renderSettings(focusKey) {
             ${accountHtml()}
             ${settingsMsg.text ? `<div class="set-msg ${settingsMsg.err ? 'err' : ''}">${escapeHtml(settingsMsg.text)}</div>` : ''}
         </div>
+        ${settingsSection('language', 'Langue', `
+            <div class="set-row" role="group" aria-label="Langue">
+                ${[['auto', 'Automatique (langue de la TV)']].concat(window.TvI18n ? window.TvI18n.langs : []).map(([code, label]) => {
+                    const cur = (window.TvI18n && window.TvI18n.choice) || 'auto';
+                    return `<button type="button" class="chip-toggle focusable ${cur === code ? 'on' : ''}"
+                            data-k="lang-${code}" data-lang="${code}" aria-pressed="${cur === code}">
+                        <span class="dot" aria-hidden="true"></span><span ${code === 'auto' ? '' : 'data-no-i18n'}>${label}</span>
+                    </button>`;
+                }).join('')}
+            </div>
+            <div class="set-sub">L'interface et le contenu Appteka (catégories, descriptions) suivent la langue choisie.</div>`)}
         ${settingsSection('appearance', 'Apparence', `
             <div class="set-row" role="group" aria-label="Skin">
                 ${[['classic', 'Noir et or'], ['green', 'Néumorphisme vert']].map(([id, label]) => `
@@ -732,7 +743,7 @@ function renderSettings(focusKey) {
         </div>`;
 
     SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { if (values[i.dataset.k] != null) i.value = values[i.dataset.k]; });
-    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
+    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent], [data-lang]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
     SETTINGS_PANEL.querySelectorAll('form').forEach(f => f.addEventListener('submit', (e) => { e.preventDefault(); onSettingsSubmit(f.dataset.form); }));
 
     const target = (keep && SETTINGS_PANEL.querySelector(`[data-k="${keep}"]`)) || SETTINGS_PANEL.querySelector('.focusable');
@@ -792,6 +803,10 @@ function loginHtml() {
 
 function onSettingsAction(b) {
     const { section, skin, accent } = b.dataset;
+    if (b.dataset.lang) {
+        if (window.TvI18n && b.dataset.lang !== window.TvI18n.choice) window.TvI18n.setLang(b.dataset.lang);
+        return;
+    }
     if (section) {
         expandedSettings = expandedSettings === section ? null : section;
         renderSettings();

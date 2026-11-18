@@ -40,7 +40,7 @@
     function fmtDate(t) {
         if (!t) return '';
         const ms = t > 1e12 ? t : t * 1000;
-        return new Date(ms).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+        return new Date(ms).toLocaleDateString((window.TvI18n && window.TvI18n.locale) || 'fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
     function stars(n) {
