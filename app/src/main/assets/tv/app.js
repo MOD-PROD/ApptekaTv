@@ -466,6 +466,7 @@ function updateScopeBadge() {
 // ------------------------------------------------------------ damier des catégories
 
 let pickerItems = [];
+let pickerCells = [];
 
 function pickerSourceList() {
     const cats = categories.slice().sort((a, b) => a.id - b.id)
@@ -487,15 +488,15 @@ function isChecked(item) {
 
 function renderPicker(focusIndex) {
     pickerItems = pickerSourceList();
-    PICKER_GRID.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     if (!categories.length) {
         const wait = document.createElement('div');
         wait.className = 'loading';
         wait.style.gridColumn = '1 / -1';
         wait.textContent = 'Chargement des catégories…';
-        PICKER_GRID.appendChild(wait);
+        fragment.appendChild(wait);
     }
-    pickerItems.forEach((item, i) => {
+    pickerCells = pickerItems.map((item, i) => {
         const cell = document.createElement('div');
         cell.className = 'cell glass' + (isChecked(item) ? ' checked' : '') + (item.special ? ' special' : '');
         cell.tabIndex = 0;
@@ -507,9 +508,12 @@ function renderPicker(focusIndex) {
             <div class="cell-name">${escapeHtml(item.name)}</div>
             ${item.sub ? `<div class="cell-sub">${escapeHtml(item.sub)}</div>` : ''}`;
         cell.addEventListener('click', () => toggleCell(i));
-        PICKER_GRID.appendChild(cell);
+        fragment.appendChild(cell);
+        return cell;
     });
-    const target = PICKER_GRID.querySelector(`.cell[data-index="${focusIndex || 0}"]`) || PICKER_GRID.querySelector('.cell');
+    PICKER_GRID.textContent = '';
+    PICKER_GRID.appendChild(fragment);
+    const target = pickerCells[focusIndex] || pickerCells[0];
     if (target) target.focus({ preventScroll: true });
 }
 
@@ -545,7 +549,7 @@ function toggleCell(i) {
     if (idx >= 0) list.splice(idx, 1);
     else list.push(item.source);
     saveSettings();
-    renderPicker(i);
+    pickerCells[i].classList.toggle('checked', isChecked(item));
 }
 
 function pickerMove(key) {
@@ -557,8 +561,8 @@ function pickerMove(key) {
     else if (key === 'ArrowLeft') j = Math.max(0, i - 1);
     else if (key === 'ArrowDown') j = i + GRID_COLS < n ? i + GRID_COLS : i;
     else if (key === 'ArrowUp') j = i - GRID_COLS >= 0 ? i - GRID_COLS : i;
-    const cell = PICKER_GRID.querySelector(`.cell[data-index="${j}"]`);
-    if (cell) cell.focus();
+    const cell = pickerCells[j];
+    if (cell && cell !== cur) cell.focus({ preventScroll: true });
 }
 
 // ------------------------------------------------------------ profil Store

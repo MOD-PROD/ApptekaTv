@@ -39,3 +39,20 @@
     border-color: var(--accent);
     box-shadow: var(--focus-glow);
 }
+
+/* Le damier plein écran évite le flou et les transitions à chaque déplacement. */
+.picker {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+.picker .cell {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition: none;
+}
+.picker .cell .icon-svg { transition: none; }
+.picker .cell:focus {
+    transform: none;
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
