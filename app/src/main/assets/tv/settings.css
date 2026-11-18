@@ -12,3 +12,11 @@
 .set-disclosure[aria-expanded="true"] span { transform: rotate(180deg); }
 .set-section-body { padding-top: 12px; }
 .set-spacing { margin-top: 12px; }
+
+.accent-swatch {
+    width: 12px;
+    height: 12px;
+    border: 1px solid #ffffff55;
+    border-radius: 50%;
+    flex: 0 0 12px;
+}

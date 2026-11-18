@@ -68,7 +68,7 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'classic', archs: null, margin: 20 },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'classic', accent: 'default', archs: null, margin: 20 },
     loadJson('settings', {}) || {}
 );
 let favorites = loadJson('favorites', []);
@@ -607,10 +607,29 @@ let auth = { step: 'email' };          // email | code | sending
 let settingsMsg = { text: '', err: false };
 
 let expandedSettings = null;
+const ACCENTS = {
+    default: { label: 'Couleur du skin' },
+    green: { label: 'Vert', rgb: [121, 230, 58] },
+    gold: { label: 'Or', rgb: [238, 193, 68] },
+    blue: { label: 'Bleu', rgb: [81, 172, 255] },
+    purple: { label: 'Violet', rgb: [192, 145, 255] },
+    coral: { label: 'Corail', rgb: [255, 132, 120] },
+};
 
 function applySkin() {
     const green = settings.skin === 'green';
-    document.documentElement.classList.toggle('green-skin', green);
+    const root = document.documentElement;
+    root.classList.toggle('green-skin', green);
+    const rgb = ACCENTS[settings.accent]?.rgb;
+    root.classList.toggle('custom-accent', Boolean(rgb));
+    for (const property of ['--accent-rgb', '--accent-light-rgb', '--accent-dark']) {
+        root.style.removeProperty(property);
+    }
+    if (rgb) {
+        root.style.setProperty('--accent-rgb', rgb.join(', '));
+        root.style.setProperty('--accent-light-rgb', rgb.map(channel => Math.round(channel * 0.6 + 255 * 0.4)).join(', '));
+        root.style.setProperty('--accent-dark', `rgb(${rgb.map(channel => Math.round(channel * 0.82)).join(', ')})`);
+    }
     document.querySelectorAll('link.skin-classic').forEach(link => { link.media = green ? 'not all' : 'all'; });
     document.querySelectorAll('link.skin-green').forEach(link => { link.media = green ? 'all' : 'not all'; });
 }
@@ -669,6 +688,15 @@ function renderSettings(focusKey) {
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}
                     </button>`).join('')}
+            </div>
+            <div class="set-label set-spacing">Couleur d’accent</div>
+            <div class="set-row" role="group" aria-label="Couleur d’accent">
+                ${Object.entries(ACCENTS).map(([id, { label, rgb }]) => `
+                    <button type="button" class="chip-toggle focusable ${settings.accent === id ? 'on' : ''}"
+                            data-k="accent-${id}" data-accent="${id}" aria-pressed="${settings.accent === id}">
+                        ${rgb ? `<span class="accent-swatch" style="background:rgb(${rgb.join(', ')})" aria-hidden="true"></span>` : ''}
+                        ${label}
+                    </button>`).join('')}
             </div>`)}
         ${settingsSection('display', 'Affichage', `
             <div class="set-label">Taille des cartes</div>
@@ -700,7 +728,7 @@ function renderSettings(focusKey) {
         </div>`;
 
     SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { if (values[i.dataset.k] != null) i.value = values[i.dataset.k]; });
-    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
+    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
     SETTINGS_PANEL.querySelectorAll('form').forEach(f => f.addEventListener('submit', (e) => { e.preventDefault(); onSettingsSubmit(f.dataset.form); }));
 
     const target = (keep && SETTINGS_PANEL.querySelector(`[data-k="${keep}"]`)) || SETTINGS_PANEL.querySelector('.focusable');
@@ -759,14 +787,15 @@ function loginHtml() {
 }
 
 function onSettingsAction(b) {
-    const { section, skin } = b.dataset;
+    const { section, skin, accent } = b.dataset;
     if (section) {
         expandedSettings = expandedSettings === section ? null : section;
         renderSettings();
         return;
     }
-    if (skin) {
-        settings.skin = skin;
+    if (skin || accent) {
+        if (skin) settings.skin = skin;
+        if (accent) settings.accent = accent;
         applySkin();
         saveSettings();
         renderSettings();
@@ -785,10 +814,10 @@ function onSettingsAction(b) {
     }
     switch (act) {
         case 'export-config': {
-            const { skin, cardScale, margin, archs, sources, searchCats, profile } = settings;
+            const { skin, accent, cardScale, margin, archs, sources, searchCats, profile } = settings;
             const json = JSON.stringify({
                 version: 1,
-                settings: { skin, cardScale, margin, archs, sources, searchCats, profile },
+                settings: { skin, accent, cardScale, margin, archs, sources, searchCats, profile },
             }, null, 2);
             if (window.Android && typeof window.Android.exportConfig === 'function') {
                 call('exportConfig', json);
