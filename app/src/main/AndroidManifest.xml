@@ -203,8 +203,8 @@
         <activity
             android:name=".screen.tv.TvWebActivity"
             android:exported="true"
-            android:screenOrientation="landscape"
-            android:theme="@style/AppTheme.TvStartup">
+            android:theme="@style/AppTheme.TvStartup"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />

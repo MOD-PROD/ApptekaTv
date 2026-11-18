@@ -29,7 +29,6 @@ import com.tomclaw.appsend.screen.topics.createTopicsFragment
 import com.tomclaw.appsend.screen.upload.createUploadActivityIntent
 import com.tomclaw.appsend.screen.tv.TvWebActivity
 import com.tomclaw.appsend.util.Analytics
-import com.tomclaw.appsend.util.isTvDevice
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
@@ -60,8 +59,9 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Sur TV, l'icône standard ouvre aussi l'interface TV (HTML)
-        if (savedInstanceState == null && isTvDevice() &&
+        // L'interface HTML est l'accueil sur TV comme sur portable.
+        // L'accueil classique ne s'ouvre plus que par son connecteur (createClassicHomeIntent).
+        if (savedInstanceState == null && !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
             (intent.action == null || intent.action == Intent.ACTION_MAIN)
         ) {
             redirectedToTv = true
@@ -277,6 +277,13 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 fun createHomeActivityIntent(
     context: Context,
 ): Intent = Intent(context, HomeActivity::class.java)
+
+/** Accueil de l'interface classique (connecteur depuis l'interface HTML). */
+fun createClassicHomeIntent(
+    context: Context,
+): Intent = Intent(context, HomeActivity::class.java).putExtra(EXTRA_CLASSIC, true)
+
+private const val EXTRA_CLASSIC = "classic_ui"
 
 private const val KEY_PRESENTER_STATE = "presenter_state"
 private const val INDEX_STORE = 0

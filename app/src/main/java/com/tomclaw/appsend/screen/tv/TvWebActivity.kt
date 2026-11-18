@@ -24,6 +24,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.google.gson.Gson
 import com.tomclaw.appsend.appComponent
+import com.tomclaw.appsend.tvlink.TvLink
+import com.tomclaw.appsend.tvlink.TvLinkSender
+import com.tomclaw.appsend.util.isTvDevice
 import com.tomclaw.appsend.categories.Category
 import com.tomclaw.appsend.core.StoreApi
 import com.tomclaw.appsend.download.ApkStorage
@@ -136,6 +139,73 @@ class TvWebActivity : AppCompatActivity() {
 
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
+        if (isTv) startTvLink()
+    }
+
+    // ------------------------------------------- Liaison portable -> TV
+
+    /** TV (ou box) : interface 10 pieds ; sinon interface portable. */
+    private val isTv by lazy { isTvDevice() }
+    private var tvLink: TvLink.Server? = null
+
+    private fun startTvLink() {
+        val server = TvLink.Server(this, object : TvLink.Host {
+            override fun onPairCode(device: String, code: String) {
+                js("onPairCode", mapOf("device" to device, "code" to code))
+            }
+
+            override fun onPaired(device: String) {
+                js("onPaired", mapOf("device" to device))
+            }
+
+            override fun onOpen(appId: String, install: Boolean, device: String) {
+                js("onRemoteOpen", mapOf("id" to appId, "install" to install, "device" to device))
+                if (install) installApp(appId)
+            }
+        })
+        runCatching { server.start() }.onFailure { Log.w(TAG, "TV link unavailable", it) }
+        tvLink = server
+    }
+
+    private fun tvLinkInfo(): Map<String, Any?> = mapOf(
+        "name" to TvLink.deviceName(),
+        "ip" to TvLink.localIpv4(),
+        "port" to tvLink?.port,
+        "devices" to (tvLink?.pairedDevices() ?: emptyList<String>()),
+    )
+
+    // ------------------------------------- Écrans classiques (connecteurs)
+
+    private fun openClassic(screen: String, param: String) {
+        val userId = param.toIntOrNull() ?: 0
+        val intent: Intent? = when (screen) {
+            "upload" -> com.tomclaw.appsend.screen.upload.createUploadActivityIntent(this, null, null, null)
+            "uploads" -> com.tomclaw.appsend.screen.uploads.createUploadsActivityIntent(this, userId)
+            "downloads" -> com.tomclaw.appsend.screen.downloads.createDownloadsActivityIntent(this, userId)
+            "installed" -> com.tomclaw.appsend.screen.installed.createInstalledActivityIntent(this)
+            "favorites" -> com.tomclaw.appsend.screen.favorite.createFavoriteActivityIntent(this, userId)
+            "reviews" -> com.tomclaw.appsend.screen.reviews.createReviewsActivityIntent(this, userId)
+            "feed" -> com.tomclaw.appsend.screen.feed.createFeedActivityIntent(this, userId)
+            "profile" -> com.tomclaw.appsend.screen.profile.createProfileActivityIntent(this, userId)
+            "moderation" -> com.tomclaw.appsend.screen.moderation.createModerationActivityIntent(this)
+            "settings" -> com.tomclaw.appsend.screen.settings.createSettingsActivityIntent(this)
+            "about" -> com.tomclaw.appsend.screen.about.createAboutActivityIntent(this)
+            "details" -> createDetailsActivityIntent(
+                context = this, appId = param, label = "", moderation = false, finishOnly = false
+            )
+            "home" -> com.tomclaw.appsend.screen.home.createClassicHomeIntent(this)
+            else -> null
+        }
+        if (intent == null) {
+            toast("Écran indisponible")
+            return
+        }
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "openClassic $screen failed", e)
+            toast("Écran indisponible")
+        }
     }
 
     override fun onResume() {
@@ -704,6 +774,28 @@ class TvWebActivity : AppCompatActivity() {
             webView.reload()
         }
 
+        /** true sur TV / box (interface 10 pieds), false sur portable. */
+        @JavascriptInterface
+        fun isTv(): Boolean = this@TvWebActivity.isTv
+
+        /** Ouvre un écran de l'interface classique (fonctions pas encore en HTML). */
+        @JavascriptInterface
+        fun openClassic(screen: String, param: String): Unit =
+            runOnUiThread { this@TvWebActivity.openClassic(screen, param) }
+
+        /** Portable : envoie l'app à une Appteka TV du Wi-Fi. */
+        @JavascriptInterface
+        fun sendToTv(appId: String, label: String): Unit = runOnUiThread {
+            TvLinkSender(this@TvWebActivity, appId, label).start()
+        }
+
+        /** TV : nom, adresse et appareils associés. */
+        @JavascriptInterface
+        fun tvLinkInfo(): String = gson.toJson(this@TvWebActivity.tvLinkInfo())
+
+        @JavascriptInterface
+        fun tvLinkForget(): Unit = runOnUiThread { tvLink?.forgetAll() }
+
         @JavascriptInterface
         fun getDeviceAbis(): String = gson.toJson(Build.SUPPORTED_ABIS.toList())
 
@@ -799,6 +891,7 @@ class TvWebActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        tvLink?.stop()
         handler.removeCallbacksAndMessages(null)
         stateSubscription?.dispose()
         aiPollSubscription?.dispose()
