@@ -27,7 +27,9 @@ import com.tomclaw.appsend.screen.settings.createSettingsActivityIntent
 import com.tomclaw.appsend.screen.store.createStoreFragment
 import com.tomclaw.appsend.screen.topics.createTopicsFragment
 import com.tomclaw.appsend.screen.upload.createUploadActivityIntent
+import com.tomclaw.appsend.screen.tv.TvWebActivity
 import com.tomclaw.appsend.util.Analytics
+import com.tomclaw.appsend.util.isTvDevice
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
@@ -35,6 +37,8 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 
     @Inject
     lateinit var presenter: HomePresenter
+
+    private var redirectedToTv = false
 
     @Inject
     lateinit var analytics: Analytics
@@ -56,6 +60,16 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Sur TV, l'icône standard ouvre aussi l'interface TV (HTML)
+        if (savedInstanceState == null && isTvDevice() &&
+            (intent.action == null || intent.action == Intent.ACTION_MAIN)
+        ) {
+            redirectedToTv = true
+            super.onCreate(savedInstanceState)
+            startActivity(TvWebActivity.createIntent(this))
+            finish()
+            return
+        }
         val presenterState = savedInstanceState?.getBundle(KEY_PRESENTER_STATE)
         appComponent
             .homeComponent(HomeModule(context = this, startAction = intent.action, presenterState))
@@ -187,13 +201,14 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 
     override fun onStart() {
         super.onStart()
+        if (redirectedToTv) return
         presenter.attachRouter(this)
     }
 
     override fun onStop() {
         pendingFragmentRunnable?.let { handler.removeCallbacks(it) }
         pendingFragmentRunnable = null
-        presenter.detachRouter()
+        if (!redirectedToTv) presenter.detachRouter()
         super.onStop()
     }
 
@@ -202,12 +217,13 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     }
 
     override fun onDestroy() {
-        presenter.detachView()
+        if (!redirectedToTv) presenter.detachView()
         super.onDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+        if (redirectedToTv) return
         outState.putBundle(KEY_PRESENTER_STATE, presenter.saveState())
     }
 
