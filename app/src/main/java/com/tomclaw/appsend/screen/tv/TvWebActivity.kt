@@ -496,7 +496,7 @@ class TvWebActivity : AppCompatActivity() {
         fun uninstall(packageName: String): Unit = runOnUiThread { uninstallApp(packageName) }
 
         @JavascriptInterface
-        fun requestAISummary(appId: String): Unit = runOnUiThread { requestAISummary(appId) }
+        fun requestAISummary(appId: String): Unit = runOnUiThread { this@TvWebActivity.requestAISummary(appId) }
 
         @JavascriptInterface
         fun search(query: String): Unit = runOnUiThread { searchApps(query) }
