@@ -14,6 +14,16 @@
     let state = null;        // état installé / téléchargement
     let returnFocus = null;  // carte à re-sélectionner en sortant
     let confirmRisk = false; // 2e appui requis si app suspecte
+    let showDesc = false;    // description masquée par défaut
+    let versionInfo = {};    // id -> {abi, time} (chargé à la demande)
+    let versionsRequestedFor = null;
+    const vprefs = (function () {
+        try { return JSON.parse((window.Android && window.Android.getPref && window.Android.getPref('versions')) || '{}') || {}; }
+        catch (e) { return {}; }
+    })();
+    function saveVprefs() {
+        try { if (window.Android && window.Android.setPref) window.Android.setPref('versions', JSON.stringify(vprefs)); } catch (e) { /* */ }
+    }
     let viewerShots = [], viewerIndex = 0;
 
     const A = () => window.Android || {};
@@ -47,6 +57,7 @@
     // ------------------------------------------------------------ ouverture
 
     function open(id, preview) {
+        if (authorOpen()) closeAuthor(false);
         if (!isOpen()) {
             returnFocus = document.activeElement;
             stack = [];
@@ -55,6 +66,7 @@
         data = null;
         state = null;
         confirmRisk = false;
+        showDesc = false;
         root.classList.remove('hidden');
         root.scrollTop = 0;
         root.innerHTML = preview
@@ -80,6 +92,7 @@
     // Retour : visionneuse > version précédente > fermeture
     function back() {
         if (!viewer.classList.contains('hidden')) { closeViewer(); return true; }
+        if (authorOpen()) { closeAuthor(true); return true; }
         if (!isOpen()) return false;
         if (stack.length > 1) {
             stack.pop();
@@ -141,10 +154,9 @@
             html.push(`<div class="d-block focusable" tabindex="0" data-fk="whatsnew">
                 <h3>Nouveautés</h3><div class="d-text">${esc(d.whatsNew)}</div></div>`);
         }
-        if (d.description) {
-            html.push(`<div class="d-block focusable expandable" tabindex="0" data-fk="desc">
-                <h3>Description</h3><div class="d-text clamped">${esc(d.description)}</div>
-                <div class="d-more">OK pour tout afficher</div></div>`);
+        if (d.description && showDesc) {
+            html.push(`<div class="d-block focusable" tabindex="0" data-fk="desc">
+                <h3>Description</h3><div class="d-text">${esc(d.description)}</div></div>`);
         }
 
         if (d.screenshots && d.screenshots.length) {
@@ -155,13 +167,7 @@
         }
 
         if (d.versions && d.versions.length) {
-            html.push(`<div class="d-block"><h3>Versions (${d.versions.length})</h3><div class="versions">${
-                d.versions.map(v => `
-                  <div class="version focusable ${v.current ? 'current' : ''}" tabindex="0"
-                       data-fk="v-${esc(v.id)}" data-version="${esc(v.id)}" data-code="${v.code}">
-                    <span class="v-name">v${esc(v.name)}${v.current ? ' · affichée' : ''}</span>
-                    <span class="v-meta">code ${v.code} · API ${v.sdk} · ${v.downloads} téléch.</span>
-                  </div>`).join('')}</div></div>`);
+            html.push(`<div class="d-block" id="versions-block"></div>`);
         }
 
         if (d.scores || (d.reviews && d.reviews.length)) {
@@ -173,7 +179,6 @@
                 ${(d.reviews || []).map(r => `
                   <div class="review"><span class="stars">${stars(r.score)}</span><span class="who">${esc(r.author || '')}</span>
                   ${r.text ? `<div class="txt">${esc(r.text)}</div>` : ''}</div>`).join('')}
-                <div class="d-more">Écran complet (avis, discussion) : bouton « Plus »</div>
             </div>`);
         }
 
@@ -209,6 +214,8 @@
         }
 
         bindEvents();
+        renderVersions();
+        requestVersionsInfo();
         renderActions();
         root.scrollTop = scroll;
 
@@ -219,7 +226,8 @@
 
     function aiBlock(d) {
         const status = d.aiStatus;
-        if (status === 'disabled') return '';
+        // Pas de tuile IA : le bouton Description reste accessible
+        if (status === 'disabled') return d.description ? `<div class="d-block">${descToggle(d)}</div>` : '';
         let body;
         if (d.aiNote) {
             body = `<div class="d-text">${esc(d.aiNote)}</div>`;
@@ -231,13 +239,110 @@
                       <button class="btn focusable" data-fk="ai-request" data-action="ai">✨ Générer le résumé IA</button>
                     </div>`;
         } else {
-            return '';
+            return d.description ? `<div class="d-block">${descToggle(d)}</div>` : '';
         }
         const tags = (d.aiTags || []).length
             ? `<div class="chips">${d.aiTags.map(t => `<span class="chip">#${esc(t)}</span>`).join('')}</div>` : '';
         const short = d.aiShort && d.aiNote ? `<div class="d-text" style="font-weight:600;margin-bottom:8px">${esc(d.aiShort)}</div>` : '';
-        return `<div class="d-block ai-block focusable" tabindex="0" data-fk="ai"><h3><span class="ai-icon">✨</span>Résumé IA</h3>${short}${body}${tags}</div>`;
+        return `<div class="d-block ai-block focusable" tabindex="0" data-fk="ai"><h3><span class="ai-icon">✨</span>Résumé IA</h3>${short}${body}${tags}${descToggle(d)}</div>`;
     }
+
+    function descToggle(d) {
+        if (!d.description) return '';
+        return `<div class="mini-row"><button class="mini-btn focusable" data-fk="desc-toggle" data-action="desc">${
+            showDesc ? 'Masquer la description ▴' : 'Description ▾'}</button></div>`;
+    }
+
+    // ------------------------------------------------------------ versions
+
+    function versionCompatible(v) {
+        const info = versionInfo[v.id];
+        if (!info || info.error) return null; // inconnu (pas encore chargé)
+        return window.TvArch ? window.TvArch.isAllowed(info.abi) : true;
+    }
+
+    function fmtAbi(abi) {
+        if (!abi || !abi.length) return '';
+        const short = { 'arm64-v8a': 'ARM64', 'armeabi-v7a': 'ARM32', 'armeabi': 'ARM', 'x86_64': 'x86_64', 'x86': 'x86', 'universal': 'Universelle' };
+        return abi.map(a => short[a] || a).join(' / ');
+    }
+
+    function renderVersions(focusKey) {
+        const block = root.querySelector('#versions-block');
+        if (!block || !data) return;
+        const a = document.activeElement;
+        const keep = focusKey || (a && block.contains(a) ? a.dataset.fk : null);
+        const installedCode = state && state.installedVersionCode >= 0 ? state.installedVersionCode : null;
+
+        let list = data.versions.slice();
+        if (vprefs.recent) {
+            list.sort((x, y) => {
+                const tx = (versionInfo[x.id] || {}).time, ty = (versionInfo[y.id] || {}).time;
+                if (tx && ty && tx !== ty) return ty - tx;
+                return y.code - x.code;
+            });
+        }
+        const total = list.length;
+        const pending = list.some(v => !versionInfo[v.id]);
+        if (vprefs.compat) list = list.filter(v => versionCompatible(v) !== false);
+        const hidden = total - list.length;
+
+        block.innerHTML = `
+            <div class="v-head">
+              <h3>Versions (${list.length}${hidden ? ' / ' + total : ''})</h3>
+              <div class="v-tools">
+                <button class="mini-btn focusable ${vprefs.recent ? 'on' : ''}" data-fk="v-sort" data-action="v-sort">↓ Plus récentes en haut</button>
+                <button class="mini-btn focusable ${vprefs.compat ? 'on' : ''}" data-fk="v-compat" data-action="v-compat">✓ Compatibles seulement</button>
+              </div>
+            </div>
+            ${vprefs.compat && pending ? '<div class="d-more" style="margin-bottom:8px">Vérification des architectures…</div>' : ''}
+            ${hidden && vprefs.compat ? `<div class="d-more" style="margin-bottom:8px">${hidden} version(s) incompatible(s) masquée(s)</div>` : ''}
+            <div class="versions">${list.map(v => {
+                const info = versionInfo[v.id] || {};
+                const comp = versionCompatible(v);
+                const meta = [
+                    info.time ? fmtDate(info.time) : '',
+                    fmtAbi(info.abi),
+                    'code ' + v.code, 'API ' + v.sdk, v.downloads + ' téléch.',
+                ].filter(Boolean).join(' · ');
+                return `
+                  <div class="version focusable ${v.current ? 'current' : ''} ${installedCode === v.code ? 'installed' : ''} ${comp === false ? 'incompatible' : ''}"
+                       tabindex="0" data-fk="v-${esc(v.id)}" data-version="${esc(v.id)}" data-code="${v.code}">
+                    <span class="v-name">v${esc(v.name)}${v.current ? ' · affichée' : ''}</span>
+                    <span class="v-meta">${esc(meta)}</span>
+                  </div>`;
+            }).join('')}</div>`;
+
+        block.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => onAction(b.dataset.action)));
+        block.querySelectorAll('.version').forEach(v => v.addEventListener('click', () => {
+            if (v.dataset.version !== String(data.id)) open(v.dataset.version);
+        }));
+        if (keep) {
+            const el = block.querySelector(`[data-fk="${CSS.escape(keep)}"]`) || block.querySelector('.focusable');
+            if (el) el.focus({ preventScroll: true });
+        }
+    }
+
+    function requestVersionsInfo() {
+        if (!data || !data.versions || !data.versions.length) return;
+        if (versionsRequestedFor === data.id) return;
+        versionsRequestedFor = data.id;
+        const ids = data.versions.map(v => String(v.id)).filter(id => !versionInfo[id]);
+        // la version affichée est déjà connue
+        versionInfo[String(data.id)] = { abi: data.abi || [], time: data.time };
+        const rest = ids.filter(id => id !== String(data.id));
+        if (rest.length && window.Android && window.Android.loadVersionsInfo) window.Android.loadVersionsInfo(JSON.stringify(rest));
+        else renderVersions();
+    }
+
+    let versionsRenderTimer = null;
+    window.onVersionInfo = function (json) {
+        const v = typeof json === 'string' ? JSON.parse(json) : json;
+        versionInfo[String(v.id)] = v;
+        // regroupe les rafraîchissements (une réponse par version)
+        clearTimeout(versionsRenderTimer);
+        versionsRenderTimer = setTimeout(() => renderVersions(), 120);
+    };
 
     // ------------------------------------------------------------ actions
 
@@ -305,7 +410,7 @@
         }
         const fav = window.TvFavorites && window.TvFavorites.has(d.id);
         btns.push(['fav', fav ? '★ Favori' : '☆ Favori', fav ? 'fav-on' : '']);
-        btns.push(['more', 'Plus…', '']);
+        if (d.authorId) btns.push(['author', 'Store de ' + (d.author || 'l\'auteur'), '']);
 
         box.innerHTML = btns.map(([act, label, cls]) =>
             `<button class="btn focusable ${cls}" data-fk="act-${act}" data-action="${act}">${label}</button>`
@@ -347,7 +452,19 @@
             case 'cancel': call('cancel', d.id); break;
             case 'launch': call('launch', d.package); break;
             case 'uninstall': call('uninstall', d.package); break;
-            case 'more': call('openNativeDetails', d.id); break;
+            case 'author': if (window.TvAuthor) window.TvAuthor.open(d.authorId, d.author); break;
+            case 'desc': {
+                showDesc = !showDesc;
+                render(true);
+                const t = root.querySelector('[data-fk="desc-toggle"]');
+                if (t) t.focus({ preventScroll: true });
+                if (showDesc) { const blk = root.querySelector('[data-fk="desc"]'); if (blk) blk.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+                break;
+            }
+            case 'v-sort':
+                vprefs.recent = !vprefs.recent; saveVprefs(); renderVersions('v-sort'); break;
+            case 'v-compat':
+                vprefs.compat = !vprefs.compat; saveVprefs(); renderVersions('v-compat'); break;
             case 'fav':
                 if (window.TvFavorites) {
                     window.TvFavorites.toggle({
@@ -369,10 +486,8 @@
 
     function bindEvents() {
         root.querySelectorAll('[data-action="ai"]').forEach(b => b.addEventListener('click', () => onAction('ai')));
+        root.querySelectorAll('[data-action="desc"]').forEach(b => b.addEventListener('click', () => onAction('desc')));
         root.querySelectorAll('.shot').forEach(img => img.addEventListener('click', () => openViewer(Number(img.dataset.shot))));
-        root.querySelectorAll('.version').forEach(v => v.addEventListener('click', () => {
-            if (v.dataset.version !== String(data.id)) open(v.dataset.version);
-        }));
         root.querySelectorAll('.expandable').forEach(b => b.addEventListener('click', () => expand(b)));
     }
 
@@ -462,6 +577,7 @@
             e.preventDefault();
             return true;
         }
+        if (authorOpen()) return authorKey(e);
         if (!isOpen()) return false;
         const dirs = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
         if (dirs[e.key]) { e.preventDefault(); move(dirs[e.key]); return true; }
@@ -514,6 +630,95 @@
         if (!data) return;
         data.aiStatus = 'idle';
         render(true);
+    };
+
+    // ------------------------------------------------------------ store d'un auteur
+
+    const authorEl = document.getElementById('author');
+    let author = null;        // {id, name, key, apps}
+    let authorReturn = null;
+
+    function authorOpen() { return !authorEl.classList.contains('hidden'); }
+
+    function openAuthor(id, name) {
+        if (!id) return;
+        authorReturn = document.activeElement;
+        author = { id: String(id), name: name || ('profil ' + id), key: 'author:' + id, apps: undefined };
+        authorEl.classList.remove('hidden');
+        renderAuthor();
+        call('loadSource', author.key, 'profile', author.id);
+    }
+
+    function closeAuthor(restoreFocus) {
+        authorEl.classList.add('hidden');
+        authorEl.innerHTML = '';
+        author = null;
+        if (restoreFocus && authorReturn && document.body.contains(authorReturn)) authorReturn.focus({ preventScroll: true });
+    }
+
+    function renderAuthor() {
+        if (!author) return;
+        const a = document.activeElement;
+        const keepId = a && authorEl.contains(a) ? (a.dataset.id || a.dataset.fk) : null;
+        const all = author.apps;
+        const apps = all ? all.filter(x => !window.TvArch || window.TvArch.isAllowed(x.abi)) : all;
+        const hidden = all && apps ? all.length - apps.length : 0;
+        authorEl.innerHTML = `
+            <div class="author-head">
+              <div>
+                <div class="author-title">Store de ${esc(author.name)}</div>
+                <div class="author-sub">Profil ${esc(author.id)}${apps ? ' · ' + apps.length + ' app(s)' : ''}${hidden ? ' · ' + hidden + ' masquée(s) (architecture)' : ''}</div>
+              </div>
+              <div class="d-actions">
+                <button class="btn focusable" data-fk="author-home">Afficher sur l'accueil</button>
+              </div>
+            </div>
+            <div class="author-grid">${
+                all === undefined ? '<div class="d-loading" style="height:auto;padding:40px">Chargement…</div>'
+                : all === null ? '<div class="d-loading" style="height:auto;padding:40px">Erreur réseau</div>'
+                : !apps.length ? '<div class="d-loading" style="height:auto;padding:40px">Aucune application</div>' : ''
+            }</div>`;
+        const grid = authorEl.querySelector('.author-grid');
+        (apps || []).forEach(app => grid.appendChild(window.TvCards.create(app)));
+        authorEl.querySelector('[data-fk="author-home"]').addEventListener('click', () => {
+            if (window.TvStore) window.TvStore.setProfile(author.id);
+            const s = document.getElementById('status');
+            if (s) s.textContent = `Store de ${author.name} ajouté à l'accueil`;
+            const b = authorEl.querySelector('[data-fk="author-home"]');
+            if (b) b.textContent = 'Ajouté à l\'accueil ✔';
+        });
+        let target = keepId && (authorEl.querySelector(`.app-card[data-id="${CSS.escape(keepId)}"]`) ||
+            authorEl.querySelector(`[data-fk="${CSS.escape(keepId)}"]`));
+        if (!target) target = grid.querySelector('.app-card') || authorEl.querySelector('.btn');
+        if (target) target.focus({ preventScroll: true });
+    }
+
+    function authorKey(e) {
+        const dir = window.TvNav.DIRS[e.key];
+        if (dir) { e.preventDefault(); window.TvNav.move(authorEl, dir); return true; }
+        if (e.key === 'Escape') { e.preventDefault(); closeAuthor(true); return true; }
+        if (e.key === 'Enter') {
+            const el = document.activeElement;
+            if (el && el.classList.contains('app-card')) return true; // la carte ouvre la fiche
+            if (el && authorEl.contains(el)) { e.preventDefault(); el.click(); }
+            return true;
+        }
+        return true;
+    }
+
+    window.TvAuthor = {
+        open: openAuthor,
+        isOpen: authorOpen,
+        onApps(key, apps) {
+            if (!author || author.key !== key) return;
+            const first = author.apps === undefined;
+            author.apps = apps;
+            renderAuthor();
+            // 1re réponse : sélection sur la première app
+            const card = first && authorEl.querySelector('.author-grid .app-card');
+            if (card) card.focus({ preventScroll: true });
+        },
+        onError(key) { if (author && author.key === key && author.apps === undefined) { author.apps = null; renderAuthor(); } },
     };
 
     window.TvDetails = { open, close, isOpen, back, handleKey };

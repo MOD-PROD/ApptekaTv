@@ -14,13 +14,23 @@
         <header class="header">
             <div class="logo"><span class="logo-main">APPTEKA</span><span class="logo-tv">TV</span></div>
             <div class="header-right">
+                <button class="hbtn glass" id="btn-scope" type="button" title="Catégories de recherche">
+                    <svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg>
+                    <span class="hbtn-badge" id="scope-count"></span>
+                </button>
                 <form class="search-box glass" id="search-box" tabindex="0" autocomplete="off">
                     <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
                     <input id="search-input" class="search-input" type="search" tabindex="-1"
                            enterkeyhint="search" placeholder="Rechercher une application…">
                 </form>
-                <button class="btn-add glass" id="btn-add" type="button" title="Catégories">
+                <button class="hbtn glass" id="btn-add" type="button" title="Catégories affichées">
                     <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <button class="hbtn glass" id="btn-settings" type="button" title="Réglages">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <button class="hbtn glass exit" id="btn-exit" type="button" title="Quitter">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>
                 </button>
             </div>
         </header>
@@ -33,8 +43,8 @@
     <!-- Damier des catégories : 5 lignes × 9 colonnes -->
     <div id="picker" class="picker hidden">
         <div class="picker-head">
-            <div class="picker-title">Catégories</div>
-            <div class="picker-hint">OK : afficher / masquer · Retour : valider</div>
+            <div class="picker-title" id="picker-title">Catégories</div>
+            <div class="picker-hint" id="picker-hint">OK : afficher / masquer · Retour : valider</div>
         </div>
         <div class="picker-grid" id="picker-grid"></div>
     </div>
@@ -53,13 +63,21 @@
         </div>
     </div>
 
+    <!-- Réglages -->
+    <div id="settings" class="settings hidden">
+        <div class="settings-panel glass" id="settings-panel"></div>
+    </div>
+
     <!-- Fiche application -->
     <div id="details" class="details hidden"></div>
+    <!-- Store d'un auteur -->
+    <div id="author" class="author hidden"></div>
     <div id="viewer" class="viewer hidden" tabindex="-1">
         <img alt="">
         <div class="viewer-hint"></div>
     </div>
 
+    <script src="nav.js"></script>
     <script src="app.js"></script>
     <script src="details.js"></script>
 </body>

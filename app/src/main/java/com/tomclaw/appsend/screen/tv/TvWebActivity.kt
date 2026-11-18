@@ -301,20 +301,121 @@ class TvWebActivity : AppCompatActivity() {
         )
     }
 
-    private fun searchApps(query: String) {
+    private var searchSubscription: Disposable? = null
+
+    /** Recherche sur plusieurs pages : la page filtre ensuite par catégories choisies. */
+    private fun searchApps(query: String, acc: List<AppEntity> = emptyList(), page: Int = 0) {
+        if (page == 0) searchSubscription?.dispose()
+        searchSubscription = api.searchApps(
+            query = query, tags = null, offset = acc.size.takeIf { it > 0 }, locale = locale
+        )
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ r ->
+                val files = r.result.files
+                val all = (acc + files).distinctBy { it.appId }
+                js("onSearchResults", all.map(TvDetailsMapper::card))
+                if (files.isNotEmpty() && all.size > acc.size && page + 1 < SEARCH_PAGES) {
+                    searchApps(query, all, page + 1)
+                }
+            }, { error ->
+                Log.e(TAG, "Search failed", error)
+                if (acc.isEmpty()) js("onSearchError", mapOf("query" to query))
+            })
+    }
+
+    // ---------------------------------------------------- Versions
+
+    /** Architectures et date de chaque version (une requête par version, 3 en parallèle). */
+    private fun loadVersionsInfo(ids: List<String>) {
         disposables.add(
-            api.searchApps(query = query, tags = null, offset = 0, locale = locale)
+            Observable.fromIterable(ids.take(MAX_VERSIONS_INFO))
+                .flatMapSingle({ id ->
+                    api.getInfo(appId = id, packageName = null, locale = locale)
+                        .map { r ->
+                            mapOf(
+                                "id" to id,
+                                "abi" to r.result.info.abi.orEmpty(),
+                                "time" to r.result.info.time,
+                            )
+                        }
+                        .onErrorReturnItem(mapOf("id" to id, "error" to true))
+                }, false, 3)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ response ->
-                    js("onSearchResults", response.result.files.map(TvDetailsMapper::card))
+                .subscribe({ info -> js("onVersionInfo", info) }, { Log.e(TAG, "versions info", it) })
+        )
+    }
+
+    // ------------------------------------------------------ Compte
+
+    private fun loadAccount() {
+        disposables.add(
+            api.getProfile(userId = null)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ r ->
+                    val p = r.result.profile
+                    js("onAccount", mapOf(
+                        "userId" to p.userId,
+                        "name" to p.name,
+                        "email" to p.email,
+                        "registered" to p.isRegistered,
+                        "verified" to p.isVerified,
+                        "files" to p.filesCount,
+                        "favorites" to p.favoritesCount,
+                        "downloads" to p.totalDownloads,
+                        "reviews" to p.reviewsCount,
+                        "joinTime" to p.joinTime,
+                    ))
                 }, { error ->
-                    Log.e(TAG, "Search failed", error)
-                    js("onSearchResults", emptyList<Any>())
-                    toast("Erreur réseau")
+                    Log.e(TAG, "account failed", error)
+                    js("onAccountError", mapOf("message" to "Profil indisponible"))
                 })
         )
     }
+
+    private fun requestLoginCode(email: String) {
+        disposables.add(
+            api.requestCode(email = email)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ r ->
+                    val res = r.result
+                    js("onAuthCode", mapOf(
+                        "requestId" to res.requestId,
+                        "registered" to res.registered,
+                        "codeRegex" to res.codeRegex,
+                        "nameRegex" to res.nameRegex,
+                    ))
+                }, { error ->
+                    Log.e(TAG, "request code failed", error)
+                    js("onAuthError", mapOf("message" to authError(error)))
+                })
+        )
+    }
+
+    private fun verifyLoginCode(requestId: String, code: String, name: String) {
+        disposables.add(
+            api.verifyCode(requestId = requestId, code = code, name = name.ifBlank { null })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    js("onAuthDone", mapOf("ok" to true))
+                    loadAccount()
+                }, { error ->
+                    Log.e(TAG, "verify code failed", error)
+                    js("onAuthError", mapOf("message" to authError(error)))
+                })
+        )
+    }
+
+    private fun authError(error: Throwable): String =
+        if (error is retrofit2.HttpException) {
+            if (error.code() == 429) "Trop de tentatives, réessaie plus tard" else "Code ou adresse refusé"
+        } else {
+            "Erreur réseau"
+        }
 
     // ----------------------------------------------------------- Fiche
 
@@ -606,6 +707,33 @@ class TvWebActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        fun getDeviceAbis(): String = gson.toJson(Build.SUPPORTED_ABIS.toList())
+
+        @JavascriptInterface
+        fun loadVersionsInfo(idsJson: String): Unit = runOnUiThread {
+            val ids = try {
+                gson.fromJson(idsJson, Array<String>::class.java).toList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+            this@TvWebActivity.loadVersionsInfo(ids)
+        }
+
+        @JavascriptInterface
+        fun loadAccount(): Unit = runOnUiThread { this@TvWebActivity.loadAccount() }
+
+        @JavascriptInterface
+        fun requestLoginCode(email: String): Unit = runOnUiThread { this@TvWebActivity.requestLoginCode(email) }
+
+        @JavascriptInterface
+        fun verifyLoginCode(requestId: String, code: String, name: String): Unit =
+            runOnUiThread { this@TvWebActivity.verifyLoginCode(requestId, code, name) }
+
+        /** Quitte l'app directement, sans remonter tout l'historique. */
+        @JavascriptInterface
+        fun exit(): Unit = runOnUiThread { finishAffinity() }
+
+        @JavascriptInterface
         fun search(query: String): Unit = runOnUiThread { searchApps(query) }
 
         @JavascriptInterface
@@ -632,6 +760,7 @@ class TvWebActivity : AppCompatActivity() {
         handler.removeCallbacksAndMessages(null)
         stateSubscription?.dispose()
         aiPollSubscription?.dispose()
+        searchSubscription?.dispose()
         pendingSubscriptions.clear()
         disposables.clear()
         super.onDestroy()
@@ -642,6 +771,8 @@ class TvWebActivity : AppCompatActivity() {
         private const val PREFS_NAME = "tv_web"
         private const val KEY_CATEGORIES_CACHE = "categories_cache"
         private const val SPLASH_SIZE_PX = 540
+        private const val SEARCH_PAGES = 4
+        private const val MAX_VERSIONS_INFO = 40
         private const val MAX_PAGES = 5
         private const val SPLASH_MIN_MS = 2500L
         private const val SPLASH_MAX_MS = 8000L

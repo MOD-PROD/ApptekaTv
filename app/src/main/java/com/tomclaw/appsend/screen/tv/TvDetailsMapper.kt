@@ -18,6 +18,10 @@ object TvDetailsMapper {
         "package" to app.packageName,
         "version" to app.verName,
         "rating" to app.rating,
+        "abi" to app.abi.orEmpty(),
+        "category" to app.category?.id,
+        "time" to app.time,
+        "versionCode" to app.verCode,
     )
 
     fun details(d: Details, locale: String): Map<String, Any?> {
@@ -43,6 +47,7 @@ object TvDetailsMapper {
             "languages" to info.languages.orEmpty().map { it.name },
             "sha1" to info.sha1,
             "author" to info.author.name,
+            "authorId" to info.author.id,
             "fileStatus" to info.fileStatus,
             "category" to meta?.category?.name?.let { names ->
                 names[locale] ?: names["en"] ?: names.values.firstOrNull()

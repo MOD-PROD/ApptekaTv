@@ -1,20 +1,38 @@
 // Appteka TV — page d'accueil
-// Rangées configurables (damier 5×9 : 42 catégories + Toutes, Favoris, Store),
-// favoris locaux, recherche, navigation télécommande.
+// Rangées configurables et réordonnables, damier 5×9 des catégories, recherche
+// filtrée par catégories, réglages (taille des cartes, architectures, compte),
+// favoris locaux, navigation télécommande.
 
 const STATUS = document.getElementById('status');
 const ROWS = document.getElementById('rows');
 const SEARCH_BOX = document.getElementById('search-box');
 const SEARCH_INPUT = document.getElementById('search-input');
+const BTN_SCOPE = document.getElementById('btn-scope');
 const BTN_ADD = document.getElementById('btn-add');
+const BTN_SETTINGS = document.getElementById('btn-settings');
+const BTN_EXIT = document.getElementById('btn-exit');
+const HEADER_ITEMS = [BTN_SCOPE, SEARCH_BOX, BTN_ADD, BTN_SETTINGS, BTN_EXIT];
 const PICKER = document.getElementById('picker');
 const PICKER_GRID = document.getElementById('picker-grid');
+const PICKER_TITLE = document.getElementById('picker-title');
+const PICKER_HINT = document.getElementById('picker-hint');
 const STORE_EDITOR = document.getElementById('store-editor');
 const STORE_INPUT = document.getElementById('store-input');
 const STORE_SAVE = document.getElementById('store-save');
+const SETTINGS = document.getElementById('settings');
+const SETTINGS_PANEL = document.getElementById('settings-panel');
 
 const GRID_COLS = 9;
 const DEFAULT_SOURCES = ['cat:37', 'cat:27']; // TV, Entertainment
+const LONG_PRESS_MS = 600;
+const ALL_ABIS = [
+    ['arm64-v8a', 'ARM 64 bits'],
+    ['armeabi-v7a', 'ARM 32 bits'],
+    ['armeabi', 'ARM (ancien)'],
+    ['x86_64', 'x86 64 bits'],
+    ['x86', 'x86'],
+    ['universal', 'Universelle'],
+];
 
 // Icônes maison (traits dorés)
 const ICONS = {
@@ -24,15 +42,6 @@ const ICONS = {
     search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
     cat: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>',
 };
-
-// ------------------------------------------------------------------ état
-
-let categories = [];          // [{id, name, icon}]
-let settings = loadJson('settings', null) || { sources: DEFAULT_SOURCES.slice(), profile: '' };
-let favorites = loadJson('favorites', []);   // cartes complètes
-const rowData = {};           // key -> [apps] | null (erreur) | undefined (en cours)
-const rowLoading = {};        // key -> true
-let searchQuery = '';
 
 // ------------------------------------------------------------ préférences
 
@@ -51,12 +60,52 @@ function setPref(key, value) {
 function loadJson(key, def) {
     try { const v = getPref(key); return v ? JSON.parse(v) : def; } catch (e) { return def; }
 }
-function saveSettings() { setPref('settings', JSON.stringify(settings)); }
-function saveFavorites() { setPref('favorites', JSON.stringify(favorites)); }
-
 function call(fn, ...args) {
     if (window.Android && typeof window.Android[fn] === 'function') window.Android[fn](...args.map(String));
 }
+
+// ------------------------------------------------------------------ état
+
+let categories = [];          // [{id, name, icon}]
+const settings = Object.assign(
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, archs: null },
+    loadJson('settings', {}) || {}
+);
+let favorites = loadJson('favorites', []);
+const rowData = {};           // key -> [apps] | null (erreur) | undefined (en cours)
+const rowLoading = {};
+let searchQuery = '';
+let searchRaw = undefined;    // résultats bruts (avant filtre de catégories)
+let movingKey = null;         // rangée en cours de déplacement
+let pressTimer = null;        // appui long sur une icône de rangée
+let pickerMode = 'rows';      // 'rows' ou 'search'
+
+function saveSettings() { setPref('settings', JSON.stringify(settings)); }
+function saveFavorites() { setPref('favorites', JSON.stringify(favorites)); }
+
+// ------------------------------------------------------------ architectures
+
+const deviceAbis = (function () {
+    try {
+        if (window.Android && typeof window.Android.getDeviceAbis === 'function') {
+            return JSON.parse(window.Android.getDeviceAbis());
+        }
+    } catch (e) { /* valeur par défaut */ }
+    return ['arm64-v8a', 'armeabi-v7a', 'armeabi'];
+})();
+
+const TvArch = {
+    deviceAbis,
+    allowed() { return settings.archs || deviceAbis.concat(['universal']); },
+    // Une app sans architecture déclarée (anciennes fiches) reste visible
+    isAllowed(abis) {
+        if (!abis || !abis.length) return true;
+        const allowed = this.allowed();
+        return abis.some(a => allowed.includes(a));
+    },
+    label(abi) { const f = ALL_ABIS.find(x => x[0] === abi); return f ? f[1] : abi; },
+};
+window.TvArch = TvArch;
 
 // ------------------------------------------------------------ utilitaires
 
@@ -87,6 +136,10 @@ function iconFor(source) {
     return svg ? { html: svg, cls: 'api', name: c.name } : { html: ICONS.cat, cls: 'line', name: c ? c.name : 'Catégorie' };
 }
 
+function applyCardScale() {
+    document.documentElement.style.setProperty('--cs', String(settings.cardScale || 1));
+}
+
 // ------------------------------------------------------------ favoris
 
 const TvFavorites = {
@@ -97,8 +150,8 @@ const TvFavorites = {
             STATUS.textContent = `Retiré des favoris : ${app.name}`;
         } else {
             favorites.unshift({
-                id: app.id, name: app.name, icon: app.icon || '',
-                downloads: app.downloads || '', size: app.size || '', package: app.package || '',
+                id: app.id, name: app.name, icon: app.icon || '', downloads: app.downloads || '',
+                size: app.size || '', package: app.package || '', abi: app.abi || [], category: app.category,
             });
             STATUS.textContent = settings.sources.includes('fav')
                 ? `Ajouté aux favoris : ${app.name}`
@@ -122,15 +175,11 @@ function createAppCard(app) {
     card.dataset.id = app.id;
 
     const fallback = '<div class="app-icon app-icon-fallback">📺</div>';
-    const icon = app.icon
-        ? `<img class="app-icon" src="${escapeHtml(app.icon)}" alt="" loading="lazy">`
-        : fallback;
-
+    const icon = app.icon ? `<img class="app-icon" src="${escapeHtml(app.icon)}" alt="" loading="lazy">` : fallback;
     card.innerHTML = `
         ${icon}
         <div class="app-name">${escapeHtml(app.name || 'App')}</div>
-        <div class="app-meta">${escapeHtml(app.downloads || '')}${app.size ? ' · ' + escapeHtml(app.size) : ''}</div>
-        <div class="app-hint">OK · fiche</div>`;
+        <div class="app-meta">${escapeHtml(app.downloads || '')}${app.size ? ' · ' + escapeHtml(app.size) : ''}</div>`;
     const img = card.querySelector('img.app-icon');
     if (img) img.addEventListener('error', () => { img.outerHTML = fallback; });
     updateFavBadge(card);
@@ -192,7 +241,8 @@ function buildRows() {
     const keys = visibleSources();
     const a = document.activeElement;
     const focusedId = a && a.classList.contains('app-card') ? a.dataset.id : null;
-    const focusedRow = focusedId && a.closest('.row') ? a.closest('.row').dataset.key : null;
+    const focusedRow = a && a.closest && a.closest('.row') ? a.closest('.row').dataset.key : null;
+    const iconFocused = a && a.classList.contains('row-icon');
 
     ROWS.innerHTML = '';
     if (!keys.length) {
@@ -201,12 +251,14 @@ function buildRows() {
     keys.forEach(key => {
         const ic = iconFor(key);
         const row = document.createElement('section');
-        row.className = 'row';
+        row.className = 'row' + (key === movingKey ? ' moving' : '');
         row.dataset.key = key;
         row.innerHTML = `
-            <div class="row-icon glass" title="${escapeHtml(ic.name)}">
+            <div class="row-icon glass" tabindex="0" title="${escapeHtml(ic.name)}">
+                <span class="row-arrow up">▲</span>
                 <div class="icon-svg ${ic.cls}">${ic.html}</div>
                 <span class="row-count"></span>
+                <span class="row-arrow down">▼</span>
             </div>
             <div class="apps-row"></div>`;
         ROWS.appendChild(row);
@@ -214,19 +266,30 @@ function buildRows() {
         ensureLoaded(key);
     });
 
-    if (focusedRow && focusedId) {
+    if (focusedRow) {
         const row = rowEl(focusedRow);
-        const card = row && row.querySelector(`.app-card[data-id="${CSS.escape(focusedId)}"]`);
-        if (card) card.focus({ preventScroll: true });
+        if (row && iconFocused) row.querySelector('.row-icon').focus({ preventScroll: true });
+        else if (row && focusedId) {
+            const card = row.querySelector(`.app-card[data-id="${CSS.escape(focusedId)}"]`);
+            if (card) card.focus({ preventScroll: true });
+        }
     }
+    updateScopeBadge();
     updateStatus();
+}
+
+function filteredApps(key) {
+    const apps = rowData[key];
+    if (!apps || key === 'fav') return apps;
+    return apps.filter(a => TvArch.isAllowed(a.abi));
 }
 
 function fillRow(key) {
     const row = rowEl(key);
     if (!row) return;
     const box = row.querySelector('.apps-row');
-    const apps = rowData[key];
+    const raw = rowData[key];
+    const apps = filteredApps(key);
     const scroll = box.scrollLeft;
     const focused = document.activeElement;
     const focusedId = focused && box.contains(focused) ? focused.dataset.id : null;
@@ -237,18 +300,22 @@ function fillRow(key) {
     } else if (apps === null) {
         box.innerHTML = '<div class="loading">Erreur réseau</div>';
     } else if (!apps.length) {
-        box.innerHTML = key === 'fav'
-            ? '<div class="empty-hint">Aucun favori. Dans une fiche, choisis « Favori » (ou touche jaune sur une carte).</div>'
-            : '<div class="loading">Aucune application</div>';
+        let msg = 'Aucune application';
+        if (key === 'fav') msg = 'Aucun favori. Dans une fiche, choisis « Favori » (ou touche jaune sur une carte).';
+        else if (key === 'search' && searchRaw && searchRaw.length) msg = `Aucun résultat dans les catégories choisies (${searchRaw.length} ailleurs : bouton filtre à gauche de la recherche).`;
+        else if (raw && raw.length) msg = `Aucune app compatible avec les architectures choisies (${raw.length} masquées).`;
+        box.innerHTML = `<div class="empty-hint">${escapeHtml(msg)}</div>`;
     } else {
         apps.forEach(app => box.appendChild(createAppCard(app)));
     }
     box.scrollLeft = scroll;
+    const hidden = raw && apps ? raw.length - apps.length : 0;
     row.querySelector('.row-count').textContent = apps && apps.length ? apps.length : '';
+    row.querySelector('.row-icon').title = iconFor(key).name + (hidden > 0 ? ` · ${hidden} masquées (architecture)` : '');
 
     if (focusedId) {
         const again = box.querySelector(`.app-card[data-id="${CSS.escape(focusedId)}"]`);
-        (again || box.querySelector('.app-card') || BTN_ADD).focus({ preventScroll: true });
+        (again || box.querySelector('.app-card') || row.querySelector('.row-icon')).focus({ preventScroll: true });
     } else if (!overlayOpen() && !isMainFocused()) {
         const first = firstCard();
         if (first) focusCard(first);
@@ -256,6 +323,7 @@ function fillRow(key) {
 }
 
 function refreshRow(key) { if (rowEl(key)) fillRow(key); }
+function refreshAllRows() { ROWS.querySelectorAll('.row').forEach(r => fillRow(r.dataset.key)); updateStatus(); }
 
 function ensureLoaded(key) {
     if (key === 'fav') { rowData.fav = favorites.slice(); fillRow('fav'); return; }
@@ -277,17 +345,62 @@ function firstCard() {
 
 function isMainFocused() {
     const a = document.activeElement;
-    return a && (a.classList.contains('app-card') || a === SEARCH_BOX || a === SEARCH_INPUT || a === BTN_ADD);
+    return a && (a.classList.contains('app-card') || a.classList.contains('row-icon') ||
+        HEADER_ITEMS.includes(a) || a === SEARCH_INPUT);
 }
 
 function overlayOpen() {
     return !PICKER.classList.contains('hidden') || !STORE_EDITOR.classList.contains('hidden') ||
+        !SETTINGS.classList.contains('hidden') ||
+        (window.TvAuthor && window.TvAuthor.isOpen()) ||
         (window.TvDetails && window.TvDetails.isOpen());
 }
 
 function updateStatus() {
+    if (movingKey) {
+        STATUS.textContent = '▲ ▼ : déplacer la rangée · OK ou Retour : terminer';
+        return;
+    }
     const total = ROWS.querySelectorAll('.app-card').length;
-    STATUS.textContent = `${total} applications · OK : fiche · ▶ : installer · jaune : favori · + : catégories`;
+    STATUS.textContent = `${total} applications · OK : fiche · ▶ : installer · jaune : favori · appui long sur une icône : déplacer la rangée`;
+}
+
+// ------------------------------------------------------------ déplacement des rangées
+
+function startMove(key) {
+    if (key === 'search') { STATUS.textContent = 'La rangée de recherche reste en haut'; return; }
+    movingKey = key;
+    const row = rowEl(key);
+    if (row) row.classList.add('moving');
+    updateStatus();
+}
+
+function endMove() {
+    if (!movingKey) return false;
+    const row = rowEl(movingKey);
+    if (row) row.classList.remove('moving');
+    movingKey = null;
+    updateStatus();
+    return true;
+}
+
+function moveRow(step) {
+    const i = settings.sources.indexOf(movingKey);
+    if (i < 0) return;
+    // saute les sources masquées (Store sans profil)
+    let j = i + step;
+    while (j >= 0 && j < settings.sources.length && settings.sources[j] === 'store' && !settings.profile) j += step;
+    if (j < 0 || j >= settings.sources.length) return;
+    const tmp = settings.sources[i];
+    settings.sources[i] = settings.sources[j];
+    settings.sources[j] = tmp;
+    saveSettings();
+    buildRows();
+    const row = rowEl(movingKey);
+    if (row) {
+        row.querySelector('.row-icon').focus({ preventScroll: true });
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 // ------------------------------------------------------------ recherche
@@ -305,12 +418,22 @@ function startEditing() {
     const v = SEARCH_INPUT.value; SEARCH_INPUT.value = ''; SEARCH_INPUT.value = v;
 }
 
+function searchScopeAll() { return !settings.searchCats.length || settings.searchCats.includes('all'); }
+
+function applySearchFilter() {
+    if (searchRaw === undefined || searchRaw === null) { rowData.search = searchRaw; return; }
+    rowData.search = searchScopeAll()
+        ? searchRaw.slice()
+        : searchRaw.filter(a => a.category != null && settings.searchCats.includes('cat:' + a.category));
+}
+
 function submitSearch() {
     const q = SEARCH_INPUT.value.trim();
     SEARCH_INPUT.blur();
     SEARCH_BOX.classList.remove('editing');
     if (!q) { closeSearch(); focusSearchBox(); return; }
     searchQuery = q;
+    searchRaw = undefined;
     delete rowData.search;
     SEARCH_BOX.focus();
     buildRows();
@@ -321,10 +444,18 @@ function submitSearch() {
 function closeSearch() {
     if (!searchQuery) return false;
     searchQuery = '';
+    searchRaw = undefined;
     SEARCH_INPUT.value = '';
     delete rowData.search;
     buildRows();
     return true;
+}
+
+function updateScopeBadge() {
+    const badge = document.getElementById('scope-count');
+    badge.textContent = searchScopeAll() ? '∞' : String(settings.searchCats.length);
+    BTN_SCOPE.title = searchScopeAll() ? 'Recherche dans toutes les catégories'
+        : 'Recherche dans : ' + settings.searchCats.map(s => (categoryById(s.slice(4)) || {}).name || s).join(', ');
 }
 
 // ------------------------------------------------------------ damier des catégories
@@ -334,11 +465,19 @@ let pickerItems = [];
 function pickerSourceList() {
     const cats = categories.slice().sort((a, b) => a.id - b.id)
         .map(c => ({ source: 'cat:' + c.id, name: c.name, icon: iconFor('cat:' + c.id) }));
+    if (pickerMode === 'search') {
+        return cats.concat([{ source: 'all', name: 'Toutes les catégories', icon: iconFor('all'), special: true }]);
+    }
     return cats.concat([
         { source: 'all', name: 'Toutes les catégories', icon: iconFor('all'), special: true },
         { source: 'fav', name: 'Favoris', icon: iconFor('fav'), special: true, sub: favorites.length ? favorites.length + ' app(s)' : '' },
         { source: 'store', name: 'Store', icon: iconFor('store'), special: true, sub: settings.profile ? 'profil ' + settings.profile : 'OK : saisir un profil' },
     ]);
+}
+
+function isChecked(item) {
+    if (pickerMode === 'search') return settings.searchCats.includes(item.source);
+    return settings.sources.includes(item.source) && (item.source !== 'store' || settings.profile);
 }
 
 function renderPicker(focusIndex) {
@@ -353,8 +492,7 @@ function renderPicker(focusIndex) {
     }
     pickerItems.forEach((item, i) => {
         const cell = document.createElement('div');
-        const checked = settings.sources.includes(item.source) && (item.source !== 'store' || settings.profile);
-        cell.className = 'cell glass' + (checked ? ' checked' : '') + (item.special ? ' special' : '');
+        cell.className = 'cell glass' + (isChecked(item) ? ' checked' : '') + (item.special ? ' special' : '');
         cell.tabIndex = 0;
         cell.dataset.index = i;
         cell.title = item.name;
@@ -370,7 +508,12 @@ function renderPicker(focusIndex) {
     if (target) target.focus({ preventScroll: true });
 }
 
-function openPicker() {
+function openPicker(mode) {
+    pickerMode = mode || 'rows';
+    PICKER_TITLE.textContent = pickerMode === 'search' ? 'Rechercher dans' : 'Catégories';
+    PICKER_HINT.textContent = pickerMode === 'search'
+        ? 'OK : inclure / exclure de la recherche · Retour : valider'
+        : 'OK : afficher / masquer · Retour : valider';
     PICKER.classList.remove('hidden');
     renderPicker(0);
     if (!categories.length) call('loadCategories');
@@ -378,17 +521,24 @@ function openPicker() {
 
 function closePicker() {
     PICKER.classList.add('hidden');
-    buildRows();
-    BTN_ADD.focus();
+    if (pickerMode === 'search') {
+        applySearchFilter();
+        buildRows();
+        BTN_SCOPE.focus();
+    } else {
+        buildRows();
+        BTN_ADD.focus();
+    }
 }
 
 function toggleCell(i) {
     const item = pickerItems[i];
     if (!item) return;
-    if (item.source === 'store') { openStoreEditor(); return; }
-    const idx = settings.sources.indexOf(item.source);
-    if (idx >= 0) settings.sources.splice(idx, 1);
-    else settings.sources.push(item.source);
+    if (pickerMode === 'rows' && item.source === 'store') { openStoreEditor(); return; }
+    const list = pickerMode === 'search' ? settings.searchCats : settings.sources;
+    const idx = list.indexOf(item.source);
+    if (idx >= 0) list.splice(idx, 1);
+    else list.push(item.source);
     saveSettings();
     renderPicker(i);
 }
@@ -421,12 +571,7 @@ function closeStoreEditor() {
     renderPicker(idx);
 }
 
-function saveStore() {
-    // Accepte « 325988 » ou un lien appteka.store/profile/325988
-    const raw = STORE_INPUT.value.trim();
-    const m = raw.match(/profile\/(\d+)/) || raw.match(/^(\d{1,10})$/);
-    if (raw && !m) { STATUS.textContent = 'Numéro de profil invalide'; STORE_INPUT.focus(); return; }
-    const profile = m ? m[1] : '';
+function setStoreProfile(profile) {
     const changed = profile !== settings.profile;
     settings.profile = profile;
     const idx = settings.sources.indexOf('store');
@@ -434,28 +579,333 @@ function saveStore() {
     if (!profile && idx >= 0) settings.sources.splice(idx, 1);
     if (changed) { delete rowData.store; rowLoading.store = false; }
     saveSettings();
+}
+
+function saveStore() {
+    // Accepte « 325988 » ou un lien appteka.store/profile/325988
+    const raw = STORE_INPUT.value.trim();
+    const m = raw.match(/profile\/(\d+)/) || raw.match(/^(\d{1,10})$/);
+    if (raw && !m) { STATUS.textContent = 'Numéro de profil invalide'; STORE_INPUT.focus(); return; }
+    const profile = m ? m[1] : '';
+    setStoreProfile(profile);
     STATUS.textContent = profile ? `Profil Store enregistré : ${profile}` : 'Profil Store retiré';
     closeStoreEditor();
 }
 
 document.getElementById('store-form').addEventListener('submit', (e) => { e.preventDefault(); saveStore(); });
+window.TvStore = { setProfile: (p) => { setStoreProfile(String(p)); buildRows(); } };
+
+// ------------------------------------------------------------ réglages
+
+let account = { state: 'loading' };   // loading | ok | error
+let auth = { step: 'email' };          // email | code | sending
+let settingsMsg = { text: '', err: false };
+
+function openSettings() {
+    SETTINGS.classList.remove('hidden');
+    settingsMsg = { text: '', err: false };
+    renderSettings('set-minus');
+    call('loadAccount');
+}
+
+function closeSettings() {
+    SETTINGS.classList.add('hidden');
+    BTN_SETTINGS.focus();
+}
+
+function renderSettings(focusKey) {
+    const a = document.activeElement;
+    const keep = focusKey || (a && SETTINGS_PANEL.contains(a) ? a.dataset.k : null);
+    const values = {};
+    SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { values[i.dataset.k] = i.value; });
+
+    const abis = TvArch.allowed();
+    const chips = ALL_ABIS.map(([abi, label]) => `
+        <button class="chip-toggle focusable ${abis.includes(abi) ? 'on' : ''}" data-k="abi-${abi}" data-abi="${abi}">
+            <span class="dot"></span>${escapeHtml(label)}
+            ${deviceAbis.includes(abi) ? '<span class="tag">cette TV</span>' : ''}
+        </button>`).join('');
+
+    SETTINGS_PANEL.innerHTML = `
+        <div class="set-title">Réglages</div>
+        <div class="set-hint">Retour pour fermer</div>
+
+        <div class="set-section">
+            <div class="set-label">Taille des cartes</div>
+            <div class="set-row">
+                <button class="btn focusable" data-k="set-minus" data-act="minus">−</button>
+                <div class="set-value">${Math.round((settings.cardScale || 1) * 100)} %</div>
+                <button class="btn focusable" data-k="set-plus" data-act="plus">+</button>
+            </div>
+        </div>
+
+        <div class="set-section">
+            <div class="set-label">Architectures affichées</div>
+            <div class="set-row">${chips}
+                <button class="chip-toggle focusable" data-k="abi-reset" data-act="abi-reset">↺ Cette TV</button>
+            </div>
+            <div class="set-sub">Les apps sans architecture compatible sont masquées dans les rangées et dans les versions
+                d'une fiche. Cette TV : ${escapeHtml(deviceAbis.join(', '))}.</div>
+        </div>
+
+        <div class="set-section">
+            <div class="set-label">Compte Appteka</div>
+            ${accountHtml()}
+            ${settingsMsg.text ? `<div class="set-msg ${settingsMsg.err ? 'err' : ''}">${escapeHtml(settingsMsg.text)}</div>` : ''}
+        </div>`;
+
+    SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { if (values[i.dataset.k] != null) i.value = values[i.dataset.k]; });
+    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
+    SETTINGS_PANEL.querySelectorAll('form').forEach(f => f.addEventListener('submit', (e) => { e.preventDefault(); onSettingsSubmit(f.dataset.form); }));
+
+    const target = (keep && SETTINGS_PANEL.querySelector(`[data-k="${keep}"]`)) || SETTINGS_PANEL.querySelector('.focusable');
+    if (target) target.focus({ preventScroll: true });
+}
+
+function accountHtml() {
+    if (account.state === 'loading') return '<div class="set-sub">Chargement du profil…</div>';
+    const p = account.profile || {};
+    let html = '';
+    if (account.state === 'ok') {
+        const initial = (p.name || '?').trim().charAt(0).toUpperCase() || '?';
+        html += `
+            <div class="account-card">
+                <div class="account-avatar">${escapeHtml(initial)}</div>
+                <div>
+                    <div class="account-name">${escapeHtml(p.name || 'Invité')} <span style="color:var(--muted);font-size:13px">#${p.userId}</span></div>
+                    <div class="account-meta">${p.registered ? escapeHtml(p.email || 'Compte enregistré') : 'Compte invité (non connecté)'}${p.verified ? ' · vérifié' : ''}</div>
+                    <div class="account-stats">
+                        <div><b>${p.files || 0}</b><span>apps publiées</span></div>
+                        <div><b>${p.favorites || 0}</b><span>favoris</span></div>
+                        <div><b>${p.downloads || 0}</b><span>téléchargements</span></div>
+                        <div><b>${p.reviews || 0}</b><span>avis</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="set-row" style="margin-top:14px">
+                <button class="btn focusable" data-k="acc-store" data-act="my-store">Mon Store</button>
+                <button class="btn focusable" data-k="acc-use" data-act="use-store">Afficher mon Store sur l'accueil</button>
+            </div>`;
+    } else {
+        html += '<div class="set-sub">Profil indisponible (réseau ?).</div>';
+    }
+    if (!p.registered || auth.open) html += loginHtml();
+    else html += '<div class="set-row" style="margin-top:10px"><button class="btn focusable" data-k="acc-switch" data-act="switch">Se connecter à un autre compte</button></div>';
+    return html;
+}
+
+function loginHtml() {
+    if (auth.step === 'code') {
+        return `
+            <div class="set-sub" style="margin:14px 0 8px">Code envoyé à ${escapeHtml(auth.email)}. Saisis-le ci-dessous.</div>
+            <form class="set-row" data-form="code" autocomplete="off">
+                <input class="set-input focusable" data-k="auth-code" inputmode="numeric" enterkeyhint="done" placeholder="Code reçu par e-mail">
+                ${auth.registered ? '' : '<input class="set-input focusable" data-k="auth-name" enterkeyhint="done" placeholder="Ton pseudo (nouveau compte)">'}
+                <button class="btn primary focusable" data-k="auth-verify" type="submit">Valider</button>
+                <button class="btn focusable" data-k="auth-cancel" type="button" data-act="auth-cancel">Annuler</button>
+            </form>`;
+    }
+    return `
+        <div class="set-sub" style="margin:14px 0 8px">Connexion par e-mail : un code de connexion t'est envoyé.</div>
+        <form class="set-row" data-form="email" autocomplete="off">
+            <input class="set-input focusable" data-k="auth-email" type="email" enterkeyhint="send" placeholder="Adresse e-mail">
+            <button class="btn primary focusable" data-k="auth-send" type="submit">${auth.step === 'sending' ? 'Envoi…' : 'Recevoir le code'}</button>
+        </form>`;
+}
+
+function onSettingsAction(b) {
+    const act = b.dataset.act;
+    if (b.dataset.abi) {
+        const list = TvArch.allowed().slice();
+        const i = list.indexOf(b.dataset.abi);
+        if (i >= 0) list.splice(i, 1); else list.push(b.dataset.abi);
+        settings.archs = list;
+        saveSettings();
+        refreshAllRows();
+        renderSettings();
+        return;
+    }
+    switch (act) {
+        case 'minus':
+        case 'plus':
+            settings.cardScale = Math.round(Math.min(1.5, Math.max(0.7, (settings.cardScale || 1) + (act === 'plus' ? 0.1 : -0.1))) * 10) / 10;
+            saveSettings();
+            applyCardScale();
+            renderSettings();
+            break;
+        case 'abi-reset':
+            settings.archs = null;
+            saveSettings();
+            refreshAllRows();
+            renderSettings();
+            break;
+        case 'my-store':
+            if (account.profile) window.TvAuthor.open(account.profile.userId, account.profile.name || 'Mon Store');
+            break;
+        case 'use-store':
+            if (account.profile) {
+                window.TvStore.setProfile(account.profile.userId);
+                settingsMsg = { text: 'Ton Store est ajouté à l\'accueil.', err: false };
+                renderSettings();
+            }
+            break;
+        case 'switch':
+            auth = { step: 'email', open: true };
+            renderSettings('auth-email');
+            break;
+        case 'auth-cancel':
+            auth = { step: 'email', open: auth.open };
+            settingsMsg = { text: '', err: false };
+            renderSettings('auth-email');
+            break;
+    }
+}
+
+function onSettingsSubmit(form) {
+    if (form === 'email') {
+        const email = (SETTINGS_PANEL.querySelector('[data-k="auth-email"]').value || '').trim();
+        if (!/^\S+@\S+\.\S+$/.test(email)) { settingsMsg = { text: 'Adresse e-mail invalide', err: true }; renderSettings('auth-email'); return; }
+        auth = Object.assign({}, auth, { step: 'sending', email });
+        settingsMsg = { text: '', err: false };
+        renderSettings('auth-send');
+        call('requestLoginCode', email);
+    } else if (form === 'code') {
+        const code = (SETTINGS_PANEL.querySelector('[data-k="auth-code"]').value || '').trim();
+        const nameEl = SETTINGS_PANEL.querySelector('[data-k="auth-name"]');
+        const name = nameEl ? nameEl.value.trim() : '';
+        if (!code) { settingsMsg = { text: 'Saisis le code reçu', err: true }; renderSettings('auth-code'); return; }
+        if (!auth.registered && !name) { settingsMsg = { text: 'Choisis un pseudo', err: true }; renderSettings('auth-name'); return; }
+        settingsMsg = { text: 'Vérification…', err: false };
+        renderSettings('auth-verify');
+        call('verifyLoginCode', auth.requestId, code, name);
+    }
+}
+
+window.onAccount = function (json) {
+    const p = typeof json === 'string' ? JSON.parse(json) : json;
+    account = { state: 'ok', profile: p };
+    if (!SETTINGS.classList.contains('hidden')) renderSettings();
+};
+window.onAccountError = function () {
+    account = { state: 'error' };
+    if (!SETTINGS.classList.contains('hidden')) renderSettings();
+};
+window.onAuthCode = function (json) {
+    const r = typeof json === 'string' ? JSON.parse(json) : json;
+    auth = Object.assign({}, auth, { step: 'code', requestId: r.requestId, registered: r.registered });
+    settingsMsg = { text: r.registered ? 'Compte trouvé, code envoyé.' : 'Nouveau compte : choisis aussi un pseudo.', err: false };
+    if (!SETTINGS.classList.contains('hidden')) renderSettings('auth-code');
+};
+window.onAuthDone = function () {
+    auth = { step: 'email' };
+    settingsMsg = { text: 'Connecté ✔', err: false };
+    account = { state: 'loading' };
+    if (!SETTINGS.classList.contains('hidden')) renderSettings('acc-store');
+};
+window.onAuthError = function (json) {
+    const r = typeof json === 'string' ? JSON.parse(json) : json;
+    if (auth.step === 'sending') auth.step = 'email';
+    settingsMsg = { text: r.message || 'Erreur', err: true };
+    if (!SETTINGS.classList.contains('hidden')) renderSettings();
+};
 
 // ------------------------------------------------------------ navigation
 
+function headerMove(focused, dir) {
+    const i = HEADER_ITEMS.indexOf(focused);
+    const j = i + (dir === 'right' ? 1 : -1);
+    if (j >= 0 && j < HEADER_ITEMS.length) HEADER_ITEMS[j].focus();
+}
+
+function onHeaderEnter(el) {
+    if (el === SEARCH_BOX) startEditing();
+    else if (el === BTN_SCOPE) openPicker('search');
+    else if (el === BTN_ADD) openPicker('rows');
+    else if (el === BTN_SETTINGS) openSettings();
+    else if (el === BTN_EXIT) exitApp();
+}
+
+function exitApp() {
+    if (window.Android && typeof window.Android.exit === 'function') window.Android.exit();
+}
+
+function onRowIconKey(e, icon) {
+    const row = icon.closest('.row');
+    const key = row.dataset.key;
+
+    if (movingKey === key) {
+        if (e.key === 'ArrowUp') { e.preventDefault(); moveRow(-1); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); moveRow(1); }
+        else if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); if (!e.repeat) endMove(); }
+        else if (e.key.startsWith('Arrow')) e.preventDefault();
+        return;
+    }
+
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        // Appui long : touche maintenue (répétitions) ou relâchée après le délai
+        if (e.repeat) { clearTimeout(pressTimer); pressTimer = null; startMove(key); return; }
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(() => { pressTimer = null; startMove(key); }, LONG_PRESS_MS);
+        return;
+    }
+    if (e.key === 'ArrowRight') { e.preventDefault(); const c = row.querySelector('.app-card'); if (c) focusCard(c); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const rows = Array.from(ROWS.querySelectorAll('.row'));
+        const r = rows.indexOf(row) + (e.key === 'ArrowDown' ? 1 : -1);
+        if (r >= 0 && r < rows.length) {
+            rows[r].querySelector('.row-icon').focus({ preventScroll: true });
+            rows[r].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else if (r < 0) focusSearchBox();
+    } else if (e.key === 'ArrowLeft') e.preventDefault();
+}
+
 function setupFocusManagement() {
     SEARCH_BOX.addEventListener('submit', (e) => { e.preventDefault(); submitSearch(); });
-    BTN_ADD.addEventListener('click', openPicker);
+    HEADER_ITEMS.forEach(el => { if (el !== SEARCH_BOX) el.addEventListener('click', () => onHeaderEnter(el)); });
+
+    // Fin d'un appui court sur une icône de rangée : va à la 1re carte
+    document.addEventListener('keyup', (e) => {
+        if (e.key !== 'Enter' || !pressTimer) return;
+        clearTimeout(pressTimer);
+        pressTimer = null;
+        const a = document.activeElement;
+        if (a && a.classList.contains('row-icon')) {
+            const c = a.closest('.row').querySelector('.app-card');
+            if (c) focusCard(c);
+        }
+    });
 
     document.addEventListener('keydown', (e) => {
-        // Fiche app (et visionneuse) en premier
+        // Fiche app, store d'un auteur, visionneuse
         if (window.TvDetails && window.TvDetails.handleKey(e)) return;
         if (window.TvDetails && window.TvDetails.isOpen()) return;
+
+        // Réglages
+        if (!SETTINGS.classList.contains('hidden')) {
+            const dir = TvNav.DIRS[e.key];
+            if (dir) {
+                if (TvNav.inputKeepsKey(e)) return;
+                e.preventDefault();
+                TvNav.move(SETTINGS_PANEL, dir);
+            } else if (e.key === 'Escape') { e.preventDefault(); closeSettings(); }
+            else if (e.key === 'Enter') {
+                const a = document.activeElement;
+                if (a && a.tagName === 'INPUT') {
+                    e.preventDefault();
+                    const f = a.closest('form');
+                    if (f) onSettingsSubmit(f.dataset.form);
+                }
+            }
+            return;
+        }
 
         // Fenêtre profil Store : champ ↔ bouton
         if (!STORE_EDITOR.classList.contains('hidden')) {
             const a = document.activeElement;
             if (e.key === 'Escape') { e.preventDefault(); closeStoreEditor(); }
-            else if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && a === STORE_INPUT) { e.preventDefault(); STORE_SAVE.focus(); }
+            else if ((e.key === 'ArrowRight' || e.key === 'ArrowDown') && a === STORE_INPUT && !TvNav.inputKeepsKey(e)) { e.preventDefault(); STORE_SAVE.focus(); }
             else if ((e.key === 'ArrowLeft' || e.key === 'ArrowUp') && a === STORE_SAVE) { e.preventDefault(); STORE_INPUT.focus(); }
             else if (e.key === 'Enter' && a === STORE_SAVE) { e.preventDefault(); saveStore(); }
             else if (a !== STORE_INPUT && a !== STORE_SAVE) { STORE_INPUT.focus(); }
@@ -468,12 +918,15 @@ function setupFocusManagement() {
             else if (e.key === 'Enter') {
                 e.preventDefault();
                 const a = document.activeElement;
-                if (a && a.classList.contains('cell')) toggleCell(Number(a.dataset.index));
+                if (a && a.classList.contains('cell') && !e.repeat) toggleCell(Number(a.dataset.index));
             } else if (e.key === 'Escape') { e.preventDefault(); closePicker(); }
             return;
         }
 
         const focused = document.activeElement;
+
+        // Icône de rangée (focus, appui long = déplacement)
+        if (focused && focused.classList.contains('row-icon')) { onRowIconKey(e, focused); return; }
 
         // Saisie de recherche
         if (focused === SEARCH_INPUT) {
@@ -487,14 +940,12 @@ function setupFocusManagement() {
             return;
         }
 
-        // En-tête : recherche ↔ +
-        if (focused === SEARCH_BOX || focused === BTN_ADD) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                if (focused === SEARCH_BOX) startEditing(); else openPicker();
-            } else if (e.key === 'ArrowRight' && focused === SEARCH_BOX) { e.preventDefault(); BTN_ADD.focus(); }
-            else if (e.key === 'ArrowLeft' && focused === BTN_ADD) { e.preventDefault(); SEARCH_BOX.focus(); }
-            else if (e.key === 'ArrowDown') { e.preventDefault(); const c = firstCard(); if (c) focusCard(c); }
+        // En-tête
+        if (HEADER_ITEMS.includes(focused)) {
+            if (e.key === 'Enter') { e.preventDefault(); onHeaderEnter(focused); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); headerMove(focused, 'right'); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); headerMove(focused, 'left'); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); const c = firstCard(); c ? focusCard(c) : (ROWS.querySelector('.row-icon') || BTN_ADD).focus(); }
             else if (e.key.startsWith('Arrow')) e.preventDefault();
             return;
         }
@@ -515,8 +966,11 @@ function setupFocusManagement() {
         const idx = cards.indexOf(focused);
 
         if (e.key === 'ArrowRight') { e.preventDefault(); focusCard(cards[idx + 1]); }
-        else if (e.key === 'ArrowLeft') { e.preventDefault(); focusCard(cards[idx - 1]); }
-        else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (idx > 0) focusCard(cards[idx - 1]);
+            else focused.closest('.row').querySelector('.row-icon').focus({ preventScroll: true });
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
             const rows = Array.from(ROWS.querySelectorAll('.row'));
             const r = rows.indexOf(focused.closest('.row'));
@@ -541,6 +995,13 @@ function setupFocusManagement() {
 // Touche Retour (appelée par Android). Renvoie true si géré ici.
 window.onTvBack = function () {
     if (window.TvDetails && window.TvDetails.back()) return true;
+    if (endMove()) return true;
+    if (!SETTINGS.classList.contains('hidden')) {
+        const a = document.activeElement;
+        if (a && a.tagName === 'INPUT') { a.blur(); const b = SETTINGS_PANEL.querySelector('.btn'); if (b) b.focus(); return true; }
+        closeSettings();
+        return true;
+    }
     if (!STORE_EDITOR.classList.contains('hidden')) { closeStoreEditor(); return true; }
     if (!PICKER.classList.contains('hidden')) { closePicker(); return true; }
     const focused = document.activeElement;
@@ -550,7 +1011,7 @@ window.onTvBack = function () {
         c ? focusCard(c) : focusSearchBox();
         return true;
     }
-    if (focused === SEARCH_BOX || focused === BTN_ADD) {
+    if (HEADER_ITEMS.includes(focused)) {
         const c = firstCard();
         if (c) { focusCard(c); return true; }
     }
@@ -564,7 +1025,6 @@ window.onCategories = function (json) {
         const list = typeof json === 'string' ? JSON.parse(json) : json;
         categories = (list || []).map(c => ({ id: Number(c.id), name: c.name, icon: c.icon }));
     } catch (e) { categories = []; }
-    // met à jour les icônes des rangées et le damier s'il est ouvert
     ROWS.querySelectorAll('.row').forEach(row => {
         const ic = iconFor(row.dataset.key);
         const holder = row.querySelector('.row-icon');
@@ -573,6 +1033,7 @@ window.onCategories = function (json) {
         svg.className = 'icon-svg ' + ic.cls;
         svg.innerHTML = ic.html;
     });
+    updateScopeBadge();
     if (!PICKER.classList.contains('hidden') && STORE_EDITOR.classList.contains('hidden')) {
         const a = document.activeElement;
         renderPicker(a && a.dataset.index ? Number(a.dataset.index) : 0);
@@ -582,6 +1043,7 @@ window.onCategories = function (json) {
 window.loadTvAppsJson = function (json) {
     try {
         const o = typeof json === 'string' ? JSON.parse(json) : json;
+        if (o.key.indexOf('author:') === 0) { if (window.TvAuthor) window.TvAuthor.onApps(o.key, o.apps || []); return; }
         rowData[o.key] = o.apps || [];
         rowLoading[o.key] = false;
         fillRow(o.key);
@@ -592,6 +1054,7 @@ window.loadTvAppsJson = function (json) {
 };
 
 window.onCategoryError = function (key) {
+    if (key.indexOf('author:') === 0) { if (window.TvAuthor) window.TvAuthor.onError(key); return; }
     rowLoading[key] = false;
     if (rowData[key] === undefined) rowData[key] = null;
     fillRow(key);
@@ -600,15 +1063,25 @@ window.onCategoryError = function (key) {
 window.onSearchResults = function (json) {
     try {
         const apps = typeof json === 'string' ? JSON.parse(json) : json;
-        rowData.search = apps || [];
+        const first = searchRaw === undefined;
+        searchRaw = apps || [];
+        applySearchFilter();
+        fillRow('search');
+        const row = rowEl('search');
+        const card = row && row.querySelector('.app-card');
+        if (first && card && !overlayOpen()) focusCard(card);
+        updateStatus();
     } catch (e) {
+        searchRaw = null;
         rowData.search = null;
+        fillRow('search');
     }
+};
+
+window.onSearchError = function () {
+    searchRaw = null;
+    rowData.search = null;
     fillRow('search');
-    const row = rowEl('search');
-    const first = row && row.querySelector('.app-card');
-    if (first && !overlayOpen()) focusCard(first);
-    updateStatus();
 };
 
 window.onDownloadStarted = function (json) {
@@ -617,10 +1090,11 @@ window.onDownloadStarted = function (json) {
     STATUS.textContent = `Téléchargement lancé : ${name} — installation automatique à la fin`;
 };
 
-// Les cartes sont réutilisées dans la fiche (apps similaires)
+// Les cartes sont réutilisées dans la fiche et le store d'un auteur
 window.TvCards = { create: createAppCard };
 
 function start() {
+    applyCardScale();
     setupFocusManagement();
     buildRows();
     call('loadCategories');
