@@ -72,7 +72,8 @@ html, body {
 /* Content */
 .content {
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
 }
@@ -187,3 +188,7 @@ html, body {
 }
 
 .hidden { display: none !important; }
+
+.content::-webkit-scrollbar { width: 0; }
+.section { margin-bottom: 8px; }
+.section-count { font-size: 16px; color: #64748b; font-weight: 400; margin-left: 8px; }

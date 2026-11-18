@@ -76,33 +76,47 @@ class TvWebActivity : AppCompatActivity() {
     }
 
     private fun loadTvApps() {
+        // Catégories Appteka : 37 = TV, 27 = Entertainment
+        loadCategory(key = "tv", categoryId = CATEGORY_TV)
+        loadCategory(key = "entertainment", categoryId = CATEGORY_ENTERTAINMENT)
+    }
+
+    private fun loadCategory(
+        key: String,
+        categoryId: Int,
+        offsetAppId: String? = null,
+        accumulated: List<AppEntity> = emptyList(),
+        page: Int = 0
+    ) {
         val api = createStoreApi()
         val locale = Locale.getDefault().language.ifBlank { "en" }
-        val tags = "tv,android tv,live tv"
 
-        val disposable = api.searchApps(
-            query = null,
-            tags = tags,
-            offset = 0,
-            locale = locale
+        val disposable = api.getTopList(
+            appId = offsetAppId,
+            locale = locale,
+            categoryId = categoryId
         )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({ response ->
-                val apps = response.result.files
-                injectAppsIntoWebView(apps)
+                val files = response.result.files
+                val all = accumulated + files
+                // Affiche dès la 1re page, puis complète avec les suivantes
+                injectAppsIntoWebView(key, all)
+                if (files.isNotEmpty() && page + 1 < MAX_PAGES) {
+                    loadCategory(key, categoryId, files.last().appId, all, page + 1)
+                }
             }, { error ->
-                Log.e(TAG, "Failed to load TV apps", error)
-                webView.evaluateJavascript(
-                    "document.getElementById('status').textContent = 'Erreur réseau – données de démo';",
-                    null
-                )
+                Log.e(TAG, "Failed to load category $categoryId", error)
+                if (accumulated.isEmpty()) {
+                    webView.evaluateJavascript("window.onCategoryError('$key');", null)
+                }
             })
 
         disposables.add(disposable)
     }
 
-    private fun injectAppsIntoWebView(apps: List<AppEntity>) {
+    private fun injectAppsIntoWebView(key: String, apps: List<AppEntity>) {
         val simplified = apps.map { app ->
             mapOf(
                 "id" to app.appId,
@@ -120,7 +134,7 @@ class TvWebActivity : AppCompatActivity() {
             .replace("'", "\\'")
             .replace("\n", "")
 
-        webView.evaluateJavascript("window.loadTvApps('$safeJson');", null)
+        webView.evaluateJavascript("window.loadTvApps('$key', '$safeJson');", null)
     }
 
     private fun startDownloadForApp(appId: String) {
@@ -252,6 +266,9 @@ class TvWebActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "TvWebActivity"
+        private const val CATEGORY_TV = 37
+        private const val CATEGORY_ENTERTAINMENT = 27
+        private const val MAX_PAGES = 5
 
         fun createIntent(context: Context): Intent {
             return Intent(context, TvWebActivity::class.java)
