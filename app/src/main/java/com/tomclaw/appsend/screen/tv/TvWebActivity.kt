@@ -133,7 +133,7 @@ class TvWebActivity : AppCompatActivity() {
         pendingConfig = savedInstanceState?.getString("pendingTvConfig")
 
         webView = WebView(this)
-        webView.setBackgroundColor(0xff07070a.toInt())
+        webView.setBackgroundColor(0xffe0e5ec.toInt())
         setContentView(webView)
         webView.requestFocus()
 

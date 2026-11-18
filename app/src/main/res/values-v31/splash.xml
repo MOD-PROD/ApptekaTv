@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ : l'écran système de démarrage passe au fond sombre avec l'icône,
-         puis la bannière s'affiche (windowBackground) -->
+    <!-- Android 12+ : écran système obligatoire réduit à un fond uni, sans icône ni pilule -->
     <style name="AppTheme.Splash">
-        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowBackground">@color/splash_background</item>
         <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
     </style>
     <style name="AppTheme.TvStartup" parent="AppTheme">
         <item name="android:windowBackground">@color/splash_background</item>

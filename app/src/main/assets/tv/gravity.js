@@ -43,7 +43,7 @@ window.playGravitySplash = function () {
             { transform: pose(drift, floor, turn), offset: 0.62, easing: 'ease-out' },
             { transform: pose(drift * 1.1, floor - bounce, turn * 0.8), offset: 0.8, easing: 'ease-in' },
             { transform: pose(drift * 1.2, floor, turn * 1.1) },
-        ], delay: i % 7 * 28 };
+        ], delay: i % 7 * 60 };
     });
 
     let timer;
@@ -62,13 +62,13 @@ window.playGravitySplash = function () {
     document.body.appendChild(layer);
     screen.classList.add('gravity-running');
     window.addEventListener('keydown', skip, true);
-    timer = setTimeout(finish, 1550);
+    timer = setTimeout(finish, 3000);   // intro de 3 s au total
     for (const { piece, frames, delay } of animations) {
-        piece.animate(frames, { duration: 1020, delay, fill: 'both' });
+        piece.animate(frames, { duration: 2300, delay, fill: 'both' });
     }
     setTimeout(() => {
         if (!layer.isConnected) return;
         screen.classList.remove('gravity-running');
-        layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 230, fill: 'forwards' });
-    }, 1300);
+        layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' });
+    }, 2700);
 };
