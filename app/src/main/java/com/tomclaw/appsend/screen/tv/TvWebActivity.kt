@@ -2,6 +2,7 @@ package com.tomclaw.appsend.screen.tv
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -109,10 +110,31 @@ class TvWebActivity : AppCompatActivity() {
             if (granted) action?.invoke() else toast("Autorisation de stockage refusée")
         }
 
+    private var pendingConfig: String? = null
+    private val configExportLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            val config = pendingConfig
+            pendingConfig = null
+            if (uri != null && config != null) {
+                val saved = runCatching {
+                    checkNotNull(contentResolver.openOutputStream(uri)).use { output ->
+                        output.write(config.toByteArray(Charsets.UTF_8))
+                    }
+                }.isSuccess
+                toast(if (saved) "Configuration enregistrée" else "Impossible d’enregistrer la configuration")
+            }
+        }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("pendingTvConfig", pendingConfig)
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         appComponent.inject(activity = this)
         super.onCreate(savedInstanceState)
+        pendingConfig = savedInstanceState?.getString("pendingTvConfig")
 
         webView = WebView(this)
         // Le splash (capsule animée) reste visible jusqu'au 1er chargement des apps
@@ -705,6 +727,19 @@ class TvWebActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setPref(key: String, value: String) {
             prefs.edit().putString("js_$key", value).apply()
+        }
+
+        @JavascriptInterface
+        fun exportConfig(json: String): Unit = runOnUiThread {
+            if (pendingConfig == null && json.length <= 32_768) {
+                pendingConfig = json
+                try {
+                    configExportLauncher.launch("appteka-tv-config.json")
+                } catch (_: ActivityNotFoundException) {
+                    pendingConfig = null
+                    toast("Sélecteur de fichiers indisponible sur cette TV")
+                }
+            }
         }
 
         @JavascriptInterface

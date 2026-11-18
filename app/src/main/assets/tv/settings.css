@@ -1,0 +1,14 @@
+.logo-capsule { display: none; }
+.green-skin .logo-capsule { display: block; }
+.green-skin .bg-glow { display: none; }
+
+.set-disclosure {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+}
+.set-disclosure[aria-expanded="true"] span { transform: rotate(180deg); }
+.set-section-body { padding-top: 12px; }
+.set-spacing { margin-top: 12px; }

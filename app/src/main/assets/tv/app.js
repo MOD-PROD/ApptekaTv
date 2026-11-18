@@ -68,7 +68,7 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, archs: null, margin: 20 },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'classic', archs: null, margin: 20 },
     loadJson('settings', {}) || {}
 );
 let favorites = loadJson('favorites', []);
@@ -606,10 +606,32 @@ let account = { state: 'loading' };   // loading | ok | error
 let auth = { step: 'email' };          // email | code | sending
 let settingsMsg = { text: '', err: false };
 
+let expandedSettings = null;
+
+function applySkin() {
+    const green = settings.skin === 'green';
+    document.documentElement.classList.toggle('green-skin', green);
+    document.querySelectorAll('link.skin-classic').forEach(link => { link.media = green ? 'not all' : 'all'; });
+    document.querySelectorAll('link.skin-green').forEach(link => { link.media = green ? 'all' : 'not all'; });
+}
+
+function settingsSection(key, label, content) {
+    const open = expandedSettings === key;
+    return `<div class="set-section">
+        <button class="btn focusable set-disclosure" type="button" data-k="section-${key}"
+                data-section="${key}" aria-expanded="${open}" aria-controls="set-${key}">
+            ${label}<span aria-hidden="true">⌄</span>
+        </button>
+        <div class="set-section-body" id="set-${key}" ${open ? '' : 'hidden'}>${content}</div>
+    </div>`;
+}
+
 function openSettings() {
+    expandedSettings = null;
+    SETTINGS_PANEL.scrollTop = 0;
     SETTINGS.classList.remove('hidden');
     settingsMsg = { text: '', err: false };
-    renderSettings('set-minus');
+    renderSettings();
     call('loadAccount');
 }
 
@@ -636,41 +658,49 @@ function renderSettings(focusKey) {
         <div class="set-hint">Retour pour fermer</div>
 
         <div class="set-section">
+            <div class="set-label">Compte Appteka</div>
+            ${accountHtml()}
+            ${settingsMsg.text ? `<div class="set-msg ${settingsMsg.err ? 'err' : ''}">${escapeHtml(settingsMsg.text)}</div>` : ''}
+        </div>
+        ${settingsSection('appearance', 'Apparence', `
+            <div class="set-row" role="group" aria-label="Skin">
+                ${[['classic', 'Noir et or'], ['green', 'Néumorphisme vert']].map(([id, label]) => `
+                    <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
+                            data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
+                        <span class="dot" aria-hidden="true"></span>${label}
+                    </button>`).join('')}
+            </div>`)}
+        ${settingsSection('display', 'Affichage', `
             <div class="set-label">Taille des cartes</div>
             <div class="set-row">
                 <button class="btn focusable" data-k="set-minus" data-act="minus">−</button>
                 <div class="set-value">${Math.round((settings.cardScale || 1) * 100)} %</div>
                 <button class="btn focusable" data-k="set-plus" data-act="plus">+</button>
             </div>
-        </div>
-
-        <div class="set-section">
-            <div class="set-label">Marges de l'écran</div>
-            <div class="set-row">
-                <button class="btn focusable" data-k="mar-minus" data-act="mar-minus">−</button>
-                <div class="set-value">${settings.margin == null ? 20 : settings.margin} px</div>
-                <button class="btn focusable" data-k="mar-plus" data-act="mar-plus">+</button>
-            </div>
-            <div class="set-sub">Baisse jusqu'à 0 si l'image paraît trop étroite ; monte si les bords sont coupés par ta TV.</div>
-        </div>
-
-        <div class="set-section">
-            <div class="set-label">Architectures affichées</div>
+            <div class="set-spacing">
+                <div class="set-label">Marges de l'écran</div>
+                <div class="set-row">
+                    <button class="btn focusable" data-k="mar-minus" data-act="mar-minus">−</button>
+                    <div class="set-value">${settings.margin == null ? 20 : settings.margin} px</div>
+                    <button class="btn focusable" data-k="mar-plus" data-act="mar-plus">+</button>
+                </div>
+                <div class="set-sub">Baisse jusqu'à 0 si l'image paraît trop étroite ; monte si les bords sont coupés par ta TV.</div>
+            </div>`)}
+        ${settingsSection('compatibility', 'Compatibilité APK', `
             <div class="set-row">${chips}
                 <button class="chip-toggle focusable" data-k="abi-reset" data-act="abi-reset">↺ Cette TV</button>
             </div>
             <div class="set-sub">Les apps sans architecture compatible sont masquées dans les rangées et dans les versions
                 d'une fiche. Cette TV : ${escapeHtml(deviceAbis.join(', '))}.</div>
-        </div>
-
+        `)}
         <div class="set-section">
-            <div class="set-label">Compte Appteka</div>
-            ${accountHtml()}
-            ${settingsMsg.text ? `<div class="set-msg ${settingsMsg.err ? 'err' : ''}">${escapeHtml(settingsMsg.text)}</div>` : ''}
+            <button class="btn focusable" type="button" data-k="export-config" data-act="export-config">
+                Télécharger la configuration
+            </button>
         </div>`;
 
     SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { if (values[i.dataset.k] != null) i.value = values[i.dataset.k]; });
-    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
+    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
     SETTINGS_PANEL.querySelectorAll('form').forEach(f => f.addEventListener('submit', (e) => { e.preventDefault(); onSettingsSubmit(f.dataset.form); }));
 
     const target = (keep && SETTINGS_PANEL.querySelector(`[data-k="${keep}"]`)) || SETTINGS_PANEL.querySelector('.focusable');
@@ -729,6 +759,19 @@ function loginHtml() {
 }
 
 function onSettingsAction(b) {
+    const { section, skin } = b.dataset;
+    if (section) {
+        expandedSettings = expandedSettings === section ? null : section;
+        renderSettings();
+        return;
+    }
+    if (skin) {
+        settings.skin = skin;
+        applySkin();
+        saveSettings();
+        renderSettings();
+        return;
+    }
     const act = b.dataset.act;
     if (b.dataset.abi) {
         const list = TvArch.allowed().slice();
@@ -741,6 +784,24 @@ function onSettingsAction(b) {
         return;
     }
     switch (act) {
+        case 'export-config': {
+            const { skin, cardScale, margin, archs, sources, searchCats, profile } = settings;
+            const json = JSON.stringify({
+                version: 1,
+                settings: { skin, cardScale, margin, archs, sources, searchCats, profile },
+            }, null, 2);
+            if (window.Android && typeof window.Android.exportConfig === 'function') {
+                call('exportConfig', json);
+            } else {
+                const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'appteka-tv-config.json';
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+            break;
+        }
         case 'minus':
         case 'plus':
             settings.cardScale = Math.round(Math.min(1.5, Math.max(0.7, (settings.cardScale || 1) + (act === 'plus' ? 0.1 : -0.1))) * 10) / 10;
@@ -1118,6 +1179,7 @@ window.onDownloadStarted = function (json) {
 window.TvCards = { create: createAppCard };
 
 function start() {
+    applySkin();
     applyCardScale();
     setupFocusManagement();
     buildRows();
