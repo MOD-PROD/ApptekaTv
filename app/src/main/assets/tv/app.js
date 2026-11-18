@@ -2,7 +2,16 @@
 // Rangées : "tv" (catégorie 37) et "entertainment" (catégorie 27)
 
 const STATUS = document.getElementById('status');
-const ROW_KEYS = ['tv', 'entertainment'];
+const SEARCH_BOX = document.getElementById('search-box');
+const SEARCH_INPUT = document.getElementById('search-input');
+
+// Rangées visibles, de haut en bas (la rangée "search" n'apparaît qu'après une recherche)
+function rowKeys() {
+    const keys = [];
+    if (!document.getElementById('section-search').hidden) keys.push('search');
+    keys.push('tv', 'entertainment');
+    return keys;
+}
 
 function rowEl(key) { return document.getElementById('row-' + key); }
 
@@ -103,7 +112,7 @@ function renderRow(key, apps) {
         if (again) again.focus({ preventScroll: true });
     } else if (!document.activeElement || !document.activeElement.classList.contains('app-card')) {
         // Premier chargement : focus sur la 1re carte de la 1re rangée remplie
-        for (const k of ROW_KEYS) {
+        for (const k of rowKeys()) {
             const first = rowEl(k) && rowEl(k).querySelector('.app-card');
             if (first) { focusCard(first); break; }
         }
@@ -112,24 +121,102 @@ function renderRow(key, apps) {
 }
 
 function updateStatus() {
-    const total = ROW_KEYS.reduce((n, k) => n + (rowEl(k) ? rowEl(k).querySelectorAll('.app-card').length : 0), 0);
+    const total = rowKeys().reduce((n, k) => n + (rowEl(k) ? rowEl(k).querySelectorAll('.app-card').length : 0), 0);
     STATUS.textContent = `${total} applications · ◀ ▶ ▲ ▼ naviguer · OK = détails · D = télécharger`;
 }
 
+function firstCardOfTopRow() {
+    for (const k of rowKeys()) {
+        const c = rowEl(k) && rowEl(k).querySelector('.app-card');
+        if (c) return c;
+    }
+    return null;
+}
+
+function focusSearchBox() {
+    SEARCH_BOX.classList.remove('editing');
+    SEARCH_INPUT.blur();
+    SEARCH_BOX.focus();
+    document.querySelector('.content').scrollTop = 0;
+}
+
+function startEditing() {
+    SEARCH_BOX.classList.add('editing');
+    SEARCH_INPUT.focus();
+    // place le curseur à la fin
+    const v = SEARCH_INPUT.value; SEARCH_INPUT.value = ''; SEARCH_INPUT.value = v;
+}
+
+function submitSearch() {
+    const q = SEARCH_INPUT.value.trim();
+    SEARCH_INPUT.blur();
+    SEARCH_BOX.classList.remove('editing');
+    if (!q) { closeSearch(); focusSearchBox(); return; }
+    const section = document.getElementById('section-search');
+    section.hidden = false;
+    rowEl('search').innerHTML = '<div class="loading">Recherche…</div>';
+    document.getElementById('count-search').textContent = '';
+    STATUS.textContent = `Recherche : ${q}…`;
+    if (window.Android && typeof window.Android.search === 'function') {
+        window.Android.search(q);
+    } else {
+        rowEl('search').innerHTML = '<div class="loading">Recherche indisponible</div>';
+    }
+    SEARCH_BOX.focus();
+}
+
+function closeSearch() {
+    const section = document.getElementById('section-search');
+    if (section.hidden) return false;
+    section.hidden = true;
+    rowEl('search').innerHTML = '';
+    SEARCH_INPUT.value = '';
+    updateStatus();
+    return true;
+}
+
 function setupFocusManagement() {
+    SEARCH_BOX.addEventListener('submit', (e) => { e.preventDefault(); submitSearch(); });
+
     document.addEventListener('keydown', (e) => {
         const focused = document.activeElement;
-        if (!focused || !focused.classList.contains('app-card')) {
-            // Rien de sélectionné : n'importe quelle flèche reprend le focus
-            if (e.key.startsWith('Arrow')) {
-                const first = document.querySelector('.app-card');
-                if (first) { e.preventDefault(); focusCard(first); }
+
+        // 1) Saisie en cours dans le champ : on laisse le clavier faire,
+        //    sauf Entrée (valider), ▼ (sortir vers les apps) et Échap.
+        if (focused === SEARCH_INPUT) {
+            if (e.key === 'Enter') { e.preventDefault(); submitSearch(); }
+            else if (e.key === 'Escape') { e.preventDefault(); focusSearchBox(); }
+            else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                SEARCH_INPUT.blur(); SEARCH_BOX.classList.remove('editing');
+                focusCard(firstCardOfTopRow());
             }
             return;
         }
+
+        // 2) Barre de recherche sélectionnée (pas encore en saisie)
+        if (focused === SEARCH_BOX) {
+            if (e.key === 'Enter') { e.preventDefault(); startEditing(); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); focusCard(firstCardOfTopRow()); }
+            else if (e.key.startsWith('Arrow')) { e.preventDefault(); }
+            return;
+        }
+
+        // 3) Rien de sélectionné : une flèche reprend le focus
+        if (!focused || !focused.classList.contains('app-card')) {
+            if (e.key.startsWith('Arrow')) {
+                e.preventDefault();
+                const first = firstCardOfTopRow();
+                first ? focusCard(first) : focusSearchBox();
+            }
+            return;
+        }
+
+        // 4) Navigation entre les cartes
         const row = focused.parentElement;
         const cards = Array.from(row.querySelectorAll('.app-card'));
         const idx = cards.indexOf(focused);
+        const keys = rowKeys();
 
         if (e.key === 'ArrowRight') {
             e.preventDefault();
@@ -139,18 +226,51 @@ function setupFocusManagement() {
             focusCard(cards[idx - 1]);
         } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
-            const r = ROW_KEYS.indexOf(row.dataset.key);
+            const r = keys.indexOf(row.dataset.key);
             const step = e.key === 'ArrowDown' ? 1 : -1;
-            for (let i = r + step; i >= 0 && i < ROW_KEYS.length; i += step) {
-                const target = Array.from(rowEl(ROW_KEYS[i]).querySelectorAll('.app-card'));
+            let moved = false;
+            for (let i = r + step; i >= 0 && i < keys.length; i += step) {
+                const target = Array.from(rowEl(keys[i]).querySelectorAll('.app-card'));
                 if (target.length) {
                     focusCard(target[Math.min(idx, target.length - 1)]);
+                    moved = true;
                     break;
                 }
             }
+            if (!moved && step < 0) focusSearchBox();
         }
     });
 }
+
+// Touche Retour (appelée par Android). Renvoie true si géré ici.
+window.onTvBack = function() {
+    const focused = document.activeElement;
+    if (focused === SEARCH_INPUT) { focusSearchBox(); return true; }
+    if (closeSearch()) {
+        const first = firstCardOfTopRow();
+        first ? focusCard(first) : focusSearchBox();
+        return true;
+    }
+    if (focused === SEARCH_BOX) {
+        const first = firstCardOfTopRow();
+        if (first) { focusCard(first); return true; }
+    }
+    return false;
+};
+
+window.onSearchResults = function(json) {
+    try {
+        const apps = typeof json === 'string' ? JSON.parse(json) : json;
+        renderRow('search', apps);
+        if (!apps.length) {
+            rowEl('search').innerHTML = '<div class="loading">Aucun résultat</div>';
+        }
+        const first = rowEl('search').querySelector('.app-card');
+        if (first) focusCard(first);
+    } catch (e) {
+        rowEl('search').innerHTML = '<div class="loading">Erreur de recherche</div>';
+    }
+};
 
 // Appelé par Android : loadTvApps(key, json) ; ancien format loadTvApps(json) = rangée TV
 window.loadTvApps = function(keyOrJson, maybeJson) {

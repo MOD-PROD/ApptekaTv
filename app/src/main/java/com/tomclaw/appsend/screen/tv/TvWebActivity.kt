@@ -116,6 +116,46 @@ class TvWebActivity : AppCompatActivity() {
         disposables.add(disposable)
     }
 
+    private fun searchApps(query: String) {
+        val api = createStoreApi()
+        val locale = Locale.getDefault().language.ifBlank { "en" }
+        val disposable = api.searchApps(
+            query = query,
+            tags = null,
+            offset = 0,
+            locale = locale
+        )
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({ response ->
+                webView.evaluateJavascript(
+                    "window.onSearchResults('${toJsJson(response.result.files)}');", null
+                )
+            }, { error ->
+                Log.e(TAG, "Search failed", error)
+                webView.evaluateJavascript("window.onSearchResults('[]');", null)
+                Toast.makeText(this, "Erreur réseau", Toast.LENGTH_SHORT).show()
+            })
+        disposables.add(disposable)
+    }
+
+    private fun toJsJson(apps: List<AppEntity>): String {
+        val simplified = apps.map { app ->
+            mapOf(
+                "id" to app.appId,
+                "name" to app.title,
+                "icon" to (app.icon ?: ""),
+                "downloads" to formatDownloads(app.downloads),
+                "size" to formatSize(app.size),
+                "package" to app.packageName
+            )
+        }
+        return gson.toJson(simplified)
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "")
+    }
+
     private fun injectAppsIntoWebView(key: String, apps: List<AppEntity>) {
         val simplified = apps.map { app ->
             mapOf(
@@ -247,15 +287,24 @@ class TvWebActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        fun search(query: String) {
+            runOnUiThread { searchApps(query) }
+        }
+
+        @JavascriptInterface
         fun getVersion(): String = "1.0-tv"
     }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+        // La page gère d'abord Retour (sortir de la saisie, fermer les résultats)
+        webView.evaluateJavascript(
+            "(window.onTvBack && window.onTvBack()) ? 'yes' : 'no'"
+        ) { result ->
+            if (result?.contains("yes") != true) {
+                @Suppress("DEPRECATION")
+                super.onBackPressed()
+            }
         }
     }
 

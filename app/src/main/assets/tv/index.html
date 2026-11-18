@@ -13,14 +13,19 @@
             <div class="logo">
                 <span class="logo-text">Appteka</span><span class="logo-tv">TV</span>
             </div>
-            <div class="search-box" tabindex="0">
+            <form class="search-box" id="search-box" tabindex="0" autocomplete="off">
                 <span class="search-icon">🔍</span>
-                <span class="search-placeholder">Rechercher des apps TV...</span>
-            </div>
+                <input id="search-input" class="search-input" type="search" tabindex="-1"
+                       enterkeyhint="search" placeholder="Rechercher une application…">
+            </form>
         </header>
 
         <!-- Main content -->
         <main class="content">
+            <section class="section" id="section-search" hidden>
+                <h2 class="section-title">Résultats <span class="section-count" id="count-search"></span></h2>
+                <div class="apps-row" id="row-search" data-key="search"></div>
+            </section>
             <section class="section">
                 <h2 class="section-title">TV <span class="section-count" id="count-tv"></span></h2>
                 <div class="apps-row" id="row-tv" data-key="tv">

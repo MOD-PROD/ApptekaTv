@@ -192,3 +192,16 @@ html, body {
 .content::-webkit-scrollbar { width: 0; }
 .section { margin-bottom: 8px; }
 .section-count { font-size: 16px; color: #64748b; font-weight: 400; margin-left: 8px; }
+
+.search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #e2e8f0;
+    font-size: 18px;
+    font-family: inherit;
+}
+.search-input::placeholder { color: #94a3b8; }
+.search-input::-webkit-search-cancel-button { display: none; }
+.search-box.editing { border-color: #22c55e; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25); }
