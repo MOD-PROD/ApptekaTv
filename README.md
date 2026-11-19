@@ -54,6 +54,8 @@ Le téléphone garde **l'interface d'origine d'Appteka** (écrans natifs). Un s�
 | Mes applis | Applis du téléphone | **Applis installées sur la TV** : lancer, mettre à jour, désinstaller |
 | Compte | Compte du téléphone | Le même compte, partagé avec la TV |
 
+**Où se trouve le sélecteur :** une icône dans la barre du haut de l'écran Store, **juste après le titre « Store »**. Elle montre la cible active : **📱 smartphone** ou **📺 TV**. Un appui bascule de l'une à l'autre ; s'il n'y a encore aucune TV associée, l'appui propose d'en associer une (scan du QR code affiché par la TV).
+
 Autrement dit : en mode TV, on navigue dans l'Appteka habituelle **comme si on était sur la TV**, avec les écrans natifs d'origine. **Aucune interface HTML sur le téléphone**, dans aucun mode : le HTML est réservé à la TV. Pas non plus de télécommande générique.
 
 ### Sur la TV : une Appteka TV minimale, utilisable seule
