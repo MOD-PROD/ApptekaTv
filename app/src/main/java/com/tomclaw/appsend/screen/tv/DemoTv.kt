@@ -32,7 +32,7 @@ internal class DemoTv(context: Context) {
             appId = id, packageName = packageName, icon = null, title = name,
             verName = "1.0", verCode = 1, time = 0, size = 8_388_608,
             rating = 0f, downloads = 0, status = 0,
-            category = Category(category, mapOf("fr" to "Démo TV", "en" to "TV demo"), ""),
+            category = Category(category, mapOf("fr" to "Démo TV", "en" to "TV demo"), CATEGORY_ICON),
             exclusive = false, sourceUrl = null, abi = null,
         )
 
@@ -49,6 +49,9 @@ internal class DemoTv(context: Context) {
     }
 
     companion object {
+        private const val CATEGORY_ICON =
+            """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#888888" d="M2 4h20v14H2z M8 20h8v2H8z"/></svg>"""
+
         fun onPhone(context: Context): DemoTv? =
             if (BuildConfig.DEBUG && !context.isTvDevice()) DemoTv(context) else null
 
