@@ -31,7 +31,29 @@ Projet ModProd — branche de travail : `tv-html`.
 | Portable → TV | — | Envoi d'une appli du portable vers la TV par le Wi-Fi |
 | Identifiant | `com.tomclaw.appsend` | `app.modprod.apptekatv` (installable à côté de l'original) |
 
-Les écrans natifs d'origine (publication, discussions, avis, profils…) restent accessibles depuis l'interface HTML par des « connecteurs ». Ils seront refaits en HTML au fur et à mesure.
+Les écrans natifs d'origine (publication, discussions, avis, profils…) restent accessibles depuis l'interface HTML par des « connecteurs ».
+
+## Direction du projet
+
+Appteka TV évolue vers **un duo téléphone + TV** (décision du 19/11/2026, en cours de découpage en étapes) :
+
+- **Sur le téléphone : l'Appteka d'origine**, avec ses écrans natifs, et un sélecteur de cible **📱 Ce téléphone / 📺 TV**. En mode TV, l'Appteka du téléphone pilote celle de la télé :
+  - *Installer* télécharge et installe l'appli **sur la TV** ;
+  - *Mes applis* liste les applis **installées sur la TV** (lancer, mettre à jour, désinstaller) ;
+  - le catalogue ne montre que ce qui convient à la TV (catégories TV, processeur de la TV) ;
+  - le compte connecté sur le téléphone sert aussi à la TV.
+- **Sur la TV : une Appteka TV minimale, utilisable seule** à la télécommande : applis installées, recherche, téléchargements en cours, QR code d'association. L'interface HTML actuelle sera réduite à cet essentiel.
+- **Un seul APK** pour les deux appareils.
+
+| Étape | Contenu | État |
+|---|---|---|
+| 1 | Association par QR code et liaison chiffrée (remplace le code à 4 chiffres) | à faire |
+| 2 | Sélecteur de cible sur le téléphone, « Installer sur la TV » depuis les écrans natifs | à faire |
+| 3 | « Mes applis » de la TV : liste, lancement, désinstallation, mises à jour | à faire |
+| 4 | Compte partagé téléphone → TV | à faire |
+| 5 | Interface TV réduite à l'essentiel | à faire |
+
+Tant que ces étapes ne sont pas livrées, l'appli fonctionne comme décrit ci-dessous (interface HTML sur TV et sur téléphone).
 
 ## Fonctions
 
