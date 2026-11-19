@@ -171,9 +171,10 @@ class TvWebActivity : AppCompatActivity() {
     }
 
     private fun showPairingQr() {
-        val payload = tvLink?.pairingQr() ?: return toast("Association TV indisponible")
+        val server = tvLink ?: return toast("Association TV indisponible")
+        val pairing = server.pairingQr() ?: return toast("Association TV indisponible")
         val size = 560
-        val matrix = QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, size, size)
+        val matrix = QRCodeWriter().encode(pairing.payload, BarcodeFormat.QR_CODE, size, size)
         val pixels = IntArray(size * size) { index ->
             if (matrix[index % size, index / size]) 0xff000000.toInt() else 0xffffffff.toInt()
         }
@@ -187,7 +188,12 @@ class TvWebActivity : AppCompatActivity() {
             .setView(image)
             .setPositiveButton(android.R.string.ok, null)
             .show()
-        handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 5 * 60 * 1000L)
+        val expireDialog = Runnable { dialog.dismiss() }
+        dialog.setOnDismissListener {
+            handler.removeCallbacks(expireDialog)
+            server.closePairing(pairing.sessionId)
+        }
+        handler.postDelayed(expireDialog, 5 * 60 * 1000L)
     }
 
     private fun startTvLink() {

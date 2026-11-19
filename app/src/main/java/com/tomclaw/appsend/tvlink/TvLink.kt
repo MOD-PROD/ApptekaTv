@@ -107,6 +107,10 @@ object TvLink {
 
         private class Pending(val secret: String, val expires: Long)
 
+        data class PairingQr(val sessionId: UUID, val payload: String)
+
+        private var pairingSessionId: UUID? = null
+
         fun start() {
             if (socket != null) return
             val (tls, fingerprint) = TvTls.server()
@@ -161,13 +165,23 @@ object TvLink {
         }
 
         @Synchronized
-        fun pairingQr(): String? {
+        fun pairingQr(): PairingQr? {
             val address = localIpv4() ?: return null
             if (port == 0) return null
             val secret = randomHex()
+            val sessionId = UUID.randomUUID()
             pending = Pending(secret, SystemClock.elapsedRealtime() + PAIR_TTL_MS)
-            return JSONObject().put("v", 2).put("host", address).put("port", port)
+            pairingSessionId = sessionId
+            val payload = JSONObject().put("v", 2).put("host", address).put("port", port)
                 .put("tv", tvId).put("secret", secret).put("pin", pin).toString()
+            return PairingQr(sessionId, payload)
+        }
+
+        @Synchronized
+        fun closePairing(sessionId: UUID) {
+            if (pairingSessionId != sessionId) return
+            pending = null
+            pairingSessionId = null
         }
 
         private fun register() {
@@ -229,11 +243,13 @@ object TvLink {
                 val pair = pending ?: return error("expired")
                 if (SystemClock.elapsedRealtime() >= pair.expires) {
                     pending = null
+                    pairingSessionId = null
                     return error("expired")
                 }
                 val supplied = msg.optString("secret")
                 if (!TvFrames.matches(pair.secret.toByteArray(), supplied.toByteArray())) return error("bad_secret")
                 pending = null
+                pairingSessionId = null
                 val device = msg.optString("device").take(40).ifBlank { "?" }
                 val token = randomHex()
                 val hash = checkNotNull(TvFrames.tokenHash(token))
