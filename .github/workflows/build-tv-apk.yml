@@ -2,7 +2,7 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html ]
+    branches: [ tv-html, fix/smartphone-grid ]
   workflow_dispatch:
 
 jobs:
