@@ -8,50 +8,57 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
-import java.net.Socket
 import java.security.SecureRandom
-import java.util.concurrent.Executors
 import kotlin.concurrent.thread
+import android.os.SystemClock
+import java.util.UUID
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLServerSocket
+import javax.net.ssl.SSLSocket
 
-/**
- * Liaison Appteka (portable) <-> Appteka TV sur le Wi-Fi local.
- *
- * Protocole volontairement minimal : une connexion TCP = une requête JSON sur une ligne,
- * une réponse JSON sur une ligne. La TV s'annonce en DNS-SD (« _apptekatv._tcp »)
- * pour que le portable la trouve sans adresse IP.
- *
- * Messages (champ "type") :
- *  - hello                         -> {ok, name, paired}
- *  - pair_request {device}         -> la TV affiche un code à 4 chiffres
- *  - pair_confirm {device, code}   -> {ok, token}
- *  - open    {token, appId}        -> la TV ouvre la fiche
- *  - install {token, appId}        -> la TV ouvre la fiche et lance l'installation
- */
 object TvLink {
     const val SERVICE_TYPE = "_apptekatv._tcp."
     const val DEFAULT_PORT = 8336
     private const val TAG = "TvLink"
     private const val TIMEOUT_MS = 6000
 
-    /** Envoie une requête et renvoie la réponse (à appeler hors du thread principal). */
-    fun request(host: String, port: Int, message: JSONObject): JSONObject {
-        Socket().use { socket ->
-            socket.connect(InetSocketAddress(host, port), TIMEOUT_MS)
+    fun request(address: Pairing, message: JSONObject): JSONObject {
+        val factory = TvTls.client(address.pin).socketFactory
+        (factory.createSocket() as SSLSocket).use { socket ->
+            socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
+            socket.connect(InetSocketAddress(address.host, address.port), TIMEOUT_MS)
             socket.soTimeout = TIMEOUT_MS
-            val out = OutputStreamWriter(socket.getOutputStream(), Charsets.UTF_8)
-            out.write(message.toString())
-            out.write("\n")
-            out.flush()
-            val line = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.UTF_8)).readLine()
-                ?: throw IllegalStateException("no response")
-            return JSONObject(line)
+            socket.startHandshake()
+            TvFrames.write(socket.outputStream, message.put("v", 2).toString())
+            return JSONObject(TvFrames.read(socket.inputStream)).also { require(it.optInt("v") == 2) }
+        }
+    }
+
+    data class Pairing(val host: String, val port: Int, val tv: String, val secret: String, val pin: String) {
+        companion object {
+            fun parse(raw: String): Pairing {
+                require(raw.length in 1..1024)
+                val json = JSONObject(raw)
+                require(json.optInt("v") == 2)
+                val host = json.getString("host")
+                val octets = host.split('.').map { it.toIntOrNull() ?: -1 }
+                require(octets.size == 4 && octets.all { it in 0..255 })
+                require(octets[0] == 10 || octets[0] == 172 && octets[1] in 16..31 || octets[0] == 192 && octets[1] == 168)
+                val port = json.getInt("port")
+                require(port in 1..65535)
+                val tv = UUID.fromString(json.getString("tv")).toString()
+                val secret = json.getString("secret")
+                val pin = json.getString("pin")
+                require(secret.matches(Regex("[0-9a-f]{64}")) && pin.matches(Regex("[0-9a-f]{64}")))
+                return Pairing(host, port, tv, secret, pin)
+            }
         }
     }
 
@@ -76,15 +83,18 @@ object TvLink {
 
     /** Ce que la TV fait des demandes reçues (appelé sur le thread principal). */
     interface Host {
-        fun onPairCode(device: String, code: String)
         fun onPaired(device: String)
         fun onOpen(appId: String, install: Boolean, device: String)
     }
 
     class Server(private val context: Context, private val host: Host) {
-        private val prefs = context.getSharedPreferences("tv_link", Context.MODE_PRIVATE)
+        private val prefs = context.getSharedPreferences("tv_link_v2", Context.MODE_PRIVATE)
         private val main = Handler(Looper.getMainLooper())
-        private val pool = Executors.newCachedThreadPool()
+        private val pool = ThreadPoolExecutor(4, 4, 0, TimeUnit.SECONDS, ArrayBlockingQueue<Runnable>(8))
+        private val tvId = prefs.getString("tv_id", null) ?: UUID.randomUUID().toString().also {
+            prefs.edit().putString("tv_id", it).apply()
+        }
+        private lateinit var pin: String
         private val random = SecureRandom()
         private var socket: ServerSocket? = null
         private var nsd: NsdManager? = null
@@ -95,15 +105,18 @@ object TvLink {
         var port: Int = 0
             private set
 
-        private class Pending(val device: String, val code: String, val expires: Long, var attempts: Int = 0)
+        private class Pending(val secret: String, val expires: Long)
 
         fun start() {
             if (socket != null) return
+            val (tls, fingerprint) = TvTls.server()
+            pin = fingerprint
             val server = try {
-                ServerSocket(DEFAULT_PORT)
-            } catch (e: Exception) {
-                ServerSocket(0) // port déjà pris : n'importe quel port libre (annoncé en DNS-SD)
-            }
+                tls.serverSocketFactory.createServerSocket(DEFAULT_PORT)
+            } catch (_: java.net.BindException) {
+                tls.serverSocketFactory.createServerSocket(0)
+            } as SSLServerSocket
+            server.enabledProtocols = server.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
             socket = server
             port = server.localPort
             thread(name = "tv-link", isDaemon = true) {
@@ -113,7 +126,11 @@ object TvLink {
                     } catch (e: Exception) {
                         break
                     }
-                    pool.execute { handle(client) }
+                    try {
+                        pool.execute { handle(client) }
+                    } catch (_: RejectedExecutionException) {
+                        client.close()
+                    }
                 }
             }
             register()
@@ -130,13 +147,27 @@ object TvLink {
             } catch (_: Exception) {
             }
             socket = null
+            pool.shutdown()
         }
 
-        fun pairedDevices(): List<String> =
-            prefs.getStringSet(KEY_TOKENS, emptySet()).orEmpty().map { it.substringAfter(':') }.sorted()
+        fun pairedDevices(): List<Map<String, String>> =
+            tokens().map {
+                mapOf("id" to it.substringBefore(':'), "name" to it.substringAfter(':').substringAfter(':'))
+            }.sortedBy { it["name"] }
 
-        fun forgetAll() {
-            prefs.edit().remove(KEY_TOKENS).apply()
+        @Synchronized
+        fun forget(id: String) {
+            prefs.edit().putStringSet(KEY_TOKENS, tokens().filterNot { it.substringBefore(':') == id }.toSet()).apply()
+        }
+
+        @Synchronized
+        fun pairingQr(): String? {
+            val address = localIpv4() ?: return null
+            if (port == 0) return null
+            val secret = randomHex()
+            pending = Pending(secret, SystemClock.elapsedRealtime() + PAIR_TTL_MS)
+            return JSONObject().put("v", 2).put("host", address).put("port", port)
+                .put("tv", tvId).put("secret", secret).put("pin", pin).toString()
         }
 
         private fun register() {
@@ -163,160 +194,74 @@ object TvLink {
             }
         }
 
-        private fun handle(client: Socket) {
+        private fun handle(client: java.net.Socket) {
             client.use {
                 try {
                     it.soTimeout = TIMEOUT_MS
-                    val line = BufferedReader(InputStreamReader(it.getInputStream(), Charsets.UTF_8)).readLine()
-                        ?: return
-                    val response = respond(JSONObject(line))
-                    val out = OutputStreamWriter(it.getOutputStream(), Charsets.UTF_8)
-                    out.write(response.toString())
-                    out.write("\n")
-                    out.flush()
-                } catch (e: Exception) {
-                    Log.w(TAG, "bad request", e)
+                    val response = respond(JSONObject(TvFrames.read(it.getInputStream())))
+                    TvFrames.write(it.getOutputStream(), response.put("v", 2).toString())
+                } catch (_: Exception) {
+                    // Malformed or incomplete connections are closed without logging their contents.
                 }
             }
         }
 
-        private fun tokenDevice(token: String?): String? {
-            if (token.isNullOrBlank()) return null
-            return prefs.getStringSet(KEY_TOKENS, emptySet()).orEmpty()
-                .firstOrNull { it.substringBefore(':') == token }
-                ?.substringAfter(':')
+        private fun randomHex(): String = ByteArray(32).also(random::nextBytes)
+            .joinToString("") { "%02x".format(it) }
+
+        private fun tokens() = prefs.getStringSet(KEY_TOKENS, emptySet()).orEmpty()
+
+        private fun tokenDevice(token: String): String? {
+            val hash = TvFrames.tokenHash(token)?.toByteArray() ?: return null
+            return tokens().firstOrNull {
+                val storedHash = it.substringAfter(':').substringBefore(':')
+                TvFrames.matches(storedHash.toByteArray(), hash)
+            }?.substringAfter(':')?.substringAfter(':')
         }
 
         @Synchronized
         private fun respond(msg: JSONObject): JSONObject {
-            val device = msg.optString("device").take(40).ifBlank { "?" }
-            return when (msg.optString("type")) {
-                "hello" -> JSONObject()
-                    .put("ok", true)
-                    .put("name", deviceName())
-                    .put("paired", tokenDevice(msg.optString("token")) != null)
-
-                "pair_request" -> {
-                    val code = String.format("%04d", random.nextInt(10000))
-                    pending = Pending(device, code, System.currentTimeMillis() + PAIR_TTL_MS)
-                    main.post { host.onPairCode(device, code) }
-                    JSONObject().put("ok", true)
+            if (msg.optInt("v") != 2) return error("version")
+            val type = msg.optString("type")
+            if (type == "hello") return ok().put("name", deviceName()).put("tv", tvId)
+                .put("abis", org.json.JSONArray(Build.SUPPORTED_ABIS.toList()))
+            if (type == "pair") {
+                val pair = pending ?: return error("expired")
+                if (SystemClock.elapsedRealtime() >= pair.expires) {
+                    pending = null
+                    return error("expired")
                 }
-
-                "pair_confirm" -> {
-                    val p = pending
-                    when {
-                        p == null || System.currentTimeMillis() > p.expires ->
-                            JSONObject().put("ok", false).put("error", "expired")
-                        p.attempts >= MAX_ATTEMPTS ->
-                            JSONObject().put("ok", false).put("error", "too_many")
-                        msg.optString("code") != p.code -> {
-                            p.attempts++
-                            JSONObject().put("ok", false).put("error", "bad_code")
-                        }
-                        else -> {
-                            pending = null
-                            val token = ByteArray(16).also { random.nextBytes(it) }
-                                .joinToString("") { b -> "%02x".format(b) }
-                            val tokens = prefs.getStringSet(KEY_TOKENS, emptySet()).orEmpty()
-                                .filterNot { it.substringAfter(':') == device }.toMutableSet()
-                            tokens.add("$token:$device")
-                            prefs.edit().putStringSet(KEY_TOKENS, tokens).apply()
-                            main.post { host.onPaired(device) }
-                            JSONObject().put("ok", true).put("token", token)
-                        }
-                    }
-                }
-
+                val supplied = msg.optString("secret")
+                if (!TvFrames.matches(pair.secret.toByteArray(), supplied.toByteArray())) return error("bad_secret")
+                pending = null
+                val device = msg.optString("device").take(40).ifBlank { "?" }
+                val token = randomHex()
+                val hash = checkNotNull(TvFrames.tokenHash(token))
+                val entry = "${UUID.randomUUID()}:$hash:$device"
+                if (!prefs.edit().putStringSet(KEY_TOKENS, tokens() + entry).commit()) return error("storage")
+                main.post { host.onPaired(device) }
+                return ok().put("token", token).put("tv", tvId)
+            }
+            val from = tokenDevice(msg.optString("token")) ?: return error("unauthorized")
+            return when (type) {
+                "ping" -> ok()
                 "open", "install" -> {
-                    val from = tokenDevice(msg.optString("token"))
                     val appId = msg.optString("appId")
-                    when {
-                        from == null -> JSONObject().put("ok", false).put("error", "unauthorized")
-                        appId.isBlank() || appId.length > 64 -> JSONObject().put("ok", false).put("error", "bad_request")
-                        else -> {
-                            val install = msg.optString("type") == "install"
-                            main.post { host.onOpen(appId, install, from) }
-                            JSONObject().put("ok", true)
-                        }
-                    }
+                    if (!appId.matches(Regex("[a-zA-Z0-9_-]{1,64}"))) return error("bad_request")
+                    main.post { host.onOpen(appId, type == "install", from) }
+                    ok()
                 }
-
-                else -> JSONObject().put("ok", false).put("error", "unknown")
+                "status", "list_apps", "launch", "uninstall", "account_link" -> error("not_implemented")
+                else -> error("unknown")
             }
         }
+
+        private fun ok() = JSONObject().put("ok", true)
+        private fun error(reason: String) = JSONObject().put("ok", false).put("error", reason)
 
         companion object {
             private const val KEY_TOKENS = "tokens"
-            private const val PAIR_TTL_MS = 2 * 60 * 1000L
-            private const val MAX_ATTEMPTS = 5
+            private const val PAIR_TTL_MS = 5 * 60 * 1000L
         }
-    }
-
-    // ------------------------------------------------------------- portable
-
-    data class Target(val name: String, val host: String, val port: Int)
-
-    /** Cherche les Appteka TV du réseau pendant [durationMs], puis rend la liste. */
-    fun discover(context: Context, durationMs: Long, done: (List<Target>) -> Unit) {
-        val main = Handler(Looper.getMainLooper())
-        val manager = context.getSystemService(Context.NSD_SERVICE) as? NsdManager
-        if (manager == null) {
-            done(emptyList())
-            return
-        }
-        val found = LinkedHashMap<String, Target>()
-        val toResolve = ArrayDeque<NsdServiceInfo>()
-        var resolving = false
-
-        fun resolveNext() {
-            if (resolving) return
-            val next = toResolve.removeFirstOrNull() ?: return
-            resolving = true
-            @Suppress("DEPRECATION")
-            manager.resolveService(next, object : NsdManager.ResolveListener {
-                override fun onResolveFailed(info: NsdServiceInfo, code: Int) {
-                    main.post { resolving = false; resolveNext() }
-                }
-
-                override fun onServiceResolved(info: NsdServiceInfo) {
-                    @Suppress("DEPRECATION")
-                    val host = info.host?.hostAddress
-                    main.post {
-                        if (host != null) {
-                            found[info.serviceName] = Target(
-                                info.serviceName.removePrefix("Appteka TV · "), host, info.port
-                            )
-                        }
-                        resolving = false
-                        resolveNext()
-                    }
-                }
-            })
-        }
-
-        val listener = object : NsdManager.DiscoveryListener {
-            override fun onDiscoveryStarted(type: String) {}
-            override fun onDiscoveryStopped(type: String) {}
-            override fun onStartDiscoveryFailed(type: String, code: Int) {}
-            override fun onStopDiscoveryFailed(type: String, code: Int) {}
-            override fun onServiceLost(info: NsdServiceInfo) {}
-            override fun onServiceFound(info: NsdServiceInfo) {
-                main.post { toResolve.addLast(info); resolveNext() }
-            }
-        }
-        try {
-            manager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
-        } catch (e: Exception) {
-            done(emptyList())
-            return
-        }
-        main.postDelayed({
-            try {
-                manager.stopServiceDiscovery(listener)
-            } catch (_: Exception) {
-            }
-            done(found.values.toList())
-        }, durationMs)
     }
 }
