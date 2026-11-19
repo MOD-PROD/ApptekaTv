@@ -333,7 +333,7 @@ class TvWebActivity : AppCompatActivity() {
     private fun loadSource(key: String, type: String, param: String) {
         if (isLandscapePreview) {
             val apps = DemoTv.apps.filter { type != "category" || it.category.toString() == param }
-            js("loadTvAppsJson", mapOf("key" to key, "apps" to apps.map { it.card() }))
+            js("loadTvAppsJson", mapOf("key" to key, "apps" to apps.map { it.card(demoTv.isInstalled(it)) }))
             if (apps.isNotEmpty()) playStartupAnimation()
             return
         }
@@ -385,7 +385,7 @@ class TvWebActivity : AppCompatActivity() {
     /** Recherche sur plusieurs pages : la page filtre ensuite par catégories choisies. */
     private fun searchApps(query: String, acc: List<AppEntity> = emptyList(), page: Int = 0) {
         if (isLandscapePreview) {
-            js("onSearchResults", DemoTv.apps.filter { it.name.contains(query, ignoreCase = true) }.map { it.card() })
+            js("onSearchResults", DemoTv.apps.filter { it.name.contains(query, ignoreCase = true) }.map { it.card(demoTv.isInstalled(it)) })
             return
         }
         if (page == 0) searchSubscription?.dispose()

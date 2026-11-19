@@ -17,7 +17,12 @@ internal class DemoTv(context: Context) {
     }
 
     data class App(val id: String, val name: String, val category: Int, val initiallyInstalled: Boolean) {
-        fun card() = mapOf("id" to id, "name" to name, "categoryId" to category)
+        fun card(installed: Boolean) = mapOf(
+            "id" to id,
+            "name" to name,
+            "category" to category,
+            "downloads" to if (installed) "Installée" else "Application fictive",
+        )
     }
 
     companion object {
