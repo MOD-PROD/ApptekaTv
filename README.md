@@ -1,159 +1,88 @@
 <p align="center">
-  <img src="app/src/main/ic_launcher-web.png" alt="Appteka Logo" width="120" height="120">
-</p>
-
-<h1 align="center">Appteka</h1>
-
-<p align="center">
-  <strong>Alternative Android App Store</strong>
+  <img src="art/appteka-tv-banner.png" alt="Appteka TV" width="100%">
 </p>
 
 <p align="center">
-  <a href="https://appteka.store"><img src="https://img.shields.io/badge/dynamic/json?color=32A304&label=Appteka&query=%24.newer.ver_name&url=https%3A%2F%2Fappteka.store%2F%2Fapi%2F1%2Fupdate%3Fbuild%3D1" alt="Appteka"></a>
-  <a href="https://apt.izzysoft.de/packages/com.tomclaw.appsend"><img src="https://img.shields.io/endpoint?url=https://apt.izzysoft.de/fdroid/api/v1/shield/com.tomclaw.appsend&label=IzzyOnDroid" alt="IzzyOnDroid"></a>
+  <strong>Appteka for Android TV — driven from the Appteka on your phone</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-In%20development%20·%20finalizing-orange.svg" alt="Status: in development, finalizing">
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg" alt="License: GPL v3"></a>
   <img src="https://img.shields.io/badge/API-23%2B-brightgreen.svg" alt="API 23+">
-  <img src="https://img.shields.io/badge/Kotlin-2.3-purple.svg" alt="Kotlin">
+  <img src="https://img.shields.io/badge/Android%20TV-Leanback-orange.svg" alt="Android TV">
 </p>
 
 ---
 
-**Appteka** is a free, open-source Android app store where users can discover, download, and share applications. Upload your own apps, explore creations from developers worldwide, and engage with the community through real-time discussions.
+> **🚧 Development in progress — currently being finalized.**
+> Active work happens on the [`tv-html`](https://github.com/MOD-PROD/ApptekaTv/tree/tv-html) branch. This `master` branch does not contain the TV version yet; it will be updated once the project is released.
 
-## Screenshots
+**Appteka TV** is a modified version of [Appteka](https://github.com/solkin/appteka-android), the free and open-source Android app store, built by **ModProd**. It brings Appteka to the big screen and links it to your phone.
 
-<p align="center">
-  <img src="art/main.jpg" alt="Store" width="200">
-  <img src="art/app.jpg" alt="App Details" width="200">
-  <img src="art/profile.jpg" alt="Profile" width="200">
-  <img src="art/topics.jpg" alt="Discussions" width="200">
-</p>
+One APK, two behaviours:
 
-## Features
+- **On the TV** — a lightweight interface designed for the remote control (D-pad), usable on its own: installed apps, category rows, search, downloads, app details, settings.
+- **On the phone** — the original Appteka (native screens, no web view), with a target switcher **📱 Phone / 📺 TV**. In TV mode, the phone acts *as if it were the TV*: the catalog shows what suits the TV, **Install** installs the app **on the TV**, **My apps** lists the apps **installed on the TV** (launch, update, uninstall), and your Appteka account is shared with the TV.
 
-- **Browse & Download** — Explore hundreds of thousands of free Android apps
-- **Upload Apps** — Share your applications with the community
-- **APK Extractor** — Extract APKs from installed apps (including system apps)
-- **Real-time Chat** — Discuss apps and games with other users
-- **User Profiles** — Track uploads, downloads, and activity
-- **Ratings & Reviews** — Rate apps and read community feedback
-- **Favorites** — Save apps for later
-- **Dark Theme** — Full dark mode support
-- **No Root Required** — Works on any Android device
+The catalog, downloads and installation remain Appteka's own.
 
-## Download
+> This is not the official Appteka repository. For the original app, see [solkin/appteka-android](https://github.com/solkin/appteka-android).
 
-<a href="https://appteka.store"><img src="https://img.shields.io/badge/Appteka-Store-32A304?style=for-the-badge&logo=android" alt="Get it on Appteka"></a>
-<a href="https://apt.izzysoft.de/packages/com.tomclaw.appsend"><img src="https://shields.rbtlog.dev/simple/com.tomclaw.appsend?style=for-the-badge" alt="Get it on IzzyOnDroid"></a>
+## How it works
 
-Or download the latest APK from the [Releases](https://github.com/solkin/appteka-android/releases) page.
+1. Install Appteka TV on both your TV and your phone, on the same Wi-Fi network.
+2. On the phone, tap the **📱 / 📺 icon** next to the *Store* title.
+3. The first time, pair the phone with the TV: **scan the QR code** shown on the TV, or **type the code** displayed on the TV.
+4. From then on, the icon switches between the phone and the TV. In TV mode, every action you take in Appteka is carried out on the TV.
 
-## Tech Stack
+The connection between phone and TV is encrypted, each phone gets its own token, and paired phones can be revoked from the TV.
 
-| Category | Technologies |
-|----------|-------------|
-| **Language** | Kotlin |
-| **UI** | Material Design 3, AndroidX |
-| **Architecture** | MVP (Model-View-Presenter), Clean Architecture |
-| **Dependency Injection** | Dagger 2 |
-| **Reactive** | RxJava 3, RxKotlin, RxRelay |
-| **Networking** | Retrofit 3, OkHttp 5 |
-| **Image Loading** | Simple Image Loader |
-| **RecyclerView** | Konveyor |
-| **Build** | Gradle, ProGuard |
+## Roadmap
 
-## Architecture
+| Step | Content | Status |
+|---|---|---|
+| — | TV interface: remote-control navigation, category rows, app details, install/uninstall, search, favorites, account, 9 languages, themes | ✅ done |
+| ATV-01 | Pairing by QR code or on-screen code, encrypted link | 🔄 in review |
+| ATV-02 | Phone: original home screen, 📱/📺 target switcher, pairing screen | ⏳ to do |
+| ATV-03 | "Install on TV" from the original screens | ⏳ to do |
+| ATV-04 | The TV's apps on the phone: list, launch, update, uninstall | ⏳ to do |
+| ATV-05 | TV-friendly catalog in TV mode (TV categories, TV processor) | ⏳ to do |
+| ATV-06 | Shared account phone → TV | ⏳ to do |
+| ATV-07 | Streamlined TV interface | ⏳ to do |
+| ATV-08 | Documentation and first release | ⏳ to do |
 
-The project follows **Clean Architecture** principles with MVP pattern:
+Detailed progress (in French) is in the [`tv-html` README](https://github.com/MOD-PROD/ApptekaTv/blob/tv-html/README.md).
 
-- **Activity/Fragment** — Acts as a router, implements navigation interface
-- **Presenter** — Presentation layer, framework-agnostic for easy testing
-- **View** — Pure UI rendering, no business logic
-- **Interactor** — Business logic, repository pattern, data caching
-- **Converter** — Data mapping between layers
-- **ResourceProvider** — Android resources access for framework-agnostic layers
+## Differences from Appteka
+
+| | Appteka | Appteka TV |
+|---|---|---|
+| Android TV launcher | — | Yes (`LEANBACK_LAUNCHER`, TV banner) |
+| TV home | — | Remote-control interface |
+| Phone home | Native Material UI | The same, plus a 📱/📺 target switcher |
+| Phone → TV | — | Install, launch and uninstall apps on the TV over Wi-Fi |
+| Default content on TV | Whole catalog | **TV** and **Entertainment** categories (customizable) |
+| Package name | `com.tomclaw.appsend` | `app.modprod.apptekatv` (installs alongside the original) |
 
 ## Building
 
-### Requirements
+Builds run on GitHub Actions: the **Build TV APK** workflow runs on every push to `tv-html` and produces a debug APK and a signed release APK (*Actions → run → Artifacts*).
 
-- Android Studio Ladybug or newer
-- JDK 17
-- Android SDK with API 37
-
-### Build & Run
+Local build (JDK 17, Android SDK with API 37):
 
 ```bash
-# Clone the repository
-git clone https://github.com/solkin/appteka-android.git
-cd appteka-android
-
-# Build debug APK
+git clone -b tv-html https://github.com/MOD-PROD/ApptekaTv.git
+cd ApptekaTv
 ./gradlew assembleDebug
-
-# Build release APK (requires signing config)
-./gradlew assembleRelease
 ```
 
-The APK will be generated at `app/build/outputs/apk/`
+## Security
 
-## Localization
+Like Appteka, the catalog is community-driven. Uploaded apps are scanned by Appteka's antivirus, but always check the source, reviews and ratings before installing. Appteka terms: [appteka.store/legal](https://appteka.store/legal).
 
-Appteka is available in **9 languages**:
+## License and credits
 
-| Language | Code |
-|----------|------|
-| English | `en` (default) |
-| Russian | `ru` |
-| Arabic | `ar` |
-| Chinese | `zh` |
-| Farsi | `fa` |
-| Hindi | `hi` |
-| Kurdish | `ku` |
-| Portuguese (Brazil) | `pt-rBR` |
-| Vietnamese | `vi` |
-
-Want to help translate? Contributions are welcome!
-
-## Contributing
-
-Contributions are welcome! Feel free to:
-
-- Report bugs and request features via [Issues](https://github.com/solkin/appteka-android/issues)
-- Submit pull requests with improvements
-- Help with translations
-- Improve documentation
-
-## Security & Disclaimer
-
-All uploaded applications are automatically scanned by a built-in antivirus system powered by **three independent antivirus engines**.
-
-However, Appteka is a community-driven app exchange platform where users can freely upload applications. **The Appteka team is not responsible for user-generated content.** While security scanning and content moderation are in place, please take appropriate safety precautions — verify the source, check reviews and ratings before installing.
-
-- [Terms of Service](https://appteka.store/legal)
-- [DMCA Policy](https://appteka.store/dmca)
-- [Contacts & Donations](https://appteka.store/contacts)
-
-## License
-
-```
-Copyright (C) 2016-2026 Appteka
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-```
+Appteka TV is derived from **Appteka** © 2016-2026 the Appteka team, released under the **GNU GPL v3**. This repository is distributed under the same license; ModProd's changes (TV interface, TV launcher, phone ↔ TV link) are visible in the Git history.
 
 See [LICENSE.txt](LICENSE.txt) for the full license text.
-
----
-
-<p align="center">
-  Night-coded by Appteka team 🌙
-</p>
