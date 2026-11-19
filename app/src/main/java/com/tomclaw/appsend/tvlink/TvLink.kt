@@ -105,7 +105,7 @@ object TvLink {
         var port: Int = 0
             private set
 
-        data class PairingQr(val sessionId: UUID, val payload: String)
+        data class PairingQr(val sessionId: UUID, val payload: String, val code: String)
 
         fun start() {
             if (socket != null) return
@@ -165,10 +165,12 @@ object TvLink {
             val address = localIpv4() ?: return null
             if (port == 0) return null
             val secret = randomHex()
-            val sessionId = pairingWindow.open(secret)
+            val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            val code = buildString { repeat(8) { append(alphabet[random.nextInt(alphabet.length)]) } }
+            val sessionId = pairingWindow.open(secret, code)
             val payload = JSONObject().put("v", 2).put("host", address).put("port", port)
                 .put("tv", tvId).put("secret", secret).put("pin", pin).toString()
-            return PairingQr(sessionId, payload)
+            return PairingQr(sessionId, payload, code)
         }
 
         @Synchronized
@@ -204,8 +206,21 @@ object TvLink {
             client.use {
                 try {
                     it.soTimeout = TIMEOUT_MS
-                    val response = respond(JSONObject(TvFrames.read(it.getInputStream())))
-                    TvFrames.write(it.getOutputStream(), response.put("v", 2).toString())
+                    val input = it.getInputStream()
+                    val output = it.getOutputStream()
+                    val msg = JSONObject(TvFrames.read(input))
+                    val response = if (msg.optInt("v") == 2 && msg.optString("type") == "code_start") {
+                        val attempt = synchronized(this) { pairingWindow.beginCode() }
+                        if (attempt == null) error("code_unavailable") else {
+                            val first = com.google.gson.JsonParser.parseString(msg.getJSONObject("payload").toString()).asJsonObject
+                            val exchange = TvCodeExchange(input, output)
+                            exchange.tv(TvCodeAgreement(TvCodeAgreement.Side.TV, attempt.code, pin), first)
+                            synchronized(this) {
+                                if (pairingWindow.finishCode(attempt)) issueToken(msg) else error("expired")
+                            }
+                        }
+                    } else respond(msg)
+                    TvFrames.write(output, response.put("v", 2).toString())
                 } catch (_: Exception) {
                     // Malformed or incomplete connections are closed without logging their contents.
                 }
@@ -238,13 +253,7 @@ object TvLink {
                     TvPairingWindow.Result.LOCKED -> return error("too_many_attempts")
                     TvPairingWindow.Result.ACCEPTED -> Unit
                 }
-                val device = msg.optString("device").take(40).ifBlank { "?" }
-                val token = randomHex()
-                val hash = checkNotNull(TvFrames.tokenHash(token))
-                val entry = "${UUID.randomUUID()}:$hash:$device"
-                if (!prefs.edit().putStringSet(KEY_TOKENS, tokens() + entry).commit()) return error("storage")
-                main.post { host.onPaired(device) }
-                return ok().put("token", token).put("tv", tvId)
+                return issueToken(msg)
             }
             val from = tokenDevice(msg.optString("token")) ?: return error("unauthorized")
             return when (type) {
@@ -258,6 +267,16 @@ object TvLink {
                 "status", "list_apps", "launch", "uninstall", "account_link" -> error("not_implemented")
                 else -> error("unknown")
             }
+        }
+
+        private fun issueToken(msg: JSONObject): JSONObject {
+            val device = msg.optString("device").take(40).ifBlank { "?" }
+            val token = randomHex()
+            val hash = checkNotNull(TvFrames.tokenHash(token))
+            val entry = "${UUID.randomUUID()}:$hash:$device"
+            if (!prefs.edit().putStringSet(KEY_TOKENS, tokens() + entry).commit()) return error("storage")
+            main.post { host.onPaired(device) }
+            return ok().put("token", token).put("tv", tvId)
         }
 
         private fun ok() = JSONObject().put("ok", true)

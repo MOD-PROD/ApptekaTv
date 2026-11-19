@@ -8,6 +8,24 @@ class TvPairingWindowTest {
     private val window = TvPairingWindow(now = { time }, ttlMs = 300L, maxFailures = 2)
 
     @Test
+    fun capsCodeAttemptsAndRejectsCompletionAfterDismissal() {
+        val id = window.open("qr", "K7Q9T2WX")
+        val first = checkNotNull(window.beginCode())
+        checkNotNull(window.beginCode())
+        assertEquals(null, window.beginCode())
+        window.close(id)
+        assertEquals(false, window.finishCode(first))
+    }
+
+    @Test
+    fun qrAndCodeShareOneInvitation() {
+        window.open("qr", "K7Q9T2WX")
+        val attempt = checkNotNull(window.beginCode())
+        assertEquals(true, window.finishCode(attempt))
+        assertEquals(TvPairingWindow.Result.EXPIRED, window.verify("qr"))
+    }
+
+    @Test
     fun invitationIsConsumedOnSuccess() {
         window.open("secret")
         assertEquals(TvPairingWindow.Result.ACCEPTED, window.verify("secret"))
