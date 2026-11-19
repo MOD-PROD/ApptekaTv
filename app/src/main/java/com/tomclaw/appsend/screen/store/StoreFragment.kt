@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -46,6 +47,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     lateinit var analytics: Analytics
 
     private var savedTvTarget = false
+    private var targetButton: ImageButton? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         savedTvTarget = savedInstanceState?.getBoolean("debug_demo_tv_target") == true
@@ -86,24 +88,20 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val context = requireContext()
         val demo = DemoTv(context)
         val catalog = root.findViewById<View>(R.id.swipe_refresh)
-        root.removeView(catalog)
-
-        val column = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(column, FrameLayout.LayoutParams(-1, -1))
-        val target = Button(context)
-        column.addView(target)
-        val body = FrameLayout(context)
-        column.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
-        body.addView(catalog, FrameLayout.LayoutParams(-1, -1))
+        val target = requireActivity().findViewById<ImageButton>(R.id.demo_tv_target)
+        targetButton = target
+        target.visibility = View.VISIBLE
         val scroll = ScrollView(context)
-        body.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         val panel = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(panel)
 
         var showTv = savedTvTarget
 
         fun render() {
-            target.text = if (showTv) "Cible : TV de démo  ·  Passer au téléphone" else "Cible : Téléphone  ·  Passer à la TV"
+            target.setImageResource(if (showTv) R.drawable.ic_target_tv else R.drawable.ic_target_mobile)
+            target.contentDescription = if (showTv) "TV de démo sélectionnée. Passer au téléphone"
+                else "Téléphone sélectionné. Passer à la TV de démo"
             catalog.visibility = if (showTv) View.GONE else View.VISIBLE
             scroll.visibility = if (showTv) View.VISIBLE else View.GONE
             panel.removeAllViews()
@@ -145,6 +143,13 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     override fun onStop() {
         presenter.detachRouter()
         super.onStop()
+    }
+
+    override fun onDestroyView() {
+        targetButton?.setOnClickListener(null)
+        targetButton?.visibility = View.GONE
+        targetButton = null
+        super.onDestroyView()
     }
 
     override fun onDestroy() {
