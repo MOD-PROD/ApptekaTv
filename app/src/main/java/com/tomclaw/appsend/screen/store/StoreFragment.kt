@@ -87,10 +87,28 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                 else "Téléphone sélectionné. Passer à la TV de démo"
         }
 
-        target.setOnClickListener {
-            demo.selected = !demo.selected
+        fun selectTv(selected: Boolean) {
+            demo.selected = selected
             render()
             presenter.invalidateApps()
+        }
+
+        target.setOnClickListener {
+            when {
+                demo.selected && demo.connected -> selectTv(false)
+                demo.connected -> selectTv(true)
+                else -> MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Connecter une TV")
+                    .setMessage("Connecte la TV de démo pour tester le pilotage sur ce téléphone.")
+                    .setPositiveButton("Connecter la TV de démo") { _, _ ->
+                        demo.connected = true
+                        selectTv(true)
+                    }
+                    .setNegativeButton(android.R.string.cancel) { _, _ ->
+                        if (demo.selected) selectTv(false)
+                    }
+                    .show()
+            }
         }
         render()
     }
