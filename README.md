@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="art/appteka-tv-banner.jpg" alt="Appteka TV" width="100%">
+  <img src="art/appteka-tv-banner.webp" alt="Appteka TV" width="100%">
 </p>
 
 <p align="center">
