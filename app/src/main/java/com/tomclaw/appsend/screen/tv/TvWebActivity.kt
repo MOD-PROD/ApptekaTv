@@ -156,6 +156,7 @@ class TvWebActivity : AppCompatActivity() {
     private val isLandscapePreview by lazy {
         BuildConfig.DEBUG && !isTv && intent.getBooleanExtra(EXTRA_LANDSCAPE_PREVIEW, false)
     }
+    private val demoTv by lazy { DemoTv(this) }
     private var tvLink: TvLink.Server? = null
 
     private fun shouldCloseLandscapePreview(configuration: Configuration): Boolean =
@@ -292,6 +293,13 @@ class TvWebActivity : AppCompatActivity() {
 
     /** Les 42 catégories Appteka (nom localisé + icône SVG), avec cache hors ligne. */
     private fun loadCategories() {
+        if (isLandscapePreview) {
+            js("onCategories", listOf(
+                mapOf("id" to 37, "name" to "TV de démo", "icon" to ""),
+                mapOf("id" to 27, "name" to "Divertissement", "icon" to ""),
+            ))
+            return
+        }
         disposables.add(
             api.getCategories()
                 .subscribeOn(Schedulers.io())
@@ -323,6 +331,12 @@ class TvWebActivity : AppCompatActivity() {
      * Plusieurs pages sont enchaînées ; la 1re s'affiche immédiatement.
      */
     private fun loadSource(key: String, type: String, param: String) {
+        if (isLandscapePreview) {
+            val apps = DemoTv.apps.filter { type != "category" || it.category.toString() == param }
+            js("loadTvAppsJson", mapOf("key" to key, "apps" to apps.map { it.card() }))
+            if (apps.isNotEmpty()) playStartupAnimation()
+            return
+        }
         val fetch: (String?) -> Single<List<AppEntity>> = when (type) {
             "category" -> { offset ->
                 api.getTopList(appId = offset, locale = locale, categoryId = param.toIntOrNull())
@@ -370,6 +384,10 @@ class TvWebActivity : AppCompatActivity() {
 
     /** Recherche sur plusieurs pages : la page filtre ensuite par catégories choisies. */
     private fun searchApps(query: String, acc: List<AppEntity> = emptyList(), page: Int = 0) {
+        if (isLandscapePreview) {
+            js("onSearchResults", DemoTv.apps.filter { it.name.contains(query, ignoreCase = true) }.map { it.card() })
+            return
+        }
         if (page == 0) searchSubscription?.dispose()
         searchSubscription = api.searchApps(
             query = query, tags = null, offset = acc.size.takeIf { it > 0 }, locale = locale
@@ -486,6 +504,12 @@ class TvWebActivity : AppCompatActivity() {
     // ----------------------------------------------------------- Fiche
 
     private fun loadDetails(appId: String, silent: Boolean = false) {
+        if (isLandscapePreview) {
+            val app = DemoTv.apps.find { it.id == appId } ?: return
+            val status = if (demoTv.isInstalled(app)) "installée" else "non installée"
+            toast("${app.name} · Application fictive · $status")
+            return
+        }
         disposables.add(
             api.getInfo(appId = appId, packageName = null, locale = locale)
                 .subscribeOn(Schedulers.io())
@@ -587,6 +611,12 @@ class TvWebActivity : AppCompatActivity() {
 
     /** Télécharge puis installe automatiquement une app (depuis une carte ou la fiche). */
     private fun installApp(appId: String) {
+        if (isLandscapePreview) {
+            val app = DemoTv.apps.find { it.id == appId } ?: return
+            demoTv.setInstalled(app, true)
+            toast("${app.name} · Installation simulée")
+            return
+        }
         val details = currentDetails?.takeIf { it.info.appId == appId }
         if (details != null) {
             withStoragePermission { startInstall(details) }
