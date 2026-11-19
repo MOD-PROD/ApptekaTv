@@ -2,6 +2,7 @@ package com.tomclaw.appsend.screen.home
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
 import com.tomclaw.appsend.appComponent
+import com.tomclaw.appsend.BuildConfig
 import com.tomclaw.appsend.R
 import com.tomclaw.appsend.screen.about.createAboutActivityIntent
 import com.tomclaw.appsend.screen.bdui.createBduiScreenActivityIntent
@@ -29,6 +31,7 @@ import com.tomclaw.appsend.screen.topics.createTopicsFragment
 import com.tomclaw.appsend.screen.upload.createUploadActivityIntent
 import com.tomclaw.appsend.screen.tv.TvWebActivity
 import com.tomclaw.appsend.util.Analytics
+import com.tomclaw.appsend.util.isTvDevice
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
@@ -38,6 +41,8 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     lateinit var presenter: HomePresenter
 
     private var redirectedToTv = false
+    private val hasLandscapePreview by lazy { BuildConfig.DEBUG && !isTvDevice() }
+    private var landscapePreviewOpened = false
 
     @Inject
     lateinit var analytics: Analytics
@@ -59,9 +64,9 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // L'interface HTML est l'accueil sur TV comme sur portable.
-        // L'accueil classique ne s'ouvre plus que par son connecteur (createClassicHomeIntent).
-        if (savedInstanceState == null && !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
+        landscapePreviewOpened = savedInstanceState?.getBoolean(KEY_LANDSCAPE_PREVIEW_OPENED) == true
+        if (!hasLandscapePreview && savedInstanceState == null &&
+            !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
             (intent.action == null || intent.action == Intent.ACTION_MAIN)
         ) {
             redirectedToTv = true
@@ -214,8 +219,16 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         super.onStop()
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onPostResume() {
+        super.onPostResume()
+        if (!hasLandscapePreview || intent.getBooleanExtra(EXTRA_CLASSIC, false)) return
+
+        if (resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            landscapePreviewOpened = false
+        } else if (!landscapePreviewOpened) {
+            landscapePreviewOpened = true
+            startActivity(TvWebActivity.createLandscapePreviewIntent(this))
+        }
     }
 
     override fun onDestroy() {
@@ -226,6 +239,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (redirectedToTv) return
+        outState.putBoolean(KEY_LANDSCAPE_PREVIEW_OPENED, landscapePreviewOpened)
         outState.putBundle(KEY_PRESENTER_STATE, presenter.saveState())
     }
 
@@ -283,6 +297,7 @@ fun createClassicHomeIntent(
     context: Context,
 ): Intent = Intent(context, HomeActivity::class.java).putExtra(EXTRA_CLASSIC, true)
 
+private const val KEY_LANDSCAPE_PREVIEW_OPENED = "landscape_preview_opened"
 private const val EXTRA_CLASSIC = "classic_ui"
 
 private const val KEY_PRESENTER_STATE = "presenter_state"

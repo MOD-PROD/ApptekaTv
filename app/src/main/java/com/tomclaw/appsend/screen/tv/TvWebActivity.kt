@@ -6,6 +6,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -23,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.google.gson.Gson
+import com.tomclaw.appsend.BuildConfig
 import com.tomclaw.appsend.appComponent
 import com.tomclaw.appsend.tvlink.TvLink
 import com.tomclaw.appsend.tvlink.TvLinkSender
@@ -130,6 +132,10 @@ class TvWebActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         appComponent.inject(activity = this)
         super.onCreate(savedInstanceState)
+        if (shouldCloseLandscapePreview(resources.configuration)) {
+            finish()
+            return
+        }
         pendingConfig = savedInstanceState?.getString("pendingTvConfig")
 
         webView = WebView(this)
@@ -146,7 +152,18 @@ class TvWebActivity : AppCompatActivity() {
 
     /** TV (ou box) : interface 10 pieds ; sinon interface portable. */
     private val isTv by lazy { isTvDevice() }
+    private val isLandscapePreview by lazy {
+        BuildConfig.DEBUG && !isTv && intent.getBooleanExtra(EXTRA_LANDSCAPE_PREVIEW, false)
+    }
     private var tvLink: TvLink.Server? = null
+
+    private fun shouldCloseLandscapePreview(configuration: Configuration): Boolean =
+        isLandscapePreview && configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (shouldCloseLandscapePreview(newConfig)) finish()
+    }
 
     private fun startTvLink() {
         val server = TvLink.Server(this, object : TvLink.Host {
@@ -776,7 +793,7 @@ class TvWebActivity : AppCompatActivity() {
 
         /** true sur TV / box (interface 10 pieds), false sur portable. */
         @JavascriptInterface
-        fun isTv(): Boolean = this@TvWebActivity.isTv
+        fun isTv(): Boolean = this@TvWebActivity.isTv || isLandscapePreview
 
         /** Ouvre un écran de l'interface classique (fonctions pas encore en HTML). */
         @JavascriptInterface
@@ -902,6 +919,7 @@ class TvWebActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val EXTRA_LANDSCAPE_PREVIEW = "landscape_preview"
         private const val TAG = "TvWebActivity"
         private const val LONG_PRESS_MS = 600L
         private const val PREFS_NAME = "tv_web"
@@ -915,6 +933,9 @@ class TvWebActivity : AppCompatActivity() {
         private const val AI_POLL_TIMEOUT_MS = 3 * 60 * 1000L
         private const val INSTALL_RETRY_COUNT = 5
         private const val INSTALL_RETRY_DELAY_MS = 700L
+
+        fun createLandscapePreviewIntent(context: Context): Intent =
+            createIntent(context).putExtra(EXTRA_LANDSCAPE_PREVIEW, true)
 
         fun createIntent(context: Context): Intent {
             return Intent(context, TvWebActivity::class.java)
