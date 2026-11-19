@@ -99,17 +99,13 @@ object TvLink {
         private var socket: ServerSocket? = null
         private var nsd: NsdManager? = null
         private var registration: NsdManager.RegistrationListener? = null
-        private var pending: Pending? = null
+        private val pairingWindow = TvPairingWindow(SystemClock::elapsedRealtime)
 
         @Volatile
         var port: Int = 0
             private set
 
-        private class Pending(val secret: String, val expires: Long)
-
         data class PairingQr(val sessionId: UUID, val payload: String)
-
-        private var pairingSessionId: UUID? = null
 
         fun start() {
             if (socket != null) return
@@ -169,9 +165,7 @@ object TvLink {
             val address = localIpv4() ?: return null
             if (port == 0) return null
             val secret = randomHex()
-            val sessionId = UUID.randomUUID()
-            pending = Pending(secret, SystemClock.elapsedRealtime() + PAIR_TTL_MS)
-            pairingSessionId = sessionId
+            val sessionId = pairingWindow.open(secret)
             val payload = JSONObject().put("v", 2).put("host", address).put("port", port)
                 .put("tv", tvId).put("secret", secret).put("pin", pin).toString()
             return PairingQr(sessionId, payload)
@@ -179,9 +173,7 @@ object TvLink {
 
         @Synchronized
         fun closePairing(sessionId: UUID) {
-            if (pairingSessionId != sessionId) return
-            pending = null
-            pairingSessionId = null
+            pairingWindow.close(sessionId)
         }
 
         private fun register() {
@@ -240,16 +232,12 @@ object TvLink {
             if (type == "hello") return ok().put("name", deviceName()).put("tv", tvId)
                 .put("abis", org.json.JSONArray(Build.SUPPORTED_ABIS.toList()))
             if (type == "pair") {
-                val pair = pending ?: return error("expired")
-                if (SystemClock.elapsedRealtime() >= pair.expires) {
-                    pending = null
-                    pairingSessionId = null
-                    return error("expired")
+                when (pairingWindow.verify(msg.optString("secret"))) {
+                    TvPairingWindow.Result.EXPIRED -> return error("expired")
+                    TvPairingWindow.Result.INVALID -> return error("bad_secret")
+                    TvPairingWindow.Result.LOCKED -> return error("too_many_attempts")
+                    TvPairingWindow.Result.ACCEPTED -> Unit
                 }
-                val supplied = msg.optString("secret")
-                if (!TvFrames.matches(pair.secret.toByteArray(), supplied.toByteArray())) return error("bad_secret")
-                pending = null
-                pairingSessionId = null
                 val device = msg.optString("device").take(40).ifBlank { "?" }
                 val token = randomHex()
                 val hash = checkNotNull(TvFrames.tokenHash(token))
@@ -277,7 +265,6 @@ object TvLink {
 
         companion object {
             private const val KEY_TOKENS = "tokens"
-            private const val PAIR_TTL_MS = 5 * 60 * 1000L
         }
     }
 }
