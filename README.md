@@ -54,7 +54,7 @@ Le téléphone garde **l'interface d'origine d'Appteka** (écrans natifs). Un s�
 | Mes applis | Applis du téléphone | **Applis installées sur la TV** : lancer, mettre à jour, désinstaller |
 | Compte | Compte du téléphone | Le même compte, partagé avec la TV |
 
-**Où se trouve le sélecteur :** une icône dans la barre du haut de l'écran Store, **juste après le titre « Store »**. Elle montre la cible active : **📱 smartphone** ou **📺 TV**. Un appui bascule de l'une à l'autre ; s'il n'y a encore aucune TV associée, l'appui propose d'en associer une (scan du QR code affiché par la TV).
+**Où se trouve le sélecteur :** une icône dans la barre du haut de l'écran Store, **juste après le titre « Store »**. Elle montre la cible active : **📱 smartphone** ou **📺 TV**. **Au premier appui**, s'il n'y a encore aucune TV associée, le téléphone crée la connexion : il propose de **scanner le QR code affiché par la TV** ou de **taper le code affiché sur la TV**. Ensuite, un appui bascule entre téléphone et TV.
 
 Autrement dit : en mode TV, on navigue dans l'Appteka habituelle **comme si on était sur la TV**, avec les écrans natifs d'origine. **Aucune interface HTML sur le téléphone**, dans aucun mode : le HTML est réservé à la TV. Pas non plus de télécommande générique.
 
@@ -66,7 +66,7 @@ Interface HTML à la télécommande : applis installées, rangées de catégorie
 
 | Ticket | Contenu | État |
 |---|---|---|
-| ATV-01 | Association par QR code et liaison chiffrée (remplace le code à 4 chiffres) | écrit, compilé — à tester ([PR #1](https://github.com/MOD-PROD/ApptekaTv/pull/1)) |
+| ATV-01 | Association par QR code **ou code affiché sur la TV**, et liaison chiffrée (remplace l'ancien code à 4 chiffres) | écrit, compilé — à tester ([PR #1](https://github.com/MOD-PROD/ApptekaTv/pull/1)) |
 | ATV-02 | Téléphone : retour à l'accueil d'origine, sélecteur de cible, scan du QR | à faire |
 | ATV-03 | « Installer sur la TV » depuis les écrans d'origine | à faire |
 | ATV-04 | « Mes applis » de la TV sur le téléphone : liste, lancement, mise à jour, désinstallation | à faire |
