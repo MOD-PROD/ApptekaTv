@@ -35,13 +35,20 @@ internal object TvTls {
     fun client(pin: String): SSLContext {
         require(pin.matches(Regex("[0-9a-f]{64}")))
         val expected = pin.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        return clientContext(expected)
+    }
+
+    /** Only for the J-PAKE exchange. The peer fingerprint must be authenticated by J-PAKE. */
+    fun codeHandshakeContext(): SSLContext = clientContext(null)
+
+    private fun clientContext(expected: ByteArray?): SSLContext {
         val trust = object : X509TrustManager {
             override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
             override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {
                 throw CertificateException("Client certificates are unsupported")
             }
             override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
-                if (chain.size != 1 || !TvFrames.matches(expected, TvFrames.digest(chain[0].encoded))) {
+                if (chain.size != 1 || (expected != null && !TvFrames.matches(expected, TvFrames.digest(chain[0].encoded)))) {
                     throw CertificateException("TV certificate does not match the pairing QR")
                 }
                 chain[0].checkValidity()

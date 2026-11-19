@@ -41,6 +41,33 @@ object TvLink {
         }
     }
 
+    internal fun pairByCode(host: String, port: Int, code: String): Pair<Pairing, JSONObject> {
+        validateLocalEndpoint(host, port)
+        val factory = TvTls.codeHandshakeContext().socketFactory
+        (factory.createSocket() as SSLSocket).use { socket ->
+            socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
+            socket.connect(InetSocketAddress(host, port), TIMEOUT_MS)
+            socket.soTimeout = TIMEOUT_MS
+            socket.startHandshake()
+            val certificate = socket.session.peerCertificates.single()
+            val pin = TvFrames.digest(certificate.encoded).joinToString("") { "%02x".format(it) }
+            val proof = TvCodeAgreement(TvCodeAgreement.Side.PHONE, code, pin)
+            TvCodeExchange(socket.inputStream, socket.outputStream).phone(proof, deviceName())
+            val response = JSONObject(TvFrames.read(socket.inputStream))
+            check(response.optInt("v") == 2 && response.optBoolean("ok"))
+            val tv = UUID.fromString(response.getString("tv")).toString()
+            return Pairing(host, port, tv, "", pin) to response
+        }
+    }
+
+    private fun validateLocalEndpoint(host: String, port: Int) {
+        require(host.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}")))
+        val octets = host.split('.').map(String::toInt)
+        require(octets.all { it in 0..255 })
+        require(octets[0] == 10 || octets[0] == 172 && octets[1] in 16..31 || octets[0] == 192 && octets[1] == 168)
+        require(port in 1..65535)
+    }
+
     data class Pairing(val host: String, val port: Int, val tv: String, val secret: String, val pin: String) {
         companion object {
             fun parse(raw: String): Pairing {
@@ -48,11 +75,8 @@ object TvLink {
                 val json = JSONObject(raw)
                 require(json.optInt("v") == 2)
                 val host = json.getString("host")
-                val octets = host.split('.').map { it.toIntOrNull() ?: -1 }
-                require(octets.size == 4 && octets.all { it in 0..255 })
-                require(octets[0] == 10 || octets[0] == 172 && octets[1] in 16..31 || octets[0] == 192 && octets[1] == 168)
                 val port = json.getInt("port")
-                require(port in 1..65535)
+                validateLocalEndpoint(host, port)
                 val tv = UUID.fromString(json.getString("tv")).toString()
                 val secret = json.getString("secret")
                 val pin = json.getString("pin")
@@ -276,7 +300,7 @@ object TvLink {
             val entry = "${UUID.randomUUID()}:$hash:$device"
             if (!prefs.edit().putStringSet(KEY_TOKENS, tokens() + entry).commit()) return error("storage")
             main.post { host.onPaired(device) }
-            return ok().put("token", token).put("tv", tvId)
+            return ok().put("token", token).put("tv", tvId).put("name", deviceName())
         }
 
         private fun ok() = JSONObject().put("ok", true)

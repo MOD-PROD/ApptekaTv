@@ -7,8 +7,8 @@ import java.io.OutputStream
 
 /** J-PAKE over one TLS connection, before either endpoint accepts an association. */
 internal class TvCodeExchange(private val source: InputStream, private val destination: OutputStream) {
-    fun phone(agreement: TvCodeAgreement) {
-        send("code_start", TvCodePayloads.encode(agreement.start()))
+    fun phone(agreement: TvCodeAgreement, deviceName: String = "") {
+        send("code_start", TvCodePayloads.encode(agreement.start()), deviceName)
         val serverFirst = receive("code_first")
         val serverSecond = receive("code_second")
         val second = agreement.exchange(TvCodePayloads.round1(serverFirst, TvCodeAgreement.Side.TV))
@@ -28,11 +28,12 @@ internal class TvCodeExchange(private val source: InputStream, private val desti
         send("code_proof", TvCodePayloads.encode(proof))
     }
 
-    private fun send(type: String, payload: JsonObject) {
+    private fun send(type: String, payload: JsonObject, deviceName: String? = null) {
         val frame = JsonObject().apply {
             addProperty("v", 2)
             addProperty("type", type)
             add("payload", payload)
+            deviceName?.let { addProperty("device", it) }
         }
         TvFrames.write(destination, frame.toString())
     }

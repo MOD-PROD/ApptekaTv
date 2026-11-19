@@ -39,6 +39,63 @@ class TvLinkSender(private val activity: Activity, private val appId: String, pr
         }
     }
 
+    fun pairCode(host: String, port: Int, code: String) = thread {
+        val result = runCatching {
+            val (address, response) = TvLink.pairByCode(host, port, code)
+            val token = response.getString("token")
+            check(token.matches(Regex("[0-9a-f]{64}")))
+            check(preferences().edit().putString(address.tv, token).commit())
+            Triple(address, token, response.optString("name", "Appteka TV"))
+        }
+        activity.runOnUiThread {
+            if (!activity.isFinishing && !activity.isDestroyed) {
+                result.onSuccess { (address, token, name) -> chooseAction(address, token, name) }
+                    .onFailure { toast(R.string.tv_pair_code_failed) }
+            }
+        }
+    }
+
+    fun showCodeEntry() {
+        val pad = (24 * activity.resources.displayMetrics.density).toInt()
+        val address = android.widget.EditText(activity).apply {
+            hint = activity.getString(R.string.tv_pair_address_hint)
+            isSingleLine = true
+        }
+        val code = android.widget.EditText(activity).apply {
+            hint = activity.getString(R.string.tv_pair_code_hint)
+            isSingleLine = true
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        }
+        val fields = android.widget.LinearLayout(activity).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, 0, pad, 0)
+            addView(address)
+            addView(code)
+        }
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.tv_pair_title)
+            .setView(fields)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.tv_pair_confirm, null)
+            .show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+            val entered = address.text.toString().trim()
+            val host = entered.substringBefore(':')
+            val port = if (':' in entered) entered.substringAfter(':').toIntOrNull() else TvLink.DEFAULT_PORT
+            val value = code.text.toString().trim().uppercase(java.util.Locale.ROOT)
+            if (port == null || port !in 1..65535 || !host.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}"))) {
+                address.error = activity.getString(R.string.tv_pair_address_hint)
+                return@setOnClickListener
+            }
+            if (!value.matches(Regex("[A-Z2-9]{8}"))) {
+                code.error = activity.getString(R.string.tv_pair_code_hint)
+                return@setOnClickListener
+            }
+            dialog.dismiss()
+            pairCode(host, port, value)
+        }
+    }
+
     @Suppress("DEPRECATION")
     private fun preferences() = EncryptedSharedPreferences.create(
         activity,

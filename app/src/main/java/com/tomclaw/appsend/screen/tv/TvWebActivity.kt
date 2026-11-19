@@ -184,7 +184,9 @@ class TvWebActivity : AppCompatActivity() {
             maxHeight = size
         }
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Associer un téléphone")
+            .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
+            .setMessage(getString(R.string.tv_pair_display_address,
+                TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }))
             .setView(image)
             .setPositiveButton(android.R.string.ok, null)
             .show()
@@ -830,10 +832,20 @@ class TvWebActivity : AppCompatActivity() {
         /** Portable : envoie l'app à une Appteka TV du Wi-Fi. */
         @JavascriptInterface
         fun sendToTv(appId: String, label: String): Unit = runOnUiThread {
-            pendingPairApp = appId
-            pendingPairLabel = label
-            pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                .setOrientationLocked(false).setPrompt("Scanne le QR affiché sur la TV"))
+            MaterialAlertDialogBuilder(this@TvWebActivity)
+                .setTitle(R.string.tv_pair_title)
+                .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter))) { _, which ->
+                    if (which == 0) {
+                        pendingPairApp = appId
+                        pendingPairLabel = label
+                        pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            .setOrientationLocked(false).setPrompt(getString(R.string.tv_pair_scan)))
+                    } else {
+                        TvLinkSender(this@TvWebActivity, appId, label).showCodeEntry()
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
 
         /** TV : nom, adresse et appareils associés. */
