@@ -17,7 +17,7 @@
 **Appteka TV** est une version modifiée d'[Appteka](https://github.com/solkin/appteka-android), le magasin d'applications Android libre. Un seul APK, deux comportements :
 
 - **sur la TV**, une interface HTML (WebView) pensée pour la télécommande, utilisable seule ;
-- **sur le téléphone**, l'Appteka d'origine, qui peut basculer sur la TV : la même interface, mais comme si on était sur la TV (catalogue TV, applis de la TV, installation sur la TV).
+- **sur le téléphone**, l'Appteka d'origine (écrans natifs, **sans HTML**), qui peut basculer sur la TV : la même interface native, mais comme si on était sur la TV (catalogue TV, applis de la TV, installation sur la TV).
 
 Le catalogue, le téléchargement et l'installation restent ceux d'Appteka.
 
@@ -54,7 +54,7 @@ Le téléphone garde **l'interface d'origine d'Appteka** (écrans natifs). Un s�
 | Mes applis | Applis du téléphone | **Applis installées sur la TV** : lancer, mettre à jour, désinstaller |
 | Compte | Compte du téléphone | Le même compte, partagé avec la TV |
 
-Autrement dit : en mode TV, on navigue dans l'Appteka habituelle **comme si on était sur la TV**. Il n'y a pas de seconde interface sur le téléphone, ni de télécommande générique.
+Autrement dit : en mode TV, on navigue dans l'Appteka habituelle **comme si on était sur la TV**, avec les écrans natifs d'origine. **Aucune interface HTML sur le téléphone**, dans aucun mode : le HTML est réservé à la TV. Pas non plus de télécommande générique.
 
 ### Sur la TV : une Appteka TV minimale, utilisable seule
 
@@ -77,7 +77,7 @@ Règles : une branche `atv/<n°>-<sujet>` par ticket et une PR brouillon vers `t
 
 ### État actuel (avant ATV-02)
 
-En attendant ATV-02, l'APK ouvre encore **l'interface HTML aussi sur le téléphone** (vue adaptée au tactile), avec un bouton « Envoyer à la TV » dans les fiches. Cette vue téléphone est provisoire : elle disparaîtra au profit de l'interface d'origine.
+En attendant ATV-02, l'APK ouvre encore **l'interface HTML aussi sur le téléphone** (vue adaptée au tactile), avec un bouton « Envoyer à la TV » dans les fiches. Cette vue téléphone est provisoire : elle disparaîtra entièrement au profit de l'interface d'origine, et le téléphone n'affichera plus aucun écran HTML.
 
 ## Fonctions (interface TV)
 
