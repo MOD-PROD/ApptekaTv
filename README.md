@@ -29,7 +29,7 @@ Projet ModProd — branche de travail : `tv-html`.
 | Navigation | Tactile | Télécommande (D-pad) et tactile |
 | Contenu par défaut | Tout le catalogue | Catégories **TV** (37) et **Divertissement** (27), modifiables |
 | Portable → TV | — | Envoi d'une appli du portable vers la TV par le Wi-Fi |
-| Identifiant | `com.tomclaw.appsend` | `com.tomclaw.appsend.tv` (installable à côté de l'original) |
+| Identifiant | `com.tomclaw.appsend` | `app.modprod.apptekatv` (installable à côté de l'original) |
 
 Les écrans natifs d'origine (publication, discussions, avis, profils…) restent accessibles depuis l'interface HTML par des « connecteurs ». Ils seront refaits en HTML au fur et à mesure.
 

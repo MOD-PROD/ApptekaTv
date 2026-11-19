@@ -9,7 +9,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId "com.tomclaw.appsend.tv"
+        applicationId "app.modprod.apptekatv"
         minSdkVersion 23
         targetSdkVersion 36
         versionCode project.hasProperty("versionCode") ? Integer.parseInt(project.versionCode) : 1195

@@ -8,7 +8,7 @@
         android:shortcutDisabledMessage="@string/nav_store">
         <intent
             android:action="com.tomclaw.appsend.cloud"
-            android:targetPackage="com.tomclaw.appsend"
+            android:targetPackage="app.modprod.apptekatv"
             android:targetClass="com.tomclaw.appsend.screen.home.HomeActivity" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
@@ -21,7 +21,7 @@
         android:shortcutDisabledMessage="@string/nav_discuss">
         <intent
             android:action="com.tomclaw.appsend.discuss"
-            android:targetPackage="com.tomclaw.appsend"
+            android:targetPackage="app.modprod.apptekatv"
             android:targetClass="com.tomclaw.appsend.screen.home.HomeActivity" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
@@ -34,7 +34,7 @@
         android:shortcutDisabledMessage="@string/nav_installed">
         <intent
             android:action="com.tomclaw.appsend.apps"
-            android:targetPackage="com.tomclaw.appsend"
+            android:targetPackage="app.modprod.apptekatv"
             android:targetClass="com.tomclaw.appsend.screen.home.HomeActivity" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
@@ -47,7 +47,7 @@
         android:shortcutDisabledMessage="@string/nav_downloaded">
         <intent
             android:action="com.tomclaw.appsend.install"
-            android:targetPackage="com.tomclaw.appsend"
+            android:targetPackage="app.modprod.apptekatv"
             android:targetClass="com.tomclaw.appsend.screen.home.HomeActivity" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
