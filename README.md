@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Appteka pour Android TV et smartphone, avec une interface HTML</strong>
+  <strong>Appteka pour Android TV, pilotable depuis l'Appteka du téléphone</strong>
 </p>
 
 <p align="center">
@@ -14,7 +14,12 @@
 
 ---
 
-**Appteka TV** est une version modifiée d'[Appteka](https://github.com/solkin/appteka-android), le magasin d'applications Android libre. Elle ajoute une interface HTML (WebView) pensée pour la télécommande et utilisable aussi au doigt sur smartphone. Le catalogue, le téléchargement et l'installation restent ceux d'Appteka.
+**Appteka TV** est une version modifiée d'[Appteka](https://github.com/solkin/appteka-android), le magasin d'applications Android libre. Un seul APK, deux comportements :
+
+- **sur la TV**, une interface HTML (WebView) pensée pour la télécommande, utilisable seule ;
+- **sur le téléphone**, l'Appteka d'origine, qui peut basculer sur la TV : la même interface, mais comme si on était sur la TV (catalogue TV, applis de la TV, installation sur la TV).
+
+Le catalogue, le téléchargement et l'installation restent ceux d'Appteka.
 
 Projet ModProd — branche de travail : `tv-html`.
 
@@ -24,38 +29,57 @@ Projet ModProd — branche de travail : `tv-html`.
 
 | | Appteka | Appteka TV |
 |---|---|---|
-| Accueil | Interface native Material | Interface HTML (TV et smartphone) |
+| Accueil sur TV | — | Interface HTML pour la télécommande |
+| Accueil sur téléphone | Interface native Material | La même, avec un sélecteur **📱 Ce téléphone / 📺 TV** (en cours) |
 | Lanceur Android TV | — | Oui (`LEANBACK_LAUNCHER`) |
 | Navigation | Tactile | Télécommande (D-pad) et tactile |
 | Contenu par défaut | Tout le catalogue | Catégories **TV** (37) et **Divertissement** (27), modifiables |
-| Portable → TV | — | Envoi d'une appli du portable vers la TV par le Wi-Fi |
+| Téléphone → TV | — | Le téléphone pilote la TV par le Wi-Fi : installer, lancer, désinstaller sur la TV |
 | Identifiant | `com.tomclaw.appsend` | `app.modprod.apptekatv` (installable à côté de l'original) |
 
-Les écrans natifs d'origine (publication, discussions, avis, profils…) restent accessibles depuis l'interface HTML par des « connecteurs ».
+Sur la TV, les écrans natifs d'origine (publication, discussions, avis, profils…) restent accessibles depuis l'interface HTML par des « connecteurs ».
 
 ## Direction du projet
 
-Appteka TV évolue vers **un duo téléphone + TV** (décision du 19/11/2026, en cours de découpage en étapes) :
+Décision du fondateur du 19/11/2026 (mission `MISSION-ATV-001`, 8 tickets ATV-01 à ATV-08) : **un duo téléphone + TV**.
 
-- **Sur le téléphone : l'Appteka d'origine**, avec ses écrans natifs, et un sélecteur de cible **📱 Ce téléphone / 📺 TV**. En mode TV, l'Appteka du téléphone pilote celle de la télé :
-  - *Installer* télécharge et installe l'appli **sur la TV** ;
-  - *Mes applis* liste les applis **installées sur la TV** (lancer, mettre à jour, désinstaller) ;
-  - le catalogue ne montre que ce qui convient à la TV (catégories TV, processeur de la TV) ;
-  - le compte connecté sur le téléphone sert aussi à la TV.
-- **Sur la TV : une Appteka TV minimale, utilisable seule** à la télécommande : applis installées, recherche, téléchargements en cours, QR code d'association. L'interface HTML actuelle sera réduite à cet essentiel.
-- **Un seul APK** pour les deux appareils.
+### Sur le téléphone : l'Appteka d'origine, qui peut se mettre « à la place » de la TV
 
-| Étape | Contenu | État |
+Le téléphone garde **l'interface d'origine d'Appteka** (écrans natifs). Un sélecteur de cible **📱 Ce téléphone / 📺 \<nom de la TV\>** change ce que cette interface montre et fait :
+
+| | Cible 📱 Ce téléphone | Cible 📺 TV |
 |---|---|---|
-| 1 | Association par QR code et liaison chiffrée (remplace le code à 4 chiffres) | à faire |
-| 2 | Sélecteur de cible sur le téléphone, « Installer sur la TV » depuis les écrans natifs | à faire |
-| 3 | « Mes applis » de la TV : liste, lancement, désinstallation, mises à jour | à faire |
-| 4 | Compte partagé téléphone → TV | à faire |
-| 5 | Interface TV réduite à l'essentiel | à faire |
+| Catalogue | Tout Appteka | Ce qui convient à la TV : catégories TV et Divertissement, processeur (ABI) de la TV |
+| Installer | Sur le téléphone | **Sur la TV** : la TV télécharge et installe elle-même, avec suivi sur le téléphone |
+| Mes applis | Applis du téléphone | **Applis installées sur la TV** : lancer, mettre à jour, désinstaller |
+| Compte | Compte du téléphone | Le même compte, partagé avec la TV |
 
-Tant que ces étapes ne sont pas livrées, l'appli fonctionne comme décrit ci-dessous (interface HTML sur TV et sur téléphone).
+Autrement dit : en mode TV, on navigue dans l'Appteka habituelle **comme si on était sur la TV**. Il n'y a pas de seconde interface sur le téléphone, ni de télécommande générique.
 
-## Fonctions
+### Sur la TV : une Appteka TV minimale, utilisable seule
+
+Interface HTML à la télécommande : applis installées, rangées de catégories, recherche, téléchargements en cours, fiche d'appli, réglages (QR code d'association, appareils associés, langue, compte). Elle exécute aussi les ordres du téléphone (la confirmation Android d'installation ou de désinstallation s'affiche sur la TV).
+
+### Étapes
+
+| Ticket | Contenu | État |
+|---|---|---|
+| ATV-01 | Association par QR code et liaison chiffrée (remplace le code à 4 chiffres) | écrit, compilé — à tester ([PR #1](https://github.com/MOD-PROD/ApptekaTv/pull/1)) |
+| ATV-02 | Téléphone : retour à l'accueil d'origine, sélecteur de cible, scan du QR | à faire |
+| ATV-03 | « Installer sur la TV » depuis les écrans d'origine | à faire |
+| ATV-04 | « Mes applis » de la TV sur le téléphone : liste, lancement, mise à jour, désinstallation | à faire |
+| ATV-05 | Catalogue adapté à la TV en mode TV | à faire |
+| ATV-06 | Compte partagé téléphone → TV (uniquement par la liaison chiffrée) | à faire |
+| ATV-07 | Interface TV réduite à l'essentiel (liste des suppressions validée par le fondateur avant) | à faire |
+| ATV-08 | Documentation et numéro de version | à faire |
+
+Règles : une branche `atv/<n°>-<sujet>` par ticket et une PR brouillon vers `tv-html` ; build **Build TV APK** vert comme preuve ; aucune fusion ni publication sans accord du fondateur ; modifications minimales du code d'origine (nouveau code dans des paquets dédiés, points d'accroche commentés `// ATV:`) pour pouvoir toujours fusionner les mises à jour d'Appteka.
+
+### État actuel (avant ATV-02)
+
+En attendant ATV-02, l'APK ouvre encore **l'interface HTML aussi sur le téléphone** (vue adaptée au tactile), avec un bouton « Envoyer à la TV » dans les fiches. Cette vue téléphone est provisoire : elle disparaîtra au profit de l'interface d'origine.
+
+## Fonctions (interface TV)
 
 - **Rangées de sources** : catégories, top, applis d'un auteur ; ordre modifiable (appui long sur une icône).
 - **Fiche d'appli** : description, versions, résumé IA d'Appteka, compatibilité processeur (ABI) de l'appareil.
@@ -67,15 +91,17 @@ Tant que ces étapes ne sont pas livrées, l'appli fonctionne comme décrit ci-d
 - **Langues** : français, anglais, espagnol, allemand, italien, portugais, russe, turc et arabe, ou langue de l'appareil.
 - **Sauvegarde des réglages** par export de la configuration.
 
-## Liaison portable → TV (Wi-Fi)
+## Liaison téléphone → TV (Wi-Fi)
 
-Le portable trouve la TV sur le réseau local sans adresse IP, grâce à DNS-SD (`_apptekatv._tcp`, port 8336 par défaut).
+Le téléphone trouve la TV sur le réseau local sans adresse IP, grâce à DNS-SD (`_apptekatv._tcp`, port 8336 par défaut).
 
-1. Sur le portable, « Envoyer à la TV » depuis une fiche d'appli.
-2. La première fois, la TV affiche un **code à 4 chiffres** à saisir sur le portable (appairage).
+1. Sur le téléphone, « Envoyer à la TV » depuis une fiche d'appli.
+2. La première fois, la TV affiche un **code à 4 chiffres** à saisir sur le téléphone (appairage).
 3. Ensuite, la TV ouvre la fiche ou lance directement l'installation.
 
-Protocole : une connexion TCP par requête, une ligne JSON en question et une en réponse (`hello`, `pair_request`, `pair_confirm`, `open`, `install`). Les ordres `open` et `install` exigent le jeton obtenu à l'appairage. Détails dans `app/src/main/java/com/tomclaw/appsend/tvlink/`.
+Protocole actuel (v1) : une connexion TCP par requête, une ligne JSON en question et une en réponse (`hello`, `pair_request`, `pair_confirm`, `open`, `install`). Les ordres `open` et `install` exigent le jeton obtenu à l'appairage. Détails dans `app/src/main/java/com/tomclaw/appsend/tvlink/`.
+
+Protocole v2 (ATV-01, [PR #1](https://github.com/MOD-PROD/ApptekaTv/pull/1), pas encore fusionné) : association par **QR code** (adresse, secret à usage unique de 5 minutes, empreinte du certificat de la TV), **liaison chiffrée**, jeton par téléphone et révocation depuis la TV. Il remplacera la v1.
 
 ## Organisation du code
 
@@ -84,8 +110,8 @@ Protocole : une connexion TCP par requête, une ligne JSON en question et une en
 | `app/src/main/assets/tv/` | Interface HTML : `index.html`, `app.js` (accueil, rangées, réglages), `details.js` (fiche), `nav.js` (navigation D-pad), `i18n.js` (traductions), feuilles CSS par thème, `mobile.css` |
 | `app/src/main/java/com/tomclaw/appsend/screen/tv/TvWebActivity.kt` | Activité WebView et pont JavaScript `window.Android` (catalogue, installation, compte, préférences, liaison TV) |
 | `app/src/main/java/com/tomclaw/appsend/screen/tv/TvDetailsMapper.kt` | Conversion des fiches Appteka pour l'interface HTML |
-| `app/src/main/java/com/tomclaw/appsend/tvlink/` | Liaison Wi-Fi portable ↔ TV |
-| `screen/home/HomeActivity.kt` | Redirige vers l'interface HTML ; l'accueil classique ne s'ouvre plus que par son connecteur |
+| `app/src/main/java/com/tomclaw/appsend/tvlink/` | Liaison Wi-Fi téléphone ↔ TV |
+| `screen/home/HomeActivity.kt` | Aujourd'hui : redirige vers l'interface HTML sur tous les appareils. Après ATV-02 : interface HTML sur TV seulement, accueil d'origine sur téléphone |
 
 Pour ajouter une fonction côté HTML : déclarer la méthode `@JavascriptInterface` dans `TvWebActivity`, l'appeler depuis le JavaScript avec `window.Android.<méthode>()`, puis renvoyer le résultat au JavaScript par un rappel.
 
@@ -130,7 +156,7 @@ Ne jamais ajouter de fichier de clés au dépôt : `*.keystore` et `*.jks` sont 
 ## Installation sur une TV
 
 1. Récupérer l'APK (Actions → Artifacts) et le dézipper.
-2. Le copier sur la TV (clé USB, gestionnaire de fichiers, `adb install`) ou l'envoyer depuis Appteka sur le portable.
+2. Le copier sur la TV (clé USB, gestionnaire de fichiers, `adb install`) ou l'envoyer depuis Appteka sur le téléphone.
 3. Autoriser les « sources inconnues » pour l'application qui installe.
 4. L'appli apparaît dans le lanceur Android TV sous le nom Appteka.
 
@@ -140,6 +166,6 @@ Comme Appteka, le catalogue est alimenté par les utilisateurs. Les applis publi
 
 ## Licence et origine
 
-Appteka TV est dérivé d'**Appteka** © 2016-2026 l’équipe Appteka, publié sous licence **GNU GPL v3**. Ce dépôt est distribué sous la même licence ; les modifications (interface HTML, lanceur TV, liaison Wi-Fi) sont signalées dans l'historique Git de la branche `tv-html`.
+Appteka TV est dérivé d'**Appteka** © 2016-2026 l’équipe Appteka, publié sous licence **GNU GPL v3**. Ce dépôt est distribué sous la même licence ; les modifications (interface HTML TV, lanceur TV, liaison téléphone ↔ TV) sont signalées dans l'historique Git de la branche `tv-html`.
 
 Voir [LICENSE.txt](LICENSE.txt) pour le texte complet.
