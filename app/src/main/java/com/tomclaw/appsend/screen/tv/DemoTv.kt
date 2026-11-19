@@ -1,10 +1,19 @@
 package com.tomclaw.appsend.screen.tv
 
 import android.content.Context
+import com.tomclaw.appsend.BuildConfig
+import com.tomclaw.appsend.categories.Category
+import com.tomclaw.appsend.dto.AppEntity
+import com.tomclaw.appsend.screen.installed.InstalledAppEntity
+import com.tomclaw.appsend.util.isTvDevice
 
 /** Local fixture shared by the debug phone and its landscape TV preview. */
 internal class DemoTv(context: Context) {
     private val prefs = context.getSharedPreferences("debug_demo_tv", Context.MODE_PRIVATE)
+
+    var selected: Boolean
+        get() = prefs.getBoolean("target_tv", false)
+        set(value) { prefs.edit().putBoolean("target_tv", value).apply() }
 
     var connected: Boolean
         get() = prefs.getBoolean("connected", false)
@@ -17,6 +26,20 @@ internal class DemoTv(context: Context) {
     }
 
     data class App(val id: String, val name: String, val category: Int, val initiallyInstalled: Boolean) {
+        val packageName get() = "demo.apptv." + id.removePrefix("demo-")
+
+        fun catalogEntry() = AppEntity(
+            appId = id, packageName = packageName, icon = null, title = name,
+            verName = "1.0", verCode = 1, time = 0, size = 8_388_608,
+            rating = 0f, downloads = 0, status = 0,
+            category = Category(category, mapOf("fr" to "Démo TV", "en" to "TV demo"), ""),
+            exclusive = false, sourceUrl = null, abi = null,
+        )
+
+        fun installedEntry() = InstalledAppEntity(
+            packageName, name, null, "1.0", 1L, 0L, 0L, 8_388_608L, null, true, null,
+        )
+
         fun card(installed: Boolean) = mapOf(
             "id" to id,
             "name" to name,
@@ -26,6 +49,9 @@ internal class DemoTv(context: Context) {
     }
 
     companion object {
+        fun onPhone(context: Context): DemoTv? =
+            if (BuildConfig.DEBUG && !context.isTvDevice()) DemoTv(context) else null
+
         val apps = listOf(
             App("demo-orbite", "Orbite Vidéo", 37, true),
             App("demo-atlas", "Atlas météo", 37, true),

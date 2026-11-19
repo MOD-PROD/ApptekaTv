@@ -171,6 +171,19 @@ class ProfileFragment : Fragment(), ProfilePresenter.ProfileRouter, HomeFragment
 
     override fun openLoginScreen() {
         val context = context ?: return
+        val demo = com.tomclaw.appsend.screen.tv.DemoTv.onPhone(context)
+        if (demo?.selected == true) {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+                .setTitle("TV de démo")
+                .setMessage(if (demo.connected) "La TV de démo est connectée." else "Connecter la TV de démo à ce téléphone ?")
+                .setPositiveButton(if (demo.connected) "Déconnecter" else "Connecter") { _, _ ->
+                    demo.connected = !demo.connected
+                    requireActivity().recreate()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+            return
+        }
         val intent = createRequestCodeActivityIntent(context)
         authLauncher.launch(intent)
     }

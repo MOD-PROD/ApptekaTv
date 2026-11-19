@@ -69,7 +69,8 @@ interface InstalledView {
 class InstalledViewImpl(
     private val view: View,
     private val preferences: InstalledPreferencesProvider,
-    private val adapter: SimpleRecyclerAdapter
+    private val adapter: SimpleRecyclerAdapter,
+    private val demoTarget: Boolean = false
 ) : InstalledView {
 
     private val context = view.context
@@ -179,7 +180,7 @@ class InstalledViewImpl(
             ActionItem(MENU_REMOVE, context.getString(R.string.remove_app), R.drawable.ic_delete)
         )
 
-        val actionsAdapter = ActionsAdapter(actions) { actionId ->
+        val actionsAdapter = ActionsAdapter(if (demoTarget) actions.filter { it.id == MENU_REMOVE } else actions) { actionId ->
             bottomSheetDialog.dismiss()
             itemMenuRelay.accept(Pair(actionId, item))
         }

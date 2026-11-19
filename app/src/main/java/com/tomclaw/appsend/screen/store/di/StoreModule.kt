@@ -71,7 +71,7 @@ class StoreModule(
         api: StoreApi,
         locale: Locale,
         schedulers: SchedulersFactory
-    ): StoreInteractor = StoreInteractorImpl(api, locale, schedulers)
+    ): StoreInteractor = StoreInteractorImpl(api, locale, schedulers, context)
 
     @Provides
     @PerFragment

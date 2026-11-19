@@ -5,16 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.FrameLayout
 import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import androidx.fragment.app.Fragment
-import com.tomclaw.appsend.BuildConfig
 import com.tomclaw.appsend.screen.tv.DemoTv
-import com.tomclaw.appsend.util.isTvDevice
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tomclaw.appsend.util.adapter.ItemBinder
 import com.tomclaw.appsend.util.adapter.AdapterPresenter
 import com.tomclaw.appsend.util.adapter.SimpleRecyclerAdapter
@@ -46,11 +40,9 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     @Inject
     lateinit var analytics: Analytics
 
-    private var savedTvTarget = false
     private var targetButton: ImageButton? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        savedTvTarget = savedInstanceState?.getBoolean("debug_demo_tv_target") == true
         val presenterState = savedInstanceState
             ?.getParcelableCompat(KEY_PRESENTER_STATE, ZipParcelable::class.java)
             ?.restore<Bundle>()
@@ -81,56 +73,24 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val topicsView = StoreViewImpl(view, filters, preferences, adapter)
 
         presenter.attachView(topicsView)
-        if (BuildConfig.DEBUG && !requireContext().isTvDevice()) addDemoTvSwitch(view as FrameLayout)
+        DemoTv.onPhone(requireContext())?.let(::bindTargetSwitch)
     }
 
-    private fun addDemoTvSwitch(root: FrameLayout) {
-        val context = requireContext()
-        val demo = DemoTv(context)
-        val catalog = root.findViewById<View>(R.id.swipe_refresh)
+    private fun bindTargetSwitch(demo: DemoTv) {
         val target = requireActivity().findViewById<ImageButton>(R.id.demo_tv_target)
         targetButton = target
         target.visibility = View.VISIBLE
-        val scroll = ScrollView(context)
-        root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
-        val panel = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        scroll.addView(panel)
-
-        var showTv = savedTvTarget
 
         fun render() {
-            target.setImageResource(if (showTv) R.drawable.ic_target_tv else R.drawable.ic_target_mobile)
-            target.contentDescription = if (showTv) "TV de démo sélectionnée. Passer au téléphone"
+            target.setImageResource(if (demo.selected) R.drawable.ic_target_tv else R.drawable.ic_target_mobile)
+            target.contentDescription = if (demo.selected) "TV de démo sélectionnée. Passer au téléphone"
                 else "Téléphone sélectionné. Passer à la TV de démo"
-            catalog.visibility = if (showTv) View.GONE else View.VISIBLE
-            scroll.visibility = if (showTv) View.VISIBLE else View.GONE
-            panel.removeAllViews()
-            if (!showTv) return
-            panel.addView(TextView(context).apply { text = "TV de démo · simulation locale" })
-            panel.addView(Button(context).apply {
-                text = if (demo.connected) "Déconnecter" else "Connecter la TV de démo"
-                setOnClickListener {
-                    demo.connected = !demo.connected
-                    render()
-                }
-            })
-            if (!demo.connected) return
-            DemoTv.apps.forEach { app ->
-                val installed = demo.isInstalled(app)
-                panel.addView(Button(context).apply {
-                    text = if (installed) "${app.name} · Désinstaller" else "${app.name} · Installer"
-                    setOnClickListener {
-                        demo.setInstalled(app, !installed)
-                        render()
-                    }
-                })
-            }
         }
 
         target.setOnClickListener {
-            showTv = !showTv
-            savedTvTarget = showTv
+            demo.selected = !demo.selected
             render()
+            presenter.invalidateApps()
         }
         render()
     }
@@ -159,7 +119,6 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        if (BuildConfig.DEBUG) outState.putBoolean("debug_demo_tv_target", savedTvTarget)
         outState.putParcelable(KEY_PRESENTER_STATE, ZipParcelable(presenter.saveState()))
     }
 
@@ -168,6 +127,23 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     }
 
     override fun openAppScreen(appId: String, title: String) {
+        val demo = DemoTv.onPhone(requireContext())
+        if (demo?.selected == true) {
+            val app = DemoTv.apps.firstOrNull { it.id == appId } ?: return
+            val dialog = MaterialAlertDialogBuilder(requireContext()).setTitle(app.name)
+            if (!demo.connected) {
+                dialog.setMessage("Connecte la TV de démo depuis Profil.")
+            } else {
+                val installed = demo.isInstalled(app)
+                dialog.setMessage(if (installed) "Installée sur la TV de démo" else "Disponible pour la TV de démo")
+                dialog.setPositiveButton(if (installed) "Désinstaller" else "Installer") { _, _ ->
+                    demo.setInstalled(app, !installed)
+                    presenter.invalidateApps()
+                }
+            }
+            dialog.setNegativeButton(android.R.string.cancel, null).show()
+            return
+        }
         val intent = createDetailsActivityIntent(
             context = requireContext(),
             appId = appId,
