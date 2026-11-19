@@ -1,159 +1,125 @@
 <p align="center">
-  <img src="app/src/main/ic_launcher-web.png" alt="Appteka Logo" width="120" height="120">
+  <img src="app/src/main/ic_launcher-web.png" alt="Appteka TV" width="120" height="120">
 </p>
 
-<h1 align="center">Appteka</h1>
+<h1 align="center">Appteka TV</h1>
 
 <p align="center">
-  <strong>Alternative Android App Store</strong>
+  <strong>Appteka pour Android TV et smartphone, avec une interface HTML</strong>
 </p>
 
 <p align="center">
-  <a href="https://appteka.store"><img src="https://img.shields.io/badge/dynamic/json?color=32A304&label=Appteka&query=%24.newer.ver_name&url=https%3A%2F%2Fappteka.store%2F%2Fapi%2F1%2Fupdate%3Fbuild%3D1" alt="Appteka"></a>
-  <a href="https://apt.izzysoft.de/packages/com.tomclaw.appsend"><img src="https://img.shields.io/endpoint?url=https://apt.izzysoft.de/fdroid/api/v1/shield/com.tomclaw.appsend&label=IzzyOnDroid" alt="IzzyOnDroid"></a>
-  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-GPL%20v3-blue.svg" alt="License: GPL v3"></a>
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/Licence-GPL%20v3-blue.svg" alt="Licence : GPL v3"></a>
   <img src="https://img.shields.io/badge/API-23%2B-brightgreen.svg" alt="API 23+">
-  <img src="https://img.shields.io/badge/Kotlin-2.3-purple.svg" alt="Kotlin">
+  <img src="https://img.shields.io/badge/Android%20TV-Leanback-orange.svg" alt="Android TV">
 </p>
 
 ---
 
-**Appteka** is a free, open-source Android app store where users can discover, download, and share applications. Upload your own apps, explore creations from developers worldwide, and engage with the community through real-time discussions.
+**Appteka TV** est une version modifiée d'[Appteka](https://github.com/solkin/appteka-android), le magasin d'applications Android libre. Elle ajoute une interface HTML (WebView) pensée pour la télécommande et utilisable aussi au doigt sur smartphone. Le catalogue, le téléchargement et l'installation restent ceux d'Appteka.
 
-## Screenshots
+Projet ModProd — branche de travail : `tv-html`.
 
-<p align="center">
-  <img src="art/main.jpg" alt="Store" width="200">
-  <img src="art/app.jpg" alt="App Details" width="200">
-  <img src="art/profile.jpg" alt="Profile" width="200">
-  <img src="art/topics.jpg" alt="Discussions" width="200">
-</p>
+> Ce dépôt n'est pas le dépôt officiel d'Appteka. Pour l'application d'origine, voir [solkin/appteka-android](https://github.com/solkin/appteka-android).
 
-## Features
+## Ce qui change par rapport à Appteka
 
-- **Browse & Download** — Explore hundreds of thousands of free Android apps
-- **Upload Apps** — Share your applications with the community
-- **APK Extractor** — Extract APKs from installed apps (including system apps)
-- **Real-time Chat** — Discuss apps and games with other users
-- **User Profiles** — Track uploads, downloads, and activity
-- **Ratings & Reviews** — Rate apps and read community feedback
-- **Favorites** — Save apps for later
-- **Dark Theme** — Full dark mode support
-- **No Root Required** — Works on any Android device
+| | Appteka | Appteka TV |
+|---|---|---|
+| Accueil | Interface native Material | Interface HTML (TV et smartphone) |
+| Lanceur Android TV | — | Oui (`LEANBACK_LAUNCHER`) |
+| Navigation | Tactile | Télécommande (D-pad) et tactile |
+| Contenu par défaut | Tout le catalogue | Catégories **TV** (37) et **Divertissement** (27), modifiables |
+| Portable → TV | — | Envoi d'une appli du portable vers la TV par le Wi-Fi |
+| Identifiant | `com.tomclaw.appsend` | `com.tomclaw.appsend.tv` (installable à côté de l'original) |
 
-## Download
+Les écrans natifs d'origine (publication, discussions, avis, profils…) restent accessibles depuis l'interface HTML par des « connecteurs ». Ils seront refaits en HTML au fur et à mesure.
 
-<a href="https://appteka.store"><img src="https://img.shields.io/badge/Appteka-Store-32A304?style=for-the-badge&logo=android" alt="Get it on Appteka"></a>
-<a href="https://apt.izzysoft.de/packages/com.tomclaw.appsend"><img src="https://shields.rbtlog.dev/simple/com.tomclaw.appsend?style=for-the-badge" alt="Get it on IzzyOnDroid"></a>
+## Fonctions
 
-Or download the latest APK from the [Releases](https://github.com/solkin/appteka-android/releases) page.
+- **Rangées de sources** : catégories, top, applis d'un auteur ; ordre modifiable (appui long sur une icône).
+- **Fiche d'appli** : description, versions, résumé IA d'Appteka, compatibilité processeur (ABI) de l'appareil.
+- **Téléchargement et installation** avec suivi et annulation ; lancement et désinstallation des applis installées.
+- **Recherche** limitée aux catégories choisies.
+- **Favoris** (touche jaune de la télécommande).
+- **Compte Appteka** : connexion par code reçu par e-mail.
+- **Apparence** : thèmes *Noir et or*, *Néumorphisme vert* et *Néumorphisme clair*, couleur d'accent, taille des cartes, marges.
+- **Langues** : français, anglais, espagnol, allemand, italien, portugais, russe, turc et arabe, ou langue de l'appareil.
+- **Sauvegarde des réglages** par export de la configuration.
 
-## Tech Stack
+## Liaison portable → TV (Wi-Fi)
 
-| Category | Technologies |
-|----------|-------------|
-| **Language** | Kotlin |
-| **UI** | Material Design 3, AndroidX |
-| **Architecture** | MVP (Model-View-Presenter), Clean Architecture |
-| **Dependency Injection** | Dagger 2 |
-| **Reactive** | RxJava 3, RxKotlin, RxRelay |
-| **Networking** | Retrofit 3, OkHttp 5 |
-| **Image Loading** | Simple Image Loader |
-| **RecyclerView** | Konveyor |
-| **Build** | Gradle, ProGuard |
+Le portable trouve la TV sur le réseau local sans adresse IP, grâce à DNS-SD (`_apptekatv._tcp`, port 8336 par défaut).
 
-## Architecture
+1. Sur le portable, « Envoyer à la TV » depuis une fiche d'appli.
+2. La première fois, la TV affiche un **code à 4 chiffres** à saisir sur le portable (appairage).
+3. Ensuite, la TV ouvre la fiche ou lance directement l'installation.
 
-The project follows **Clean Architecture** principles with MVP pattern:
+Protocole : une connexion TCP par requête, une ligne JSON en question et une en réponse (`hello`, `pair_request`, `pair_confirm`, `open`, `install`). Les ordres `open` et `install` exigent le jeton obtenu à l'appairage. Détails dans `app/src/main/java/com/tomclaw/appsend/tvlink/`.
 
-- **Activity/Fragment** — Acts as a router, implements navigation interface
-- **Presenter** — Presentation layer, framework-agnostic for easy testing
-- **View** — Pure UI rendering, no business logic
-- **Interactor** — Business logic, repository pattern, data caching
-- **Converter** — Data mapping between layers
-- **ResourceProvider** — Android resources access for framework-agnostic layers
+## Organisation du code
 
-## Building
+| Emplacement | Rôle |
+|---|---|
+| `app/src/main/assets/tv/` | Interface HTML : `index.html`, `app.js` (accueil, rangées, réglages), `details.js` (fiche), `nav.js` (navigation D-pad), `i18n.js` (traductions), feuilles CSS par thème, `mobile.css` |
+| `app/src/main/java/com/tomclaw/appsend/screen/tv/TvWebActivity.kt` | Activité WebView et pont JavaScript `window.Android` (catalogue, installation, compte, préférences, liaison TV) |
+| `app/src/main/java/com/tomclaw/appsend/screen/tv/TvDetailsMapper.kt` | Conversion des fiches Appteka pour l'interface HTML |
+| `app/src/main/java/com/tomclaw/appsend/tvlink/` | Liaison Wi-Fi portable ↔ TV |
+| `screen/home/HomeActivity.kt` | Redirige vers l'interface HTML ; l'accueil classique ne s'ouvre plus que par son connecteur |
 
-### Requirements
+Pour ajouter une fonction côté HTML : déclarer la méthode `@JavascriptInterface` dans `TvWebActivity`, l'appeler depuis le JavaScript avec `window.Android.<méthode>()`, puis renvoyer le résultat au JavaScript par un rappel.
 
-- Android Studio Ladybug or newer
-- JDK 17
-- Android SDK with API 37
+## Compilation
 
-### Build & Run
+### Avec GitHub Actions (méthode habituelle)
+
+Le workflow **Build TV APK** (`.github/workflows/build-tv-apk.yml`) se lance à chaque push sur `tv-html`, ou à la main (*Run workflow*). Il produit :
+
+- `appteka-tv-debug` : APK de débogage (conservé 14 jours) ;
+- `appteka-tv-release` : APK de production compacté (R8) et signé avec la clé ModProd (conservé 30 jours), seulement si les secrets de signature sont présents.
+
+Secrets du dépôt pour la version de production :
+
+| Secret | Contenu |
+|---|---|
+| `ANDROID_KEYSTORE_B64` | Fichier de clés (.p12 ou .keystore) encodé en base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | Mot de passe du fichier |
+| `ANDROID_KEY_ALIAS` | Alias de la clé |
+| `ANDROID_KEY_PASSWORD` | Facultatif : seulement si la clé a un mot de passe différent du fichier |
+
+Les APK se téléchargent dans l'onglet **Actions**, sur le run concerné, rubrique *Artifacts*.
+
+### En local
+
+Prérequis : JDK 17, SDK Android avec la plateforme 37.
 
 ```bash
-# Clone the repository
-git clone https://github.com/solkin/appteka-android.git
-cd appteka-android
-
-# Build debug APK
-./gradlew assembleDebug
-
-# Build release APK (requires signing config)
-./gradlew assembleRelease
+git clone -b tv-html https://github.com/MOD-PROD/ApptekaTv.git
+cd ApptekaTv
+./gradlew assembleDebug          # APK dans app/build/outputs/apk/debug/
 ```
 
-The APK will be generated at `app/build/outputs/apk/`
+Version de production signée :
 
-## Localization
-
-Appteka is available in **9 languages**:
-
-| Language | Code |
-|----------|------|
-| English | `en` (default) |
-| Russian | `ru` |
-| Arabic | `ar` |
-| Chinese | `zh` |
-| Farsi | `fa` |
-| Hindi | `hi` |
-| Kurdish | `ku` |
-| Portuguese (Brazil) | `pt-rBR` |
-| Vietnamese | `vi` |
-
-Want to help translate? Contributions are welcome!
-
-## Contributing
-
-Contributions are welcome! Feel free to:
-
-- Report bugs and request features via [Issues](https://github.com/solkin/appteka-android/issues)
-- Submit pull requests with improvements
-- Help with translations
-- Improve documentation
-
-## Security & Disclaimer
-
-All uploaded applications are automatically scanned by a built-in antivirus system powered by **three independent antivirus engines**.
-
-However, Appteka is a community-driven app exchange platform where users can freely upload applications. **The Appteka team is not responsible for user-generated content.** While security scanning and content moderation are in place, please take appropriate safety precautions — verify the source, check reviews and ratings before installing.
-
-- [Terms of Service](https://appteka.store/legal)
-- [DMCA Policy](https://appteka.store/dmca)
-- [Contacts & Donations](https://appteka.store/contacts)
-
-## License
-
-```
-Copyright (C) 2016-2026 Appteka
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
+```bash
+./gradlew assembleRelease -PstoreFile=<fichier> -PstorePassword=<mdp> -PkeyAlias=<alias> -PkeyPassword=<mdp>
 ```
 
-See [LICENSE.txt](LICENSE.txt) for the full license text.
+Ne jamais ajouter de fichier de clés au dépôt : `*.keystore` et `*.jks` sont ignorés par `.gitignore`.
 
----
+## Installation sur une TV
 
-<p align="center">
-  Night-coded by Appteka team 🌙
-</p>
+1. Récupérer l'APK (Actions → Artifacts) et le dézipper.
+2. Le copier sur la TV (clé USB, gestionnaire de fichiers, `adb install`) ou l'envoyer depuis Appteka sur le portable.
+3. Autoriser les « sources inconnues » pour l'application qui installe.
+4. L'appli apparaît dans le lanceur Android TV sous le nom Appteka.
+
+## Sécurité
+
+Comme Appteka, le catalogue est alimenté par les utilisateurs. Les applis publiées sont analysées par l'antivirus d'Appteka, mais vérifiez la source, les avis et les notes avant d'installer. Conditions d'Appteka : [appteka.store/legal](https://appteka.store/legal).
+
+## Licence et origine
+
+Appteka TV est dérivé d'**Appteka** © 2016-2026 l’équipe Appteka, publié sous licence **GNU GPL v3**. Ce dépôt est distribué sous la même licence ; les modifications (interface HTML, lanceur TV, liaison Wi-Fi) sont signalées dans l'historique Git de la branche `tv-html`.
+
+Voir [LICENSE.txt](LICENSE.txt) pour le texte complet.
