@@ -1,0 +1,11 @@
+<resources>
+    <string name="tv_pair_title">Associer une TV</string>
+    <string name="tv_pair_scan">Scanner le QR code</string>
+    <string name="tv_pair_enter">Taper le code</string>
+    <string name="tv_pair_confirm">Associer</string>
+    <string name="tv_pair_address_hint">Adresse de la TV (IP:port)</string>
+    <string name="tv_pair_code_hint">Code TV à 8 caractères</string>
+    <string name="tv_pair_code_failed">Code incorrect ou expiré. Rouvre l’association sur la TV.</string>
+    <string name="tv_pair_display_code">Code d’association : %1$s</string>
+    <string name="tv_pair_display_address">Adresse de la TV : %1$s</string>
+</resources>
