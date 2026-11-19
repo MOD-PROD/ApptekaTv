@@ -640,11 +640,11 @@ let settingsMsg = { text: '', err: false };
 let expandedSettings = null;
 const ACCENTS = {
     default: { label: 'Couleur du skin' },
-    green: { label: 'Vert', rgb: [121, 230, 58] },
-    gold: { label: 'Or', rgb: [238, 193, 68] },
-    blue: { label: 'Bleu', rgb: [81, 172, 255] },
-    purple: { label: 'Violet', rgb: [192, 145, 255] },
-    coral: { label: 'Corail', rgb: [255, 132, 120] },
+    green: { label: 'Vert', rgb: [121, 230, 58], capsuleHue: 0 },
+    gold: { label: 'Or', rgb: [238, 193, 68], capsuleHue: -63 },
+    blue: { label: 'Bleu', rgb: [81, 172, 255], capsuleHue: 102 },
+    purple: { label: 'Violet', rgb: [192, 145, 255], capsuleHue: 164 },
+    coral: { label: 'Corail', rgb: [255, 132, 120], capsuleHue: -105 },
 };
 
 function applySkin() {
@@ -656,7 +656,10 @@ function applySkin() {
     root.classList.toggle('green-skin', green);
     root.classList.toggle('neu-skin', neu);
     root.classList.toggle('neu-dark', settings.skin === 'green');
-    const rgb = ACCENTS[settings.accent]?.rgb;
+    const accent = ACCENTS[settings.accent];
+    const rgb = accent?.rgb;
+    const defaultHue = settings.skin === 'neu' ? 125 : settings.skin === 'classic' ? -63 : 0;
+    root.style.setProperty('--capsule-hue', `${accent?.capsuleHue ?? defaultHue}deg`);
     root.classList.toggle('custom-accent', Boolean(rgb));
     for (const property of ['--accent-rgb', '--accent-light-rgb', '--accent-dark']) {
         root.style.removeProperty(property);
@@ -1379,6 +1382,7 @@ window.TvCards = { create: createAppCard };
 
 function start() {
     applySkin();
+    document.getElementById('brand-logo').addEventListener('click', () => window.playGravitySplash?.());
     applyCardScale();
     setupFocusManagement();
     buildRows();

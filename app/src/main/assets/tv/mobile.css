@@ -40,8 +40,6 @@
 .mobile .header { flex-wrap: wrap; align-items: center; gap: 8px clamp(6px, 2vw, 10px); margin-bottom: 6px; }
 .mobile .header > .logo { flex: 1 1 auto; min-width: 0; gap: 6px; }
 .mobile .logo-capsule { width: clamp(28px, 8vw, 38px); height: clamp(28px, 8vw, 38px); }
-.mobile .logo-main { font-size: clamp(16px, 4.6vw, 22px); letter-spacing: clamp(2px, 0.9vw, 4px); }
-.mobile .logo-tv { font-size: clamp(11px, 3vw, 14px); padding: 2px 7px; }
 .mobile .header-right { display: contents; }
 .mobile .hbtn { width: clamp(36px, 10vw, 44px); height: clamp(36px, 10vw, 44px); flex: 0 0 auto; }
 .mobile .hbtn svg { width: 46%; height: 46%; }

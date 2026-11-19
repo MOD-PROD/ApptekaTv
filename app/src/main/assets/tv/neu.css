@@ -145,14 +145,12 @@ html.neu-skin.neu-dark {
 .neu-skin .cell.checked .cell-check,
 .neu-skin .hbtn-badge,
 .neu-skin .row-count,
-.neu-skin .logo-tv,
 .neu-skin .row-arrow {
     background: var(--accent) !important;
     color: var(--on-accent) !important;
 }
 
 /* Textes */
-.neu-skin .logo-main,
 .neu-skin .d-name,
 .neu-skin .author-title {
     background: none !important;

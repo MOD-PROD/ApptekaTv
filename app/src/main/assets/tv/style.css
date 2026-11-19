@@ -68,25 +68,6 @@ html, body {
     margin-bottom: 18px;
     flex-shrink: 0;
 }
-.logo { display: flex; align-items: baseline; gap: 8px; }
-.logo-main {
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: 6px;
-    background: linear-gradient(135deg, var(--accent-light), var(--accent) 45%, var(--accent-dark));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-.logo-tv {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    color: #0a0a0a;
-    background: linear-gradient(135deg, var(--accent-light), var(--accent));
-    padding: 3px 8px;
-    border-radius: 6px;
-}
 .header-right { display: flex; align-items: center; gap: 12px; }
 
 .search-box {
