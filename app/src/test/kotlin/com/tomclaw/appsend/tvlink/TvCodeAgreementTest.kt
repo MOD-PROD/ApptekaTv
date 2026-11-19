@@ -12,12 +12,19 @@ class TvCodeAgreementTest {
         val phone = TvCodeAgreement(TvCodeAgreement.Side.PHONE, phoneCode, phonePin)
         val tv1 = tv.start()
         val phone1 = phone.start()
-        val tv2 = tv.exchange(phone1)
-        val phone2 = phone.exchange(tv1)
-        val tv3 = tv.confirmation(phone2)
-        val phone3 = phone.confirmation(tv2)
-        phone.verify(tv3)
-        tv.verify(phone3)
+        val tv2 = tv.exchange(TvCodePayloads.round1(TvCodePayloads.encode(phone1), TvCodeAgreement.Side.PHONE))
+        val phone2 = phone.exchange(TvCodePayloads.round1(TvCodePayloads.encode(tv1), TvCodeAgreement.Side.TV))
+        val tv3 = tv.confirmation(TvCodePayloads.round2(TvCodePayloads.encode(phone2), TvCodeAgreement.Side.PHONE))
+        val phone3 = phone.confirmation(TvCodePayloads.round2(TvCodePayloads.encode(tv2), TvCodeAgreement.Side.TV))
+        phone.verify(TvCodePayloads.round3(TvCodePayloads.encode(tv3), TvCodeAgreement.Side.TV))
+        tv.verify(TvCodePayloads.round3(TvCodePayloads.encode(phone3), TvCodeAgreement.Side.PHONE))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsOversizedGroupElement() {
+        val tv = TvCodeAgreement(TvCodeAgreement.Side.TV, code, pin)
+        val payload = TvCodePayloads.encode(tv.start()).apply { addProperty("gx1", "a".repeat(769)) }
+        TvCodePayloads.round1(payload, TvCodeAgreement.Side.TV)
     }
 
     @Test fun confirmsMatchingCodeAndCertificate() = confirm(code, pin)
