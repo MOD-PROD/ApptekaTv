@@ -44,6 +44,7 @@ import com.tomclaw.appsend.install.InstallStatus
 import com.tomclaw.appsend.screen.details.api.Details
 import com.tomclaw.appsend.screen.details.createDetailsActivityIntent
 import com.tomclaw.appsend.util.PackageObserver
+import com.tomclaw.appsend.util.isTvDevice
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
@@ -706,6 +707,9 @@ class TvWebActivity : AppCompatActivity() {
         fun setPref(key: String, value: String) {
             prefs.edit().putString("js_$key", value).apply()
         }
+
+        @JavascriptInterface
+        fun usesMobileLayout(): Boolean = !this@TvWebActivity.isTvDevice()
 
         @JavascriptInterface
         fun getDeviceAbis(): String = gson.toJson(Build.SUPPORTED_ABIS.toList())

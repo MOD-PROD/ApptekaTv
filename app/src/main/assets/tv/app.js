@@ -23,6 +23,10 @@ const SETTINGS = document.getElementById('settings');
 const SETTINGS_PANEL = document.getElementById('settings-panel');
 
 const GRID_COLS = 9;
+const MOBILE_APP_COLUMNS = 4;
+const mobileLayout = typeof window.Android?.usesMobileLayout === 'function'
+    ? window.Android.usesMobileLayout()
+    : window.matchMedia('(max-width: 720px) and (pointer: coarse)').matches;
 const DEFAULT_SOURCES = ['cat:37', 'cat:27']; // TV, Entertainment
 const LONG_PRESS_MS = 600;
 const ALL_ABIS = [
@@ -265,6 +269,7 @@ function buildRows() {
                 <span class="row-count"></span>
                 <span class="row-arrow down">▼</span>
             </div>
+            <h2 class="row-title">${escapeHtml(ic.name)}</h2>
             <div class="apps-row"></div>`;
         ROWS.appendChild(row);
         fillRow(key);
@@ -999,15 +1004,26 @@ function setupFocusManagement() {
             const rows = Array.from(ROWS.querySelectorAll('.row'));
             const r = rows.indexOf(focused.closest('.row'));
             const step = e.key === 'ArrowDown' ? 1 : -1;
+            if (mobileLayout) {
+                const next = idx + step * MOBILE_APP_COLUMNS;
+                const lastLineStart = Math.floor((cards.length - 1) / MOBILE_APP_COLUMNS) * MOBILE_APP_COLUMNS;
+                if (next >= 0 && (next < cards.length || (step > 0 && idx < lastLineStart))) {
+                    focusCard(cards[Math.min(next, cards.length - 1)]);
+                    return;
+                }
+            }
             for (let i = r + step; i >= 0 && i < rows.length; i += step) {
                 const target = Array.from(rows[i].querySelectorAll('.app-card'));
                 if (target.length) {
                     // garde la même position horizontale à l'écran
                     const x = focused.getBoundingClientRect().left;
                     let best = target[0], bestD = Infinity;
-                    target.forEach(t => { const d = Math.abs(t.getBoundingClientRect().left - x); if (d < bestD) { bestD = d; best = t; } });
+                    const line = !mobileLayout ? target : step > 0
+                        ? target.slice(0, MOBILE_APP_COLUMNS)
+                        : target.slice(Math.floor((target.length - 1) / MOBILE_APP_COLUMNS) * MOBILE_APP_COLUMNS);
+                    line.forEach(t => { const d = Math.abs(t.getBoundingClientRect().left - x); if (d < bestD) { bestD = d; best = t; } });
                     focusCard(best);
-                    best.closest('.row').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    if (!mobileLayout) best.closest('.row').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     return;
                 }
             }
@@ -1053,6 +1069,7 @@ window.onCategories = function (json) {
         const ic = iconFor(row.dataset.key);
         const holder = row.querySelector('.row-icon');
         holder.title = ic.name;
+        row.querySelector('.row-title').textContent = ic.name;
         const svg = holder.querySelector('.icon-svg');
         svg.className = 'icon-svg ' + ic.cls;
         svg.innerHTML = ic.html;
@@ -1118,6 +1135,10 @@ window.onDownloadStarted = function (json) {
 window.TvCards = { create: createAppCard };
 
 function start() {
+    if (mobileLayout) {
+        ROWS.classList.add('mobile-grid');
+        ROWS.style.setProperty('--app-columns', MOBILE_APP_COLUMNS);
+    }
     applyCardScale();
     setupFocusManagement();
     buildRows();

@@ -491,3 +491,63 @@ html, body {
     .hbtn { flex-basis: 36px; width: 36px; height: 36px; }
     .search-box { width: clamp(80px, 24vw, 170px); padding: 8px; }
 }
+
+.row-title { display: none; }
+
+.mobile-grid {
+    margin-right: 0;
+    padding: 6px 0 20px;
+}
+
+.mobile-grid .row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px 14px;
+    margin-bottom: 24px;
+}
+
+.mobile-grid .row-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+}
+
+.mobile-grid .row-icon .icon-svg { width: 24px; height: 24px; }
+.mobile-grid .row-count:empty { display: none; }
+
+.mobile-grid .row-title {
+    display: block;
+    font-size: 16px;
+    overflow-wrap: anywhere;
+}
+
+.mobile-grid .apps-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(var(--app-columns), minmax(0, 1fr));
+    gap: 10px;
+    overflow: visible;
+    padding: 0;
+}
+
+.mobile-grid .apps-row > :not(.app-card) { grid-column: 1 / -1; }
+
+.mobile-grid .app-card {
+    width: 100%;
+    min-width: 0;
+    min-height: 94px;
+    aspect-ratio: auto;
+    border-radius: 12px;
+    padding: 8px 4px;
+}
+
+.mobile-grid .app-card:focus { transform: none; }
+
+.mobile-grid .app-icon {
+    width: min(100%, calc(42px * var(--cs, 1)));
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: 10px;
+}
+
+.mobile-grid .app-meta { overflow-wrap: anywhere; }
