@@ -77,11 +77,15 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'neu', accent: 'default', archs: null, margin: 20 },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'green', accent: 'default', archs: null, margin: 20 },
     loadJson('settings', {}) || {}
 );
-// bascule unique vers le néumorphisme clair (nouveau skin par défaut)
-if (settings.skinV !== 2) { settings.skin = 'neu'; settings.accent = 'default'; settings.skinV = 2; }
+// L'ancienne version enregistrait Néo clair même sans choix explicite.
+if (settings.skinV !== 3) {
+    if (settings.skin === 'neu') settings.skin = 'green';
+    settings.skinV = 3;
+    saveSettings();
+}
 let favorites = loadJson('favorites', []);
 const rowData = {};           // key -> [apps] | null (erreur) | undefined (en cours)
 const rowLoading = {};
@@ -728,7 +732,7 @@ function renderSettings(focusKey) {
             <div class="set-sub">L'interface et le contenu Appteka (catégories, descriptions) suivent la langue choisie.</div>`)}
         ${settingsSection('appearance', 'Apparence', `
             <div class="set-row" role="group" aria-label="Skin">
-                ${[['classic', 'Noir et or'], ['green', 'Néumorphisme vert'], ['neu', 'Néumorphisme clair']].map(([id, label]) => `
+                ${[['classic', 'Noir et or'], ['green', 'Néo sombre'], ['neu', 'Néo clair']].map(([id, label]) => `
                     <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}
