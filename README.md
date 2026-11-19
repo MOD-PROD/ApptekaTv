@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="app/src/main/ic_launcher-web.png" alt="Appteka TV" width="120" height="120">
+  <img src="art/appteka-tv-banner.jpg" alt="Appteka TV" width="100%">
 </p>
-
-<h1 align="center">Appteka TV</h1>
 
 <p align="center">
   <strong>Appteka pour Android TV et smartphone, avec une interface HTML</strong>
