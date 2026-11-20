@@ -9,7 +9,27 @@ import com.tomclaw.appsend.R
 import org.json.JSONObject
 import kotlin.concurrent.thread
 
-class TvLinkSender(private val activity: Activity, private val appId: String, private val label: String) {
+class TvLinkSender(
+    private val activity: Activity,
+    private val appId: String = "",
+    private val label: String = "",
+    private val onAssociated: ((Connection) -> Unit)? = null,
+) {
+    class Connection internal constructor(
+        internal val address: TvLink.Pairing,
+        internal val token: String,
+        val name: String,
+    )
+
+    private fun associated(address: TvLink.Pairing, token: String, name: String) {
+        val callback = onAssociated
+        if (callback != null) callback(Connection(address, token, name))
+        else chooseAction(address, token, name)
+    }
+
+    fun share(connection: Connection) =
+        chooseAction(connection.address, connection.token, connection.name)
+
     fun pair(raw: String) = thread {
         val result = runCatching {
             val address = TvLink.Pairing.parse(raw)
@@ -35,7 +55,7 @@ class TvLinkSender(private val activity: Activity, private val appId: String, pr
         }
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) {
-                result.onSuccess { (address, token, name) -> chooseAction(address, token, name) }
+                result.onSuccess { (address, token, name) -> associated(address, token, name) }
                     .onFailure { e ->
                         val res = when {
                             e is java.net.SocketTimeoutException ||
@@ -61,9 +81,37 @@ class TvLinkSender(private val activity: Activity, private val appId: String, pr
         }
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) {
-                result.onSuccess { (address, token, name) -> chooseAction(address, token, name) }
-                    .onFailure { toast(R.string.tv_pair_code_failed) }
+                result.onSuccess { (address, token, name) -> associated(address, token, name) }
+                    .onFailure {
+                        toast(if (it is java.net.SocketTimeoutException || it is java.net.ConnectException ||
+                            it is java.net.NoRouteToHostException) R.string.tv_link_unreachable
+                            else R.string.tv_pair_code_failed)
+                    }
             }
+        }
+    }
+
+    fun showPasteEntry() {
+        val pad = (24 * activity.resources.displayMetrics.density).toInt()
+        val field = android.widget.EditText(activity).apply {
+            hint = "Invitation JSON (copie depuis la TV)"
+            minLines = 3
+            setPadding(pad, pad / 2, pad, pad / 2)
+        }
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.tv_pair_title)
+            .setView(field)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.tv_pair_confirm, null)
+            .show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+            val raw = field.text.toString().trim()
+            if (raw.isEmpty() || !raw.contains("\"v\"") && !raw.contains("\"host\"")) {
+                field.error = "Colle l'invitation complète copiée sur la TV."
+                return@setOnClickListener
+            }
+            dialog.dismiss()
+            pair(raw)
         }
     }
 
