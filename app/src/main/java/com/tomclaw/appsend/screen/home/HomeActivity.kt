@@ -38,6 +38,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     lateinit var presenter: HomePresenter
 
     private var redirectedToTv = false
+    private val updateController by lazy { com.tomclaw.appsend.update.UpdateController(this) }
 
     @Inject
     lateinit var analytics: Analytics
@@ -88,6 +89,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 
         if (savedInstanceState == null) {
             analytics.trackEvent("open-home-screen")
+            updateController.check()
         }
     }
 
