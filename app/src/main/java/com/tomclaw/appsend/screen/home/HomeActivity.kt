@@ -5,48 +5,49 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.tomclaw.appsend.BaseActivity
-import com.tomclaw.appsend.R
+import androidx.fragment.app.Fragment
+import com.google.android.material.appbar.AppBarLayout
 import com.tomclaw.appsend.appComponent
-import com.tomclaw.appsend.screen.auth.request.RequestCodeActivity
-import com.tomclaw.appsend.screen.auth.verify.VerifyCodeActivity
-import com.tomclaw.appsend.screen.chat.ChatActivity
-import com.tomclaw.appsend.screen.distro.DistroActivity
-import com.tomclaw.appsend.screen.downloads.createDownloadsActivityIntent
-import com.tomclaw.appsend.screen.favorite.createFavoriteActivityIntent
-import com.tomclaw.appsend.screen.feed.createFeedActivityIntent
+import com.tomclaw.appsend.R
+import com.tomclaw.appsend.screen.about.createAboutActivityIntent
+import com.tomclaw.appsend.screen.bdui.createBduiScreenActivityIntent
+import com.tomclaw.appsend.screen.create_chat.createCreateChatActivityIntent
+import com.tomclaw.appsend.screen.details.createDetailsActivityIntent
+import com.tomclaw.appsend.screen.distro.createDistroActivityIntent
+import com.tomclaw.appsend.screen.feed.createFeedFragment
+import com.tomclaw.appsend.screen.home.di.HomeModule
 import com.tomclaw.appsend.screen.installed.createInstalledActivityIntent
-import com.tomclaw.appsend.screen.moderation.createModerationActivityIntent
-import com.tomclaw.appsend.screen.permissions.PermissionsActivity
-import com.tomclaw.appsend.screen.profile.createProfileActivityIntent
-import com.tomclaw.appsend.screen.reviews.createReviewsActivityIntent
+import com.tomclaw.appsend.screen.post.createPostActivityIntent
+import com.tomclaw.appsend.screen.profile.createProfileFragment
+import com.tomclaw.appsend.screen.search.createSearchActivityIntent
 import com.tomclaw.appsend.screen.settings.createSettingsActivityIntent
 import com.tomclaw.appsend.screen.store.createStoreFragment
 import com.tomclaw.appsend.screen.topics.createTopicsFragment
+import com.tomclaw.appsend.screen.upload.createUploadActivityIntent
 import com.tomclaw.appsend.screen.tv.TvWebActivity
 import com.tomclaw.appsend.util.isTvDevice
-import com.tomclaw.appsend.screen.upload.createUploadActivityIntent
-import com.tomclaw.appsend.screen.uploads.createUploadsActivityIntent
 import com.tomclaw.appsend.util.Analytics
 import javax.inject.Inject
+import kotlin.system.exitProcess
 
-class HomeActivity : BaseActivity(), HomePresenter.HomeRouter {
+class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 
     @Inject
     lateinit var presenter: HomePresenter
 
+    private var redirectedToTv = false
+    private val updateController by lazy { com.tomclaw.appsend.update.UpdateController(this) }
+
     @Inject
     lateinit var analytics: Analytics
 
-    private var redirectedToTv = false
+    private val handler: Handler = Handler(Looper.getMainLooper())
+    private var pendingFragmentRunnable: Runnable? = null
 
-    private val updateController by lazy { com.tomclaw.appsend.update.UpdateController(this) }
-
-    private val backCallback = object : OnBackPressedCallback(true) {
+    private val backCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
             presenter.onBackPressed()
         }
@@ -90,19 +91,93 @@ class HomeActivity : BaseActivity(), HomePresenter.HomeRouter {
 
         if (savedInstanceState == null) {
             analytics.trackEvent("open-home-screen")
-        }
-
-        Handler(Looper.getMainLooper()).post {
-            if (!isFinishing && !isDestroyed) {
-                updateController.check()
-            }
+            updateController.check()
         }
     }
 
-    private fun invalidateFragment(data: Intent?) {
-        supportFragmentManager.fragments.filterIsInstance<HomeFragment>().forEach {
-            it.handleEvent(data)
+    override fun showStoreFragment() {
+        val fragment = getOrCreateFragment(INDEX_STORE) { createStoreFragment() }
+        replaceFragment(fragment, INDEX_STORE)
+    }
+
+    override fun showFeedFragment() {
+        val fragment = getOrCreateFragment(INDEX_FEED) { createFeedFragment() }
+        replaceFragment(fragment, INDEX_FEED)
+    }
+
+    override fun showTopicsFragment() {
+        val fragment = getOrCreateFragment(INDEX_DISCUSS) { createTopicsFragment() }
+        replaceFragment(fragment, INDEX_DISCUSS)
+    }
+
+    override fun showProfileFragment() {
+        val fragment = getOrCreateFragment(INDEX_PROFILE) { createProfileFragment() }
+        replaceFragment(fragment, INDEX_PROFILE)
+    }
+
+    fun invalidateFragment(data: Intent?) {
+        val pendingRunnable = Runnable {
+            val fragment = supportFragmentManager.findFragmentById(R.id.frame) as? HomeFragment
+            fragment?.handleEvent(data)
         }
+        handler.post(pendingRunnable)
+    }
+
+    override fun openUploadScreen() {
+        startActivity(createUploadActivityIntent(this, null, null, null))
+    }
+
+    override fun openPostScreen() {
+        postLauncher.launch(createPostActivityIntent(this))
+    }
+
+    override fun openCreateChatScreen() {
+        startActivity(createCreateChatActivityIntent(this))
+    }
+
+    override fun openSearchScreen() {
+        startActivity(createSearchActivityIntent(this))
+    }
+
+    override fun openInstalledScreen() {
+        startActivity(createInstalledActivityIntent(this))
+    }
+
+    override fun openDistroScreen() {
+        startActivity(createDistroActivityIntent(this))
+    }
+
+    override fun openSettingsScreen() {
+        startActivity(createSettingsActivityIntent(this))
+    }
+
+    override fun openAboutScreen() {
+        startActivity(createAboutActivityIntent(this))
+    }
+
+    private fun getOrCreateFragment(index: Int, creator: () -> Fragment): Fragment {
+        val tag = "home_tab_$index"
+        return supportFragmentManager.findFragmentByTag(tag) ?: creator()
+    }
+
+    private fun replaceFragment(fragment: Fragment, index: Int) {
+        val tag = "home_tab_$index"
+        val existing = supportFragmentManager.findFragmentByTag(tag)
+        val transaction = supportFragmentManager.beginTransaction()
+        supportFragmentManager.fragments.forEach { f ->
+            if (f != fragment && f.isAdded) transaction.hide(f)
+        }
+        if (existing == null) {
+            transaction.add(R.id.frame, fragment, tag)
+        } else {
+            transaction.show(existing)
+        }
+        transaction.commitAllowingStateLoss()
+        resetAppBarLift()
+    }
+
+    private fun resetAppBarLift() {
+        findViewById<AppBarLayout>(R.id.app_bar_layout)?.setExpanded(true, true)
     }
 
     override fun onStart() {
@@ -112,8 +187,14 @@ class HomeActivity : BaseActivity(), HomePresenter.HomeRouter {
     }
 
     override fun onStop() {
+        pendingFragmentRunnable?.let { handler.removeCallbacks(it) }
+        pendingFragmentRunnable = null
         if (!redirectedToTv) presenter.detachRouter()
         super.onStop()
+    }
+
+    override fun onResume() {
+        super.onResume()
     }
 
     override fun onDestroy() {
@@ -127,83 +208,64 @@ class HomeActivity : BaseActivity(), HomePresenter.HomeRouter {
         outState.putBundle(KEY_PRESENTER_STATE, presenter.saveState())
     }
 
-    override fun showStoreFragment() {
-        replaceFragment(createStoreFragment())
+    override fun openAppScreen(appId: String, title: String) {
+        val intent = createDetailsActivityIntent(
+            context = this,
+            appId = appId,
+            label = title,
+            moderation = false,
+            finishOnly = true
+        )
+        startActivity(intent)
     }
 
-    override fun showTopicsFragment() {
-        replaceFragment(createTopicsFragment())
+    override fun openShareUrlDialog(text: String) {
+        val intent = Intent().apply {
+            setAction(Intent.ACTION_SEND)
+            putExtra(Intent.EXTRA_TEXT, text)
+            setType("text/plain")
+        }
+        val chooser = Intent.createChooser(intent, resources.getText(R.string.send_url_to))
+        startActivity(chooser)
     }
 
-    private fun replaceFragment(fragment: androidx.fragment.app.Fragment) {
-        supportFragmentManager
-            .beginTransaction()
-            .replace(R.id.frame, fragment)
-            .commitAllowingStateLoss()
+    override fun openBduiScreen(url: String, title: String?) {
+        val intent = createBduiScreenActivityIntent(this, url, title)
+        startActivity(intent)
     }
 
-    override fun openUploadScreen() {
-        startActivity(createUploadActivityIntent(this, null, null, null))
-    }
-
-    override fun openInstalledScreen() {
-        startActivity(createInstalledActivityIntent(this))
-    }
-
-    override fun openDistroScreen() {
-        startActivity(Intent(this, DistroActivity::class.java))
-    }
-
-    override fun openModerationScreen() {
-        startActivity(createModerationActivityIntent(this))
-    }
-
-    override fun openSettingsScreen() {
-        startActivity(createSettingsActivityIntent(this))
-    }
-
-    override fun openProfileScreen(userId: Int) {
-        startActivity(createProfileActivityIntent(this, userId))
-    }
-
-    override fun openDownloadsScreen(userId: Int) {
-        startActivity(createDownloadsActivityIntent(this, userId))
-    }
-
-    override fun openUploadsScreen(userId: Int) {
-        startActivity(createUploadsActivityIntent(this, userId))
-    }
-
-    override fun openFavoriteScreen(userId: Int) {
-        startActivity(createFavoriteActivityIntent(this, userId))
-    }
-
-    override fun openReviewsScreen(userId: Int) {
-        startActivity(createReviewsActivityIntent(this, userId))
-    }
-
-    override fun openFeedScreen(userId: Int) {
-        startActivity(createFeedActivityIntent(this, userId))
-    }
-
-    override fun openChatScreen(topicId: Int) {
-        startActivity(Intent(this, ChatActivity::class.java).putExtra("topic_id", topicId))
-    }
-
-    override fun openAuthScreen() {
-        startActivity(Intent(this, RequestCodeActivity::class.java))
+    override fun setBackCallbackEnabled(enabled: Boolean) {
+        backCallback.isEnabled = enabled
     }
 
     override fun leaveScreen() {
         finish()
     }
 
-    companion object {
-        private const val KEY_PRESENTER_STATE = "presenter_state"
+    override fun exitApp() {
+        exitProcess(0)
     }
+
+    override fun onTabReselected() {
+        val fragment = supportFragmentManager.findFragmentById(R.id.frame) as? HomeFragment
+        fragment?.onReselect()
+    }
+
 }
 
-fun createClassicHomeIntent(context: Context): Intent =
-    Intent(context, HomeActivity::class.java).putExtra(EXTRA_CLASSIC, true)
+fun createHomeActivityIntent(
+    context: Context,
+): Intent = Intent(context, HomeActivity::class.java)
+
+/** Accueil de l'interface classique (connecteur depuis l'interface HTML). */
+fun createClassicHomeIntent(
+    context: Context,
+): Intent = Intent(context, HomeActivity::class.java).putExtra(EXTRA_CLASSIC, true)
 
 private const val EXTRA_CLASSIC = "classic_ui"
+
+private const val KEY_PRESENTER_STATE = "presenter_state"
+private const val INDEX_STORE = 0
+private const val INDEX_FEED = 1
+private const val INDEX_DISCUSS = 2
+private const val INDEX_PROFILE = 3
