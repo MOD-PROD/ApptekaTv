@@ -26,11 +26,12 @@
         <include domain="root" path="file_to_include"/>
         <exclude domain="root" path="file_to_exclude"/>
         -->
+
+        <exclude domain="sharedpref" path="tv_link_v2.xml" />
+        <exclude domain="sharedpref" path="tv_link_v2_client.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="tv_link_v2.xml" />
+        <exclude domain="sharedpref" path="tv_link_v2_client.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>

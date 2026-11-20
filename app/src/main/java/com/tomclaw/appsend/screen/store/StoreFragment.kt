@@ -7,7 +7,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import androidx.fragment.app.Fragment
-import com.tomclaw.appsend.screen.tv.DemoTv
+import com.tomclaw.appsend.BuildConfig
+import com.tomclaw.appsend.util.isTvDevice
+import com.tomclaw.appsend.tvlink.TvLinkSender
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tomclaw.appsend.util.adapter.ItemBinder
 import com.tomclaw.appsend.util.adapter.AdapterPresenter
@@ -73,44 +77,51 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val topicsView = StoreViewImpl(view, filters, preferences, adapter)
 
         presenter.attachView(topicsView)
-        DemoTv.onPhone(requireContext())?.let(::bindTargetSwitch)
+        if (BuildConfig.DEBUG && !requireContext().isTvDevice()) bindTargetSwitch()
     }
 
-    private fun bindTargetSwitch(demo: DemoTv) {
+    private var connection: TvLinkSender.Connection? = null
+    private fun pairingSender() = TvLinkSender(requireActivity(), onAssociated = { paired ->
+        connection = paired
+        renderTarget()
+        val context = context ?: return@TvLinkSender
+        android.widget.Toast.makeText(context, "Connecté à ${paired.name}", android.widget.Toast.LENGTH_SHORT).show()
+    })
+
+    private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
+        result.contents?.let { pairingSender().pair(it) }
+    }
+
+    private fun renderTarget() {
+        targetButton?.apply {
+            setImageResource(if (connection == null) R.drawable.ic_target_mobile else R.drawable.ic_target_tv)
+            contentDescription = connection?.let { "TV connectée : ${it.name}. Revenir au téléphone." }
+                ?: getString(R.string.tv_pair_title)
+        }
+    }
+
+    private fun bindTargetSwitch() {
         val target = requireActivity().findViewById<ImageButton>(R.id.demo_tv_target)
         targetButton = target
         target.visibility = View.VISIBLE
-
-        fun render() {
-            target.setImageResource(if (demo.selected) R.drawable.ic_target_tv else R.drawable.ic_target_mobile)
-            target.contentDescription = if (demo.selected) "TV de démo sélectionnée. Passer au téléphone"
-                else "Téléphone sélectionné. Passer à la TV de démo"
-        }
-
-        fun selectTv(selected: Boolean) {
-            demo.selected = selected
-            render()
-            presenter.invalidateApps()
-        }
-
         target.setOnClickListener {
-            when {
-                demo.selected && demo.connected -> selectTv(false)
-                demo.connected -> selectTv(true)
-                else -> MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Connecter une TV")
-                    .setMessage("Connecte la TV de démo pour tester le pilotage sur ce téléphone.")
-                    .setPositiveButton("Connecter la TV de démo") { _, _ ->
-                        demo.connected = true
-                        selectTv(true)
+            if (connection != null) {
+                connection = null
+                renderTarget()
+            } else {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.tv_pair_title)
+                    .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter))) { _, which ->
+                        if (which == 0) {
+                            pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                .setOrientationLocked(false).setPrompt(getString(R.string.tv_pair_scan)))
+                        } else pairingSender().showCodeEntry()
                     }
-                    .setNegativeButton(android.R.string.cancel) { _, _ ->
-                        if (demo.selected) selectTv(false)
-                    }
+                    .setNegativeButton(android.R.string.cancel, null)
                     .show()
             }
         }
-        render()
+        renderTarget()
     }
 
     override fun onStart() {
@@ -145,21 +156,8 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     }
 
     override fun openAppScreen(appId: String, title: String) {
-        val demo = DemoTv.onPhone(requireContext())
-        if (demo?.selected == true) {
-            val app = DemoTv.apps.firstOrNull { it.id == appId } ?: return
-            val dialog = MaterialAlertDialogBuilder(requireContext()).setTitle(app.name)
-            if (!demo.connected) {
-                dialog.setMessage("Connecte la TV de démo depuis Profil.")
-            } else {
-                val installed = demo.isInstalled(app)
-                dialog.setMessage(if (installed) "Installée sur la TV de démo" else "Disponible pour la TV de démo")
-                dialog.setPositiveButton(if (installed) "Désinstaller" else "Installer") { _, _ ->
-                    demo.setInstalled(app, !installed)
-                    presenter.invalidateApps()
-                }
-            }
-            dialog.setNegativeButton(android.R.string.cancel, null).show()
+        connection?.let {
+            TvLinkSender(requireActivity(), appId, title).share(it)
             return
         }
         val intent = createDetailsActivityIntent(
