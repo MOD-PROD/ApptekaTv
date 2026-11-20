@@ -199,7 +199,7 @@ class TvWebActivity : AppCompatActivity() {
                     val clipboard = getSystemService(android.content.ClipboardManager::class.java)
                         ?: return@setOnClickListener
                     val clip = android.content.ClipData.newPlainText(label, value)
-                    if (Build.VERSION.SDK_INT >= 33 && value == pairing.code) {
+                    if (Build.VERSION.SDK_INT >= 33 && value != address) {
                         clip.description.extras = android.os.PersistableBundle().apply {
                             putBoolean("android.content.extra.IS_SENSITIVE", true)
                         }
@@ -213,6 +213,7 @@ class TvWebActivity : AppCompatActivity() {
         }
         addCopyButton("Copier l’adresse", address)
         addCopyButton("Copier le code", pairing.code)
+        addCopyButton("Copier l’invitation", pairing.payload)
         val content = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             addView(copyButtons)
