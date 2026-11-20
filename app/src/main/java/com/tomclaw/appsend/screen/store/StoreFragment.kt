@@ -111,11 +111,12 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             } else {
                 MaterialAlertDialogBuilder(requireContext())
                     .setTitle(R.string.tv_pair_title)
-                    .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter))) { _, which ->
+                    .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter), "Coller l’invitation")) { _, which ->
                         if (which == 0) {
                             pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                                .setOrientationLocked(false).setPrompt(getString(R.string.tv_pair_scan)))
-                        } else pairingSender().showCodeEntry()
+                                .setOrientationLocked(true).setPrompt(getString(R.string.tv_pair_scan)))
+                        } else if (which == 1) pairingSender().showCodeEntry()
+                        else pairingSender().showPasteEntry()
                     }
                     .setNegativeButton(android.R.string.cancel, null)
                     .show()
