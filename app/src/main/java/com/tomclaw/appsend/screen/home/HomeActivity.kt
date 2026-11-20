@@ -28,6 +28,7 @@ import com.tomclaw.appsend.screen.store.createStoreFragment
 import com.tomclaw.appsend.screen.topics.createTopicsFragment
 import com.tomclaw.appsend.screen.upload.createUploadActivityIntent
 import com.tomclaw.appsend.screen.tv.TvWebActivity
+import com.tomclaw.appsend.util.isTvDevice
 import com.tomclaw.appsend.util.Analytics
 import javax.inject.Inject
 import kotlin.system.exitProcess
@@ -38,6 +39,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     lateinit var presenter: HomePresenter
 
     private var redirectedToTv = false
+    private val updateController by lazy { com.tomclaw.appsend.update.UpdateController(this) }
 
     @Inject
     lateinit var analytics: Analytics
@@ -59,10 +61,10 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // L'interface HTML est l'accueil sur TV comme sur portable.
-        // L'accueil classique ne s'ouvre plus que par son connecteur (createClassicHomeIntent).
+        // HTML TV shell only on real Android TV; smartphone keeps native portrait home.
         if (savedInstanceState == null && !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
-            (intent.action == null || intent.action == Intent.ACTION_MAIN)
+            (intent.action == null || intent.action == Intent.ACTION_MAIN) &&
+            isTvDevice()
         ) {
             redirectedToTv = true
             super.onCreate(savedInstanceState)
@@ -88,6 +90,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 
         if (savedInstanceState == null) {
             analytics.trackEvent("open-home-screen")
+            updateController.check()
         }
     }
 
@@ -120,43 +123,35 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     }
 
     override fun openUploadScreen() {
-        val intent = createUploadActivityIntent(context = this, pkg = null, apk = null, info = null)
-        startActivity(intent)
+        startActivity(createUploadActivityIntent(this, null, null, null))
     }
 
     override fun openPostScreen() {
-        val intent = createPostActivityIntent(context = this)
-        postLauncher.launch(intent)
+        postLauncher.launch(createPostActivityIntent(this))
     }
 
     override fun openCreateChatScreen() {
-        val intent = createCreateChatActivityIntent(this)
-        startActivity(intent)
+        startActivity(createCreateChatActivityIntent(this))
     }
 
     override fun openSearchScreen() {
-        val intent = createSearchActivityIntent(this)
-        startActivity(intent)
+        startActivity(createSearchActivityIntent(this))
     }
 
     override fun openInstalledScreen() {
-        val intent = createInstalledActivityIntent(this)
-        startActivity(intent)
+        startActivity(createInstalledActivityIntent(this))
     }
 
     override fun openDistroScreen() {
-        val intent = createDistroActivityIntent(this)
-        startActivity(intent)
+        startActivity(createDistroActivityIntent(this))
     }
 
     override fun openSettingsScreen() {
-        val intent = createSettingsActivityIntent(this)
-        startActivity(intent)
+        startActivity(createSettingsActivityIntent(this))
     }
 
     override fun openAboutScreen() {
-        val intent = createAboutActivityIntent(this)
-        startActivity(intent)
+        startActivity(createAboutActivityIntent(this))
     }
 
     private fun getOrCreateFragment(index: Int, creator: () -> Fragment): Fragment {
@@ -171,34 +166,18 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         // does every status load. Replacing the fragment with itself
         // would throw away its list position and blink the app bar
         // through a lift reset each time.
-        if (supportFragmentManager.findFragmentById(R.id.frame)?.tag == tag) return
-
-        pendingFragmentRunnable?.let { handler.removeCallbacks(it) }
-        val runnable = Runnable {
-            if (!isFinishing && !supportFragmentManager.isStateSaved) {
-                supportFragmentManager
-                    .beginTransaction()
-                    .setCustomAnimations(0, 0)
-                    .replace(R.id.frame, fragment, tag)
-                    .commitAllowingStateLoss()
-                resetAppBarLift()
-            }
+        if (supportFragmentManager.findFragmentById(R.id.frame) === fragment) {
+            return
         }
-        pendingFragmentRunnable = runnable
-        handler.post(runnable)
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.frame, fragment, tag)
+            .commitAllowingStateLoss()
+        resetAppBarLift()
     }
 
-    /**
-     * The tabs share one app bar, so a tab left scrolled would hand the
-     * next one a lifted bar over content sitting at the top. The bar
-     * also caches the view it watches, and that view belongs to the
-     * outgoing fragment — re-setting the id drops the stale reference so
-     * the incoming list is found instead.
-     */
     private fun resetAppBarLift() {
-        val appBar = findViewById<AppBarLayout>(R.id.app_bar_layout)
-        appBar.liftOnScrollTargetViewId = R.id.recycler
-        appBar.setLifted(false)
+        findViewById<AppBarLayout>(R.id.app_bar_layout)?.setExpanded(true, true)
     }
 
     override fun onStart() {

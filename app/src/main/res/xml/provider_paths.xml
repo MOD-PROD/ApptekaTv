@@ -9,4 +9,5 @@
     <cache-path
         name="apk_cache"
         path="apk_cache/" />
+    <cache-path name="self_update" path="self-update/" />
 </paths>

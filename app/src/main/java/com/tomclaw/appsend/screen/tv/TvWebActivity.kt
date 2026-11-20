@@ -4,6 +4,13 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.graphics.Bitmap
+import android.widget.ImageView
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -23,6 +30,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.google.gson.Gson
+import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
 import com.tomclaw.appsend.tvlink.TvLink
 import com.tomclaw.appsend.tvlink.TvLinkSender
@@ -73,6 +81,7 @@ class TvWebActivity : AppCompatActivity() {
     @Inject
     lateinit var apkStorage: ApkStorage
 
+    private val updateController by lazy { com.tomclaw.appsend.update.UpdateController(this) }
     private lateinit var webView: WebView
     private val disposables = CompositeDisposable()
     private val gson = Gson()
@@ -124,6 +133,8 @@ class TvWebActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString("pendingTvConfig", pendingConfig)
+        outState.putString("pendingPairApp", pendingPairApp)
+        outState.putString("pendingPairLabel", pendingPairLabel)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -131,6 +142,8 @@ class TvWebActivity : AppCompatActivity() {
         appComponent.inject(activity = this)
         super.onCreate(savedInstanceState)
         pendingConfig = savedInstanceState?.getString("pendingTvConfig")
+        pendingPairApp = savedInstanceState?.getString("pendingPairApp")
+        pendingPairLabel = savedInstanceState?.getString("pendingPairLabel")
 
         webView = WebView(this)
         webView.setBackgroundColor(0xffe0e5ec.toInt())
@@ -140,6 +153,7 @@ class TvWebActivity : AppCompatActivity() {
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
         if (isTv) startTvLink()
+        if (savedInstanceState == null) updateController.check()
     }
 
     // ------------------------------------------- Liaison portable -> TV
@@ -147,13 +161,48 @@ class TvWebActivity : AppCompatActivity() {
     /** TV (ou box) : interface 10 pieds ; sinon interface portable. */
     private val isTv by lazy { isTvDevice() }
     private var tvLink: TvLink.Server? = null
+    private var pendingPairApp: String? = null
+    private var pendingPairLabel: String? = null
+    private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
+        val appId = pendingPairApp
+        val label = pendingPairLabel
+        pendingPairApp = null
+        pendingPairLabel = null
+        if (appId != null && result.contents != null) {
+            TvLinkSender(this, appId, label ?: appId).pair(result.contents)
+        }
+    }
+
+    private fun showPairingQr() {
+        val server = tvLink ?: return toast("Association TV indisponible")
+        val pairing = server.pairingQr() ?: return toast("Association TV indisponible")
+        val size = 560
+        val matrix = QRCodeWriter().encode(pairing.payload, BarcodeFormat.QR_CODE, size, size)
+        val pixels = IntArray(size * size) { index ->
+            if (matrix[index % size, index / size]) 0xff000000.toInt() else 0xffffffff.toInt()
+        }
+        val image = ImageView(this).apply {
+            setImageBitmap(Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888))
+            adjustViewBounds = true
+            maxHeight = size
+        }
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
+            .setMessage(getString(R.string.tv_pair_display_address,
+                TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }))
+            .setView(image)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+        val expireDialog = Runnable { dialog.dismiss() }
+        dialog.setOnDismissListener {
+            handler.removeCallbacks(expireDialog)
+            // ATV: keep the invitation valid until TTL expiry or successful pairing.
+        }
+        handler.postDelayed(expireDialog, 5 * 60 * 1000L)
+    }
 
     private fun startTvLink() {
         val server = TvLink.Server(this, object : TvLink.Host {
-            override fun onPairCode(device: String, code: String) {
-                js("onPairCode", mapOf("device" to device, "code" to code))
-            }
-
             override fun onPaired(device: String) {
                 js("onPaired", mapOf("device" to device))
             }
@@ -699,6 +748,12 @@ class TvWebActivity : AppCompatActivity() {
     // -------------------------------------------------------- Bridge
 
     inner class TvJsBridge {
+        @JavascriptInterface
+        fun checkSelfUpdate(): Unit = runOnUiThread { updateController.check(manual = true) }
+
+        @JavascriptInterface
+        fun installedUpdateVersion(): String = com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
+
 
         /** Ouvre la fiche HTML (remplace l'écran de détails natif). */
         @JavascriptInterface
@@ -786,7 +841,20 @@ class TvWebActivity : AppCompatActivity() {
         /** Portable : envoie l'app à une Appteka TV du Wi-Fi. */
         @JavascriptInterface
         fun sendToTv(appId: String, label: String): Unit = runOnUiThread {
-            TvLinkSender(this@TvWebActivity, appId, label).start()
+            MaterialAlertDialogBuilder(this@TvWebActivity)
+                .setTitle(R.string.tv_pair_title)
+                .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter))) { _, which ->
+                    if (which == 0) {
+                        pendingPairApp = appId
+                        pendingPairLabel = label
+                        pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            .setOrientationLocked(false).setPrompt(getString(R.string.tv_pair_scan)))
+                    } else {
+                        TvLinkSender(this@TvWebActivity, appId, label).showCodeEntry()
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
 
         /** TV : nom, adresse et appareils associés. */
@@ -794,7 +862,10 @@ class TvWebActivity : AppCompatActivity() {
         fun tvLinkInfo(): String = gson.toJson(this@TvWebActivity.tvLinkInfo())
 
         @JavascriptInterface
-        fun tvLinkForget(): Unit = runOnUiThread { tvLink?.forgetAll() }
+        fun tvLinkForget(id: String): Unit = runOnUiThread { tvLink?.forget(id) }
+
+        @JavascriptInterface
+        fun tvLinkShowQr(): Unit = runOnUiThread { showPairingQr() }
 
         @JavascriptInterface
         fun getDeviceAbis(): String = gson.toJson(Build.SUPPORTED_ABIS.toList())

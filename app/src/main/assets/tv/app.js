@@ -767,6 +767,11 @@ function renderSettings(focusKey) {
                 d'une fiche. Cette TV : ${escapeHtml(deviceAbis.join(', '))}.</div>
         `)}
         ${IS_MOBILE ? '' : settingsSection('tvlink', 'Liaison portable', tvLinkHtml())}
+        <div class="set-section">
+            <div class="set-label">Mise à jour Appteka TV</div>
+            <div class="set-sub" data-no-i18n>Version : ${escapeHtml(String(call('installedUpdateVersion') || '—'))}</div>
+            <button class="btn focusable" type="button" data-k="self-update" data-act="self-update">Rechercher une mise à jour</button>
+        </div>
         ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
         <div class="set-section">
             <button class="btn focusable" type="button" data-k="export-config" data-act="export-config">
@@ -839,14 +844,19 @@ function tvLinkHtml() {
     try { info = JSON.parse((window.Android && window.Android.tvLinkInfo && window.Android.tvLinkInfo()) || '{}'); } catch (e) { /* */ }
     const devices = info.devices || [];
     return `
-        <div class="set-sub">Dans Appteka sur ton portable, ouvre une app puis « Envoyer à la TV ». La TV est trouvée toute seule sur le Wi-Fi ; un code s'affiche ici la première fois.</div>
+        <div class="set-sub">Dans Appteka sur ton téléphone, choisis « Envoyer à la TV » puis scanne le QR sur le même réseau.</div>
         <div class="set-row" style="margin-top:10px">
             <div class="set-value" data-no-i18n style="min-width:0">${escapeHtml(info.name || '')}</div>
             <div class="set-sub" data-no-i18n style="margin:0">${info.ip ? escapeHtml(info.ip + (info.port && info.port !== 8336 ? ':' + info.port : '')) : ''}</div>
         </div>
+        <button class="btn focusable" type="button" data-k="tvlink-pair" data-act="tvlink-pair">Afficher le QR d’association</button>
         <div class="set-label set-spacing">Appareils associés</div>
-        <div class="set-sub" data-no-i18n>${devices.length ? devices.map(escapeHtml).join(' · ') : '—'}</div>
-        ${devices.length ? '<div class="set-row" style="margin-top:10px"><button class="btn focusable" type="button" data-k="tvlink-forget" data-act="tvlink-forget">Oublier les appareils</button></div>' : ''}`;
+        ${devices.length ? devices.map(device => `
+            <div class="set-row">
+                <span data-no-i18n>${escapeHtml(device.name)}</span>
+                <button class="btn focusable" type="button" data-k="forget-${escapeHtml(device.id)}"
+                        data-act="tvlink-forget" data-device="${escapeHtml(device.id)}">Oublier</button>
+            </div>`).join('') : '—'}`;
 }
 
 // Connecteurs vers l'interface classique (fonctions pas encore refaites en HTML)
@@ -875,6 +885,7 @@ function classicHtml() {
 }
 
 function onSettingsAction(b) {
+    if (b.dataset.act === 'self-update') { call('checkSelfUpdate'); return; }
     const { section, skin, accent } = b.dataset;
     if (b.dataset.classic) {
         const uid = account.profile && account.profile.userId;
@@ -913,8 +924,11 @@ function onSettingsAction(b) {
         case 'close-settings':
             closeSettings();
             return;
+        case 'tvlink-pair':
+            call('tvLinkShowQr');
+            return;
         case 'tvlink-forget':
-            call('tvLinkForget');
+            call('tvLinkForget', b.dataset.device);
             setTimeout(() => renderSettings('section-tvlink'), 200);
             return;
         case 'export-config': {
@@ -1248,14 +1262,6 @@ window.onTvLongPress = function () {
 
 // Touche Retour (appelée par Android). Renvoie true si géré ici.
 let pairTimer = null;
-window.onPairCode = function (json) {
-    const o = typeof json === 'string' ? JSON.parse(json) : json;
-    document.getElementById('pair-text').textContent = `« ${o.device} » veut se connecter à cette TV.`;
-    document.getElementById('pair-code').textContent = o.code;
-    PAIR_MODAL.classList.remove('hidden');
-    clearTimeout(pairTimer);
-    pairTimer = setTimeout(() => PAIR_MODAL.classList.add('hidden'), 120000);
-};
 window.onPaired = function (json) {
     const o = typeof json === 'string' ? JSON.parse(json) : json;
     PAIR_MODAL.classList.add('hidden');
