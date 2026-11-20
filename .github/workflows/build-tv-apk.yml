@@ -49,6 +49,9 @@ jobs:
           test "$VERSION_CODE" -gt 1195
           test "$VERSION_CODE" -le 2100000000
 
+      - name: Unit tests (self-update + existing)
+        run: ./gradlew testDebugUnitTest --stacktrace
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
