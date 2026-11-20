@@ -70,6 +70,7 @@ class SettingsFragment : PreferenceFragmentCompat(),
     @Inject
     lateinit var proxyChecker: ProxyChecker
 
+    private val updateController by lazy { com.tomclaw.appsend.update.UpdateController(requireActivity()) }
     private lateinit var settingsView: SettingsView
 
     private var pendingStoragePermissionCallback: ((Boolean) -> Unit)? = null
@@ -88,6 +89,15 @@ class SettingsFragment : PreferenceFragmentCompat(),
             .inject(fragment = this)
 
         setPreferencesFromResource(R.xml.preferences, rootKey)
+        if (rootKey == null) {
+            preferenceScreen.addPreference(Preference(requireContext()).apply {
+                key = "self_update"
+                title = "Rechercher une mise à jour"
+                summary = "Appteka TV — " + com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
+                isPersistent = false
+                setOnPreferenceClickListener { updateController.check(manual = true); true }
+            })
+        }
 
         settingsView = SettingsViewImpl(this)
         (settingsView as SettingsViewImpl).bindContentFilter()
