@@ -29,6 +29,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.tomclaw.appsend.BuildConfig
 import com.google.gson.Gson
 import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
@@ -233,6 +237,16 @@ class TvWebActivity : AppCompatActivity() {
             server.closePairing(pairing.sessionId)
         }
         handler.postDelayed(expireDialog, 5 * 60 * 1000L)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && BuildConfig.FORCE_TV_SIMULATOR) {
+            WindowCompat.getInsetsController(window, window.decorView).apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
+        }
     }
 
     private fun startTvLink() {
