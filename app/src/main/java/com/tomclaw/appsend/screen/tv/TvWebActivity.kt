@@ -194,7 +194,7 @@ class TvWebActivity : AppCompatActivity() {
         val expireDialog = Runnable { dialog.dismiss() }
         dialog.setOnDismissListener {
             handler.removeCallbacks(expireDialog)
-            server.closePairing(pairing.sessionId)
+            // ATV: keep the invitation valid until TTL expiry or successful pairing.
         }
         handler.postDelayed(expireDialog, 5 * 60 * 1000L)
     }
