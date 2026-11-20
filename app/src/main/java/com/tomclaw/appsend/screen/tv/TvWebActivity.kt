@@ -235,7 +235,6 @@ class TvWebActivity : AppCompatActivity() {
         dialog.setOnDismissListener {
             pairingDialog = null
             handler.removeCallbacks(expireDialog)
-            server.closePairing(pairing.sessionId)
         }
         handler.postDelayed(expireDialog, 5 * 60 * 1000L)
     }

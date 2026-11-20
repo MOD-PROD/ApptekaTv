@@ -1,6 +1,10 @@
 package com.tomclaw.appsend
 
+import android.app.Activity
 import android.app.Application
+import android.content.pm.ActivityInfo
+import android.os.Bundle
+import com.tomclaw.appsend.util.isTvDevice
 import android.content.Context
 import android.util.Log
 import com.tomclaw.appsend.analytics.AnalyticsActivityCallback
@@ -42,6 +46,18 @@ class Appteka : Application() {
         themeManager.init()
 
         registerActivityLifecycleCallbacks(EdgeToEdgeActivityCallback())
+        if (!isTvDevice()) registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityCreated(activity: Activity, state: Bundle?) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+
+            override fun onActivityStarted(activity: Activity) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivityStopped(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, state: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        })
 
         component = DaggerAppComponent.builder()
             .appModule(AppModule(this))

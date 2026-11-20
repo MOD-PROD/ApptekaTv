@@ -2,11 +2,14 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html, atv/debug-preview-tv-portrait-paysage, atv/simulateur-tv-force ]
+    branches: [ tv-html, atv/debug-preview-tv-portrait-paysage, atv/simulateur-tv-force, atv/fix-pairing-keep-invitation ]
   workflow_dispatch:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        simulator: ${{ fromJSON(github.ref_name == 'atv/fix-pairing-keep-invitation' && '[false,true]' || (github.ref_name == 'atv/simulateur-tv-force' && '[true]' || '[false]')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,7 +33,7 @@ jobs:
 
       - name: Build debug APK
         env:
-          FORCE_TV_SIMULATOR: ${{ github.ref_name == 'atv/simulateur-tv-force' }}
+          FORCE_TV_SIMULATOR: ${{ matrix.simulator }}
         run: ./gradlew assembleDebug --stacktrace -PforceTvSimulator="$FORCE_TV_SIMULATOR"
 
       - name: Find APK
@@ -44,7 +47,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v5
         with:
-          name: ${{ github.ref_name == 'atv/simulateur-tv-force' && 'appteka-tv-simulateur' || 'appteka-tv-debug' }}
+          name: ${{ matrix.simulator && 'appteka-tv-simulateur' || 'appteka-tv-debug' }}
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
