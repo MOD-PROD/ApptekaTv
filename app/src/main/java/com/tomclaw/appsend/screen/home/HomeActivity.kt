@@ -61,8 +61,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // HTML TV shell is only the home screen on real Android TV devices.
-        // Smartphones keep the native portrait home (Store, pairing selector).
+        // HTML TV shell only on real Android TV; smartphone keeps native portrait home.
         if (savedInstanceState == null && !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
             (intent.action == null || intent.action == Intent.ACTION_MAIN) &&
             isTvDevice()
@@ -156,23 +155,24 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     }
 
     private fun getOrCreateFragment(index: Int, creator: () -> Fragment): Fragment {
-        val tag = "home_tab_$index"
-        return supportFragmentManager.findFragmentByTag(tag) ?: creator()
+        return supportFragmentManager.findFragmentByTag("fragment$index") ?: let {
+            creator.invoke()
+        }
     }
 
     private fun replaceFragment(fragment: Fragment, index: Int) {
-        val tag = "home_tab_$index"
-        val existing = supportFragmentManager.findFragmentByTag(tag)
-        val transaction = supportFragmentManager.beginTransaction()
-        supportFragmentManager.fragments.forEach { f ->
-            if (f != fragment && f.isAdded) transaction.hide(f)
+        val tag = "fragment$index"
+        // Returning from another screen re-binds the current tab, and so
+        // does every status load. Replacing the fragment with itself
+        // would throw away its list position and blink the app bar
+        // through a lift reset each time.
+        if (supportFragmentManager.findFragmentById(R.id.frame) === fragment) {
+            return
         }
-        if (existing == null) {
-            transaction.add(R.id.frame, fragment, tag)
-        } else {
-            transaction.show(existing)
-        }
-        transaction.commitAllowingStateLoss()
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.frame, fragment, tag)
+            .commitAllowingStateLoss()
         resetAppBarLift()
     }
 
