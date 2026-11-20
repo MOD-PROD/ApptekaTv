@@ -767,6 +767,11 @@ function renderSettings(focusKey) {
                 d'une fiche. Cette TV : ${escapeHtml(deviceAbis.join(', '))}.</div>
         `)}
         ${IS_MOBILE ? '' : settingsSection('tvlink', 'Liaison portable', tvLinkHtml())}
+        <div class="set-section">
+            <div class="set-label">Mise à jour Appteka TV</div>
+            <div class="set-sub" data-no-i18n>Version : ${escapeHtml(String(call('installedUpdateVersion') || '—'))}</div>
+            <button class="btn focusable" type="button" data-k="self-update" data-act="self-update">Rechercher une mise à jour</button>
+        </div>
         ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
         <div class="set-section">
             <button class="btn focusable" type="button" data-k="export-config" data-act="export-config">
@@ -875,6 +880,7 @@ function classicHtml() {
 }
 
 function onSettingsAction(b) {
+    if (b.dataset.act === 'self-update') { call('checkSelfUpdate'); return; }
     const { section, skin, accent } = b.dataset;
     if (b.dataset.classic) {
         const uid = account.profile && account.profile.userId;
