@@ -8,12 +8,16 @@ android {
     namespace = 'com.tomclaw.appsend'
     compileSdk = 37
 
+    def forceTvSimulator = providers.gradleProperty("forceTvSimulator").orNull == "true"
+
     defaultConfig {
+        buildConfigField "boolean", "FORCE_TV_SIMULATOR", "false"
+        manifestPlaceholders = [tvOrientation: "unspecified", launcherLabel: "@string/app_name"]
         applicationId "app.modprod.apptekatv"
         minSdkVersion 23
         targetSdkVersion 36
         versionCode project.hasProperty("versionCode") ? Integer.parseInt(project.versionCode) : 1195
-        versionName = "24.0"
+        versionName = forceTvSimulator ? "24.0-sim.2" : "24.0"
     }
 
     signingConfigs {
@@ -43,6 +47,13 @@ android {
             proguardFiles(getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-project.txt')
         }
         debug {
+            if (forceTvSimulator) {
+                applicationIdSuffix ".simulator"
+                manifestPlaceholders.tvOrientation = "landscape"
+                buildConfigField "boolean", "FORCE_TV_SIMULATOR", "true"
+                resValue "string", "simulator_app_name", "AppTeka TV Simulateur"
+                manifestPlaceholders.launcherLabel = "@string/simulator_app_name"
+            }
             debuggable true
             shrinkResources = false
             jniDebuggable true
@@ -59,6 +70,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        resValues = true
     }
     
     lint {
@@ -94,6 +106,12 @@ dependencies {
     // Standard Libraries
     implementation 'com.github.solkin:bananalytics-android:v1.0.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation 'androidx.security:security-crypto:1.1.0'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.83'
+    implementation('com.journeyapps:zxing-android-embedded:4.3.0') {
+        exclude group: 'com.google.zxing', module: 'core'
+    }
+    implementation 'com.google.zxing:core:3.3.3'
     implementation 'com.github.solkin:simple-image-loader:v1.3.0'
     implementation 'com.github.solkin:disk-lru-cache:v1.8'
 

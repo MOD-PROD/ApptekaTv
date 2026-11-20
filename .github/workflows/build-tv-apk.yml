@@ -2,7 +2,7 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html ]
+    branches: [ tv-html, atv/debug-preview-tv-portrait-paysage, atv/simulateur-tv-force ]
   workflow_dispatch:
 
 jobs:
@@ -29,7 +29,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        env:
+          FORCE_TV_SIMULATOR: ${{ github.ref_name == 'atv/simulateur-tv-force' }}
+        run: ./gradlew assembleDebug --stacktrace -PforceTvSimulator="$FORCE_TV_SIMULATOR"
 
       - name: Find APK
         id: apk
@@ -42,7 +44,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v5
         with:
-          name: appteka-tv-debug
+          name: ${{ github.ref_name == 'atv/simulateur-tv-force' && 'appteka-tv-simulateur' || 'appteka-tv-debug' }}
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
@@ -51,6 +53,7 @@ jobs:
       # Secrets : ANDROID_KEYSTORE_B64 (.p12 / .keystore en base64), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
       # ANDROID_KEY_PASSWORD (facultatif : seulement si la clé a un mot de passe différent du fichier).
       - name: Build signed release APK
+        if: github.ref_name == 'tv-html'
         id: release
         env:
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}

@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="green-details.css" class="skin-green" media="not all">
     <link rel="stylesheet" href="settings.css">
     <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="logo.css">
     <link rel="stylesheet" href="neu.css" class="skin-neu" media="not all">
 </head>
 <body>
@@ -29,8 +30,14 @@
 
     <div class="safe-area">
         <header class="header">
-            <div class="logo"><img class="logo-capsule" src="capsule.webp" alt=""><span class="logo-main">APPTEKA</span><span class="logo-tv">TV</span></div>
+            <button class="logo focusable" type="button" id="brand-logo" aria-label="AppTeka TV — rejouer le splash">
+                <img class="logo-capsule" src="capsule.webp" alt="">
+                <span class="logo-wordmark"><span>APPTEKA</span><span>TV</span></span>
+            </button>
             <div class="header-right">
+                <button id="pair-tv-btn" type="button" class="hbtn focusable" style="display:none" aria-label="Associer un téléphone" title="Associer un téléphone">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h6v6H3z M15 3h6v6h-6z M3 15h6v6H3z M15 15h2v2h-2z M19 15h2v6h-6v-2h4z" fill="currentColor"/></svg>
+                </button>
                 <button class="hbtn glass" id="btn-scope" type="button" title="Catégories de recherche">
                     <svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg>
                     <span class="hbtn-badge" id="scope-count"></span>

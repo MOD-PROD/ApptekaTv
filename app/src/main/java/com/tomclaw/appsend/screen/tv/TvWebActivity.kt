@@ -4,6 +4,13 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.graphics.Bitmap
+import android.widget.ImageView
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -22,7 +29,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.tomclaw.appsend.BuildConfig
 import com.google.gson.Gson
+import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
 import com.tomclaw.appsend.tvlink.TvLink
 import com.tomclaw.appsend.tvlink.TvLinkSender
@@ -124,6 +136,8 @@ class TvWebActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString("pendingTvConfig", pendingConfig)
+        outState.putString("pendingPairApp", pendingPairApp)
+        outState.putString("pendingPairLabel", pendingPairLabel)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -131,10 +145,13 @@ class TvWebActivity : AppCompatActivity() {
         appComponent.inject(activity = this)
         super.onCreate(savedInstanceState)
         pendingConfig = savedInstanceState?.getString("pendingTvConfig")
+        pendingPairApp = savedInstanceState?.getString("pendingPairApp")
+        pendingPairLabel = savedInstanceState?.getString("pendingPairLabel")
 
         webView = WebView(this)
-        webView.setBackgroundColor(0xffe0e5ec.toInt())
+        webView.setBackgroundColor(ContextCompat.getColor(this, R.color.splash_background))
         setContentView(webView)
+        applySimulatorFullscreen()
         webView.requestFocus()
 
         setupWebView()
@@ -147,14 +164,105 @@ class TvWebActivity : AppCompatActivity() {
     /** TV (ou box) : interface 10 pieds ; sinon interface portable. */
     private val isTv by lazy { isTvDevice() }
     private var tvLink: TvLink.Server? = null
+    private var pendingPairApp: String? = null
+    private var pendingPairLabel: String? = null
+    private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
+        val appId = pendingPairApp
+        val label = pendingPairLabel
+        pendingPairApp = null
+        pendingPairLabel = null
+        if (appId != null && result.contents != null) {
+            TvLinkSender(this, appId, label ?: appId).pair(result.contents)
+        }
+    }
+
+    private var pairingDialog: androidx.appcompat.app.AlertDialog? = null
+
+    private fun showPairingQr() {
+        if (pairingDialog?.isShowing == true) return
+        val server = tvLink ?: return toast("Association TV indisponible")
+        val pairing = server.pairingQr() ?: return toast("Association TV indisponible")
+        val size = 560
+        val matrix = QRCodeWriter().encode(pairing.payload, BarcodeFormat.QR_CODE, size, size)
+        val pixels = IntArray(size * size) { index ->
+            if (matrix[index % size, index / size]) 0xff000000.toInt() else 0xffffffff.toInt()
+        }
+        val address = TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }
+        val qrDisplaySize = (resources.displayMetrics.heightPixels * 0.36f).toInt().coerceAtLeast(1)
+        val image = ImageView(this).apply {
+            setImageBitmap(Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888))
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = android.widget.LinearLayout.LayoutParams(-1, qrDisplaySize)
+        }
+        val copyButtons = android.widget.LinearLayout(this).apply {
+            gravity = android.view.Gravity.CENTER
+        }
+        fun addCopyButton(label: String, value: String) {
+            copyButtons.addView(com.google.android.material.button.MaterialButton(this).apply {
+                text = label
+                setOnClickListener {
+                    val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+                        ?: return@setOnClickListener
+                    val clip = android.content.ClipData.newPlainText(label, value)
+                    if (Build.VERSION.SDK_INT >= 33 && value != address) {
+                        clip.description.extras = android.os.PersistableBundle().apply {
+                            putBoolean("android.content.extra.IS_SENSITIVE", true)
+                        }
+                    }
+                    clipboard.setPrimaryClip(clip)
+                    if (Build.VERSION.SDK_INT < 33) {
+                        Toast.makeText(this@TvWebActivity, "Copié", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
+        }
+        addCopyButton("Copier l’adresse", address)
+        addCopyButton("Copier le code", pairing.code)
+        addCopyButton("Copier l’invitation", pairing.payload)
+        val content = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            addView(copyButtons)
+            addView(image)
+        }
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
+            .setMessage(getString(R.string.tv_pair_display_address, address))
+            .setView(content)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+        pairingDialog = dialog
+        val expireDialog = Runnable { dialog.dismiss() }
+        dialog.setOnDismissListener {
+            pairingDialog = null
+            handler.removeCallbacks(expireDialog)
+            server.closePairing(pairing.sessionId)
+        }
+        handler.postDelayed(expireDialog, 5 * 60 * 1000L)
+    }
+
+    private fun applySimulatorFullscreen() {
+        if (!BuildConfig.FORCE_TV_SIMULATOR) return
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) window.decorView.post { applySimulatorFullscreen() }
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        window.decorView.post { applySimulatorFullscreen() }
+    }
 
     private fun startTvLink() {
         val server = TvLink.Server(this, object : TvLink.Host {
-            override fun onPairCode(device: String, code: String) {
-                js("onPairCode", mapOf("device" to device, "code" to code))
-            }
-
             override fun onPaired(device: String) {
+                pairingDialog?.dismiss()
                 js("onPaired", mapOf("device" to device))
             }
 
@@ -786,7 +894,20 @@ class TvWebActivity : AppCompatActivity() {
         /** Portable : envoie l'app à une Appteka TV du Wi-Fi. */
         @JavascriptInterface
         fun sendToTv(appId: String, label: String): Unit = runOnUiThread {
-            TvLinkSender(this@TvWebActivity, appId, label).start()
+            MaterialAlertDialogBuilder(this@TvWebActivity)
+                .setTitle(R.string.tv_pair_title)
+                .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter))) { _, which ->
+                    if (which == 0) {
+                        pendingPairApp = appId
+                        pendingPairLabel = label
+                        pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                            .setOrientationLocked(false).setPrompt(getString(R.string.tv_pair_scan)))
+                    } else {
+                        TvLinkSender(this@TvWebActivity, appId, label).showCodeEntry()
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
 
         /** TV : nom, adresse et appareils associés. */
@@ -794,7 +915,13 @@ class TvWebActivity : AppCompatActivity() {
         fun tvLinkInfo(): String = gson.toJson(this@TvWebActivity.tvLinkInfo())
 
         @JavascriptInterface
-        fun tvLinkForget(): Unit = runOnUiThread { tvLink?.forgetAll() }
+        fun tvLinkForget(id: String): Unit = runOnUiThread {
+            tvLink?.forget(id)
+            webView.evaluateJavascript("window.updatePairButton()", null)
+        }
+
+        @JavascriptInterface
+        fun tvLinkShowQr(): Unit = runOnUiThread { showPairingQr() }
 
         @JavascriptInterface
         fun getDeviceAbis(): String = gson.toJson(Build.SUPPORTED_ABIS.toList())
@@ -891,6 +1018,7 @@ class TvWebActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        pairingDialog?.dismiss()
         tvLink?.stop()
         handler.removeCallbacksAndMessages(null)
         stateSubscription?.dispose()

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="splash_background">#E0E5EC</color>
+    <color name="splash_background">#25272A</color>
 
     <!-- Thème de lancement : fond uni (couleur du skin par défaut), sans pilule -->
     <style name="AppTheme.Splash">
-        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
     </style>
     <style name="AppTheme.TvStartup" parent="AppTheme">
         <item name="android:windowBackground">@color/splash_background</item>
