@@ -2,7 +2,7 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html ]
+    branches: [ tv-html, 'atv/**' ]
   workflow_dispatch:
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug testDebugUnitTest --stacktrace
 
       - name: Find APK
         id: apk
@@ -52,6 +52,7 @@ jobs:
       # ANDROID_KEY_PASSWORD (facultatif : seulement si la clé a un mot de passe différent du fichier).
       - name: Build signed release APK
         id: release
+        if: github.ref == 'refs/heads/tv-html'
         env:
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
