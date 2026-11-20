@@ -701,6 +701,12 @@ class TvWebActivity : AppCompatActivity() {
     // -------------------------------------------------------- Bridge
 
     inner class TvJsBridge {
+        @JavascriptInterface
+        fun checkSelfUpdate(): Unit = runOnUiThread { updateController.check(manual = true) }
+
+        @JavascriptInterface
+        fun installedUpdateVersion(): String = com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
+
 
         /** Ouvre la fiche HTML (remplace l'écran de détails natif). */
         @JavascriptInterface
