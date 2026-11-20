@@ -197,6 +197,7 @@ class TvWebActivity : AppCompatActivity() {
                 text = label
                 setOnClickListener {
                     val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+                        ?: return@setOnClickListener
                     val clip = android.content.ClipData.newPlainText(label, value)
                     if (Build.VERSION.SDK_INT >= 33 && value == pairing.code) {
                         clip.description.extras = android.os.PersistableBundle().apply {
