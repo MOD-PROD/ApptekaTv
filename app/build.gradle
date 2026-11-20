@@ -17,7 +17,7 @@ android {
         minSdkVersion 23
         targetSdkVersion 36
         versionCode project.hasProperty("versionCode") ? Integer.parseInt(project.versionCode) : 1195
-        versionName = "24.0"
+        versionName = forceTvSimulator ? "24.0-sim.2" : "24.0"
     }
 
     signingConfigs {

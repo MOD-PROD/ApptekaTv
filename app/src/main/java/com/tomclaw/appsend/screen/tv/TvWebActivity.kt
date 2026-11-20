@@ -151,6 +151,7 @@ class TvWebActivity : AppCompatActivity() {
         webView = WebView(this)
         webView.setBackgroundColor(ContextCompat.getColor(this, R.color.splash_background))
         setContentView(webView)
+        applySimulatorFullscreen()
         webView.requestFocus()
 
         setupWebView()
@@ -239,14 +240,23 @@ class TvWebActivity : AppCompatActivity() {
         handler.postDelayed(expireDialog, 5 * 60 * 1000L)
     }
 
+    private fun applySimulatorFullscreen() {
+        if (!BuildConfig.FORCE_TV_SIMULATOR) return
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && BuildConfig.FORCE_TV_SIMULATOR) {
-            WindowCompat.getInsetsController(window, window.decorView).apply {
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                hide(WindowInsetsCompat.Type.systemBars())
-            }
-        }
+        if (hasFocus) window.decorView.post { applySimulatorFullscreen() }
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        window.decorView.post { applySimulatorFullscreen() }
     }
 
     private fun startTvLink() {
