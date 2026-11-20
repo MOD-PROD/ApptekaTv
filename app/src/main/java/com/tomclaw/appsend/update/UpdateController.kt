@@ -24,18 +24,23 @@ class UpdateController(private val activity: Activity) {
                 downloader.check(if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong())
             }
             activity.runOnUiThread {
-                busy.set(false)
-                if (!active()) return@runOnUiThread
+                if (!active()) { busy.set(false); return@runOnUiThread }
                 result.onSuccess { update ->
                     if (update == null) {
+                        busy.set(false)
                         if (manual) message("Aucune mise à jour disponible")
-                    } else AlertDialog.Builder(activity)
+                    } else {
+                        val dialog = AlertDialog.Builder(activity)
                         .setTitle("Appteka TV — Mise à jour")
-                        .setMessage("Version disponible : " + update.versionName)
+                        .setMessage("Version installée : " + com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")\nVersion disponible : " + update.versionName + " (" + update.versionCode + ")")
                         .setNegativeButton("Plus tard", null)
-                        .setPositiveButton("Télécharger") { _, _ -> download(update) }
-                        .show()
-                }.onFailure { if (manual) message("Vérification impossible") }
+                        .setPositiveButton("Télécharger") { _, _ -> busy.set(false); download(update) }
+                        .create()
+                        dialog.setOnCancelListener { busy.set(false) }
+                        dialog.show()
+                        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { busy.set(false); dialog.dismiss() }
+                    }
+                }.onFailure { busy.set(false); if (manual) message("Vérification impossible") }
             }
         }.start()
     }
