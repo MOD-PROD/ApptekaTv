@@ -182,16 +182,45 @@ class TvWebActivity : AppCompatActivity() {
         val pixels = IntArray(size * size) { index ->
             if (matrix[index % size, index / size]) 0xff000000.toInt() else 0xffffffff.toInt()
         }
+        val address = TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }
+        val qrDisplaySize = (resources.displayMetrics.heightPixels * 0.36f).toInt().coerceAtLeast(1)
         val image = ImageView(this).apply {
             setImageBitmap(Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888))
-            adjustViewBounds = true
-            maxHeight = size
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = android.widget.LinearLayout.LayoutParams(-1, qrDisplaySize)
+        }
+        val copyButtons = android.widget.LinearLayout(this).apply {
+            gravity = android.view.Gravity.CENTER
+        }
+        fun addCopyButton(label: String, value: String) {
+            copyButtons.addView(com.google.android.material.button.MaterialButton(this).apply {
+                text = label
+                setOnClickListener {
+                    val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+                    val clip = android.content.ClipData.newPlainText(label, value)
+                    if (Build.VERSION.SDK_INT >= 33 && value == pairing.code) {
+                        clip.description.extras = android.os.PersistableBundle().apply {
+                            putBoolean("android.content.extra.IS_SENSITIVE", true)
+                        }
+                    }
+                    clipboard.setPrimaryClip(clip)
+                    if (Build.VERSION.SDK_INT < 33) {
+                        Toast.makeText(this@TvWebActivity, "Copié", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
+        }
+        addCopyButton("Copier l’adresse", address)
+        addCopyButton("Copier le code", pairing.code)
+        val content = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            addView(copyButtons)
+            addView(image)
         }
         val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
-            .setMessage(getString(R.string.tv_pair_display_address,
-                TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }))
-            .setView(image)
+            .setMessage(getString(R.string.tv_pair_display_address, address))
+            .setView(content)
             .setPositiveButton(android.R.string.ok, null)
             .show()
         pairingDialog = dialog
