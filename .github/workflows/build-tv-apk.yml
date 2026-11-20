@@ -2,7 +2,7 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html ]
+    branches: [ tv-html, atv/debug-preview-tv-portrait-paysage ]
   workflow_dispatch:
 
 jobs:
@@ -51,6 +51,7 @@ jobs:
       # Secrets : ANDROID_KEYSTORE_B64 (.p12 / .keystore en base64), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
       # ANDROID_KEY_PASSWORD (facultatif : seulement si la clé a un mot de passe différent du fichier).
       - name: Build signed release APK
+        if: github.ref_name != 'atv/debug-preview-tv-portrait-paysage'
         id: release
         env:
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}

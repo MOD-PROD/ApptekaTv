@@ -1,0 +1,30 @@
+button.logo {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 7px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+.logo-capsule {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    filter: hue-rotate(var(--capsule-hue, 0deg));
+}
+.logo-wordmark {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    color: var(--accent);
+    font: 900 21px/1 system-ui, sans-serif;
+    letter-spacing: 0.11em;
+}
+.neu-skin:not(.neu-dark) .logo-wordmark {
+    -webkit-text-stroke: 0.65px #202630;
+}
+.mobile .logo-wordmark {
+    font-size: clamp(13px, 3.7vw, 19px);
+}

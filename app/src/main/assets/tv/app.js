@@ -77,11 +77,15 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'neu', accent: 'default', archs: null, margin: 20 },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'green', accent: 'default', archs: null, margin: 20 },
     loadJson('settings', {}) || {}
 );
-// bascule unique vers le néumorphisme clair (nouveau skin par défaut)
-if (settings.skinV !== 2) { settings.skin = 'neu'; settings.accent = 'default'; settings.skinV = 2; }
+// L'ancienne version enregistrait Néo clair même sans choix explicite.
+if (settings.skinV !== 3) {
+    if (settings.skin === 'neu') settings.skin = 'green';
+    settings.skinV = 3;
+    saveSettings();
+}
 let favorites = loadJson('favorites', []);
 const rowData = {};           // key -> [apps] | null (erreur) | undefined (en cours)
 const rowLoading = {};
@@ -636,11 +640,11 @@ let settingsMsg = { text: '', err: false };
 let expandedSettings = null;
 const ACCENTS = {
     default: { label: 'Couleur du skin' },
-    green: { label: 'Vert', rgb: [121, 230, 58] },
-    gold: { label: 'Or', rgb: [238, 193, 68] },
-    blue: { label: 'Bleu', rgb: [81, 172, 255] },
-    purple: { label: 'Violet', rgb: [192, 145, 255] },
-    coral: { label: 'Corail', rgb: [255, 132, 120] },
+    green: { label: 'Vert', rgb: [121, 230, 58], capsuleHue: 0 },
+    gold: { label: 'Or', rgb: [238, 193, 68], capsuleHue: -63 },
+    blue: { label: 'Bleu', rgb: [81, 172, 255], capsuleHue: 102 },
+    purple: { label: 'Violet', rgb: [192, 145, 255], capsuleHue: 164 },
+    coral: { label: 'Corail', rgb: [255, 132, 120], capsuleHue: -105 },
 };
 
 function applySkin() {
@@ -652,7 +656,10 @@ function applySkin() {
     root.classList.toggle('green-skin', green);
     root.classList.toggle('neu-skin', neu);
     root.classList.toggle('neu-dark', settings.skin === 'green');
-    const rgb = ACCENTS[settings.accent]?.rgb;
+    const accent = ACCENTS[settings.accent];
+    const rgb = accent?.rgb;
+    const defaultHue = settings.skin === 'neu' ? 125 : settings.skin === 'classic' ? -63 : 0;
+    root.style.setProperty('--capsule-hue', `${accent?.capsuleHue ?? defaultHue}deg`);
     root.classList.toggle('custom-accent', Boolean(rgb));
     for (const property of ['--accent-rgb', '--accent-light-rgb', '--accent-dark']) {
         root.style.removeProperty(property);
@@ -728,7 +735,7 @@ function renderSettings(focusKey) {
             <div class="set-sub">L'interface et le contenu Appteka (catégories, descriptions) suivent la langue choisie.</div>`)}
         ${settingsSection('appearance', 'Apparence', `
             <div class="set-row" role="group" aria-label="Skin">
-                ${[['classic', 'Noir et or'], ['green', 'Néumorphisme vert'], ['neu', 'Néumorphisme clair']].map(([id, label]) => `
+                ${[['classic', 'Noir et or'], ['green', 'Néo sombre'], ['neu', 'Néo clair']].map(([id, label]) => `
                     <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}
@@ -839,14 +846,19 @@ function tvLinkHtml() {
     try { info = JSON.parse((window.Android && window.Android.tvLinkInfo && window.Android.tvLinkInfo()) || '{}'); } catch (e) { /* */ }
     const devices = info.devices || [];
     return `
-        <div class="set-sub">Dans Appteka sur ton portable, ouvre une app puis « Envoyer à la TV ». La TV est trouvée toute seule sur le Wi-Fi ; un code s'affiche ici la première fois.</div>
+        <div class="set-sub">Dans Appteka sur ton téléphone, choisis « Envoyer à la TV » puis scanne le QR sur le même réseau.</div>
         <div class="set-row" style="margin-top:10px">
             <div class="set-value" data-no-i18n style="min-width:0">${escapeHtml(info.name || '')}</div>
             <div class="set-sub" data-no-i18n style="margin:0">${info.ip ? escapeHtml(info.ip + (info.port && info.port !== 8336 ? ':' + info.port : '')) : ''}</div>
         </div>
+        <button class="btn focusable" type="button" data-k="tvlink-pair" data-act="tvlink-pair">Afficher le QR d’association</button>
         <div class="set-label set-spacing">Appareils associés</div>
-        <div class="set-sub" data-no-i18n>${devices.length ? devices.map(escapeHtml).join(' · ') : '—'}</div>
-        ${devices.length ? '<div class="set-row" style="margin-top:10px"><button class="btn focusable" type="button" data-k="tvlink-forget" data-act="tvlink-forget">Oublier les appareils</button></div>' : ''}`;
+        ${devices.length ? devices.map(device => `
+            <div class="set-row">
+                <span data-no-i18n>${escapeHtml(device.name)}</span>
+                <button class="btn focusable" type="button" data-k="forget-${escapeHtml(device.id)}"
+                        data-act="tvlink-forget" data-device="${escapeHtml(device.id)}">Oublier</button>
+            </div>`).join('') : '—'}`;
 }
 
 // Connecteurs vers l'interface classique (fonctions pas encore refaites en HTML)
@@ -913,8 +925,12 @@ function onSettingsAction(b) {
         case 'close-settings':
             closeSettings();
             return;
+        case 'tvlink-pair':
+            call('tvLinkShowQr');
+            return;
         case 'tvlink-forget':
-            call('tvLinkForget');
+            call('tvLinkForget', b.dataset.device);
+            updatePairButton();
             setTimeout(() => renderSettings('section-tvlink'), 200);
             return;
         case 'export-config': {
@@ -1248,17 +1264,10 @@ window.onTvLongPress = function () {
 
 // Touche Retour (appelée par Android). Renvoie true si géré ici.
 let pairTimer = null;
-window.onPairCode = function (json) {
-    const o = typeof json === 'string' ? JSON.parse(json) : json;
-    document.getElementById('pair-text').textContent = `« ${o.device} » veut se connecter à cette TV.`;
-    document.getElementById('pair-code').textContent = o.code;
-    PAIR_MODAL.classList.remove('hidden');
-    clearTimeout(pairTimer);
-    pairTimer = setTimeout(() => PAIR_MODAL.classList.add('hidden'), 120000);
-};
 window.onPaired = function (json) {
     const o = typeof json === 'string' ? JSON.parse(json) : json;
     PAIR_MODAL.classList.add('hidden');
+    updatePairButton();
     STATUS.textContent = `Portable associé : ${o.device}`;
 };
 // Un portable associé envoie une app : la fiche s'ouvre (et l'installation démarre si demandé)
@@ -1373,8 +1382,21 @@ window.onDownloadStarted = function (json) {
 // Les cartes sont réutilisées dans la fiche et le store d'un auteur
 window.TvCards = { create: createAppCard };
 
+function updatePairButton() {
+    const button = document.getElementById('pair-tv-btn');
+    try {
+        const info = JSON.parse(window.Android.tvLinkInfo());
+        button.style.display = window.Android.isTv() && info.port && !info.devices.length ? '' : 'none';
+    } catch (e) {
+        button.style.display = 'none';
+    }
+}
+
 function start() {
+    document.getElementById('pair-tv-btn').addEventListener('click', () => call('tvLinkShowQr'));
+    updatePairButton();
     applySkin();
+    document.getElementById('brand-logo').addEventListener('click', () => window.playGravitySplash?.());
     applyCardScale();
     setupFocusManagement();
     buildRows();

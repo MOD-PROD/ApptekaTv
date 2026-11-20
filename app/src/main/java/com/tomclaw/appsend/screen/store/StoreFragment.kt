@@ -5,7 +5,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import androidx.fragment.app.Fragment
+import com.tomclaw.appsend.BuildConfig
+import com.tomclaw.appsend.util.isTvDevice
+import com.tomclaw.appsend.tvlink.TvLinkSender
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tomclaw.appsend.util.adapter.ItemBinder
 import com.tomclaw.appsend.util.adapter.AdapterPresenter
 import com.tomclaw.appsend.util.adapter.SimpleRecyclerAdapter
@@ -36,6 +43,8 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
 
     @Inject
     lateinit var analytics: Analytics
+
+    private var targetButton: ImageButton? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val presenterState = savedInstanceState
@@ -68,6 +77,52 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val topicsView = StoreViewImpl(view, filters, preferences, adapter)
 
         presenter.attachView(topicsView)
+        if (BuildConfig.DEBUG && !requireContext().isTvDevice()) bindTargetSwitch()
+    }
+
+    private var connection: TvLinkSender.Connection? = null
+    private fun pairingSender() = TvLinkSender(requireActivity(), onAssociated = { paired ->
+        connection = paired
+        renderTarget()
+        val context = context ?: return@TvLinkSender
+        android.widget.Toast.makeText(context, "Connecté à ${paired.name}", android.widget.Toast.LENGTH_SHORT).show()
+    })
+
+    private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
+        result.contents?.let { pairingSender().pair(it) }
+    }
+
+    private fun renderTarget() {
+        targetButton?.apply {
+            setImageResource(if (connection == null) R.drawable.ic_target_mobile else R.drawable.ic_target_tv)
+            contentDescription = connection?.let { "TV connectée : ${it.name}. Revenir au téléphone." }
+                ?: getString(R.string.tv_pair_title)
+        }
+    }
+
+    private fun bindTargetSwitch() {
+        val target = requireActivity().findViewById<ImageButton>(R.id.demo_tv_target)
+        targetButton = target
+        target.visibility = View.VISIBLE
+        target.setOnClickListener {
+            if (connection != null) {
+                connection = null
+                renderTarget()
+            } else {
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.tv_pair_title)
+                    .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter), "Coller l’invitation")) { _, which ->
+                        if (which == 0) {
+                            pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                .setOrientationLocked(true).setPrompt(getString(R.string.tv_pair_scan)))
+                        } else if (which == 1) pairingSender().showCodeEntry()
+                        else pairingSender().showPasteEntry()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+        }
+        renderTarget()
     }
 
     override fun onStart() {
@@ -78,6 +133,13 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     override fun onStop() {
         presenter.detachRouter()
         super.onStop()
+    }
+
+    override fun onDestroyView() {
+        targetButton?.setOnClickListener(null)
+        targetButton?.visibility = View.GONE
+        targetButton = null
+        super.onDestroyView()
     }
 
     override fun onDestroy() {
@@ -95,6 +157,10 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     }
 
     override fun openAppScreen(appId: String, title: String) {
+        connection?.let {
+            TvLinkSender(requireActivity(), appId, title).share(it)
+            return
+        }
         val intent = createDetailsActivityIntent(
             context = requireContext(),
             appId = appId,

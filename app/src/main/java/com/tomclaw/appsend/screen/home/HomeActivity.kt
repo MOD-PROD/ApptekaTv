@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.appbar.AppBarLayout
 import com.tomclaw.appsend.appComponent
+import com.tomclaw.appsend.BuildConfig
 import com.tomclaw.appsend.R
 import com.tomclaw.appsend.screen.about.createAboutActivityIntent
 import com.tomclaw.appsend.screen.bdui.createBduiScreenActivityIntent
@@ -29,6 +30,7 @@ import com.tomclaw.appsend.screen.topics.createTopicsFragment
 import com.tomclaw.appsend.screen.upload.createUploadActivityIntent
 import com.tomclaw.appsend.screen.tv.TvWebActivity
 import com.tomclaw.appsend.util.Analytics
+import com.tomclaw.appsend.util.isTvDevice
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
@@ -38,6 +40,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     lateinit var presenter: HomePresenter
 
     private var redirectedToTv = false
+    private val useNativeDebugHome by lazy { BuildConfig.DEBUG && !isTvDevice() }
 
     @Inject
     lateinit var analytics: Analytics
@@ -59,9 +62,8 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // L'interface HTML est l'accueil sur TV comme sur portable.
-        // L'accueil classique ne s'ouvre plus que par son connecteur (createClassicHomeIntent).
-        if (savedInstanceState == null && !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
+        if (!useNativeDebugHome && savedInstanceState == null &&
+            !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
             (intent.action == null || intent.action == Intent.ACTION_MAIN)
         ) {
             redirectedToTv = true
@@ -212,10 +214,6 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         pendingFragmentRunnable = null
         if (!redirectedToTv) presenter.detachRouter()
         super.onStop()
-    }
-
-    override fun onResume() {
-        super.onResume()
     }
 
     override fun onDestroy() {
