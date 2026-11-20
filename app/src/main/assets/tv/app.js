@@ -11,7 +11,8 @@ const BTN_SCOPE = document.getElementById('btn-scope');
 const BTN_ADD = document.getElementById('btn-add');
 const BTN_SETTINGS = document.getElementById('btn-settings');
 const BTN_EXIT = document.getElementById('btn-exit');
-const HEADER_ITEMS = [BTN_SCOPE, SEARCH_BOX, BTN_ADD, BTN_SETTINGS, BTN_EXIT];
+const BTN_PAIR_TV = document.getElementById('pair-tv-btn');
+const HEADER_ITEMS = [BTN_PAIR_TV, BTN_SCOPE, SEARCH_BOX, BTN_ADD, BTN_SETTINGS, BTN_EXIT];
 const PICKER = document.getElementById('picker');
 const PICKER_GRID = document.getElementById('picker-grid');
 const PICKER_TITLE = document.getElementById('picker-title');
@@ -1046,9 +1047,10 @@ window.onAuthError = function (json) {
 // ------------------------------------------------------------ navigation
 
 function headerMove(focused, dir) {
-    const i = HEADER_ITEMS.indexOf(focused);
+    const visibleItems = HEADER_ITEMS.filter(el => el.getClientRects().length > 0);
+    const i = visibleItems.indexOf(focused);
     const j = i + (dir === 'right' ? 1 : -1);
-    if (j >= 0 && j < HEADER_ITEMS.length) HEADER_ITEMS[j].focus();
+    visibleItems[j]?.focus();
 }
 
 function onHeaderEnter(el) {
@@ -1394,7 +1396,6 @@ function updatePairButton() {
 }
 
 function start() {
-    document.getElementById('pair-tv-btn').addEventListener('click', () => call('tvLinkShowQr'));
     updatePairButton();
     applySkin();
     document.getElementById('brand-logo').addEventListener('click', () => window.playGravitySplash?.());
