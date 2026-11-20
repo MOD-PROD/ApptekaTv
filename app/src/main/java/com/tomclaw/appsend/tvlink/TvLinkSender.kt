@@ -43,7 +43,11 @@ class TvLinkSender(
             } else {
                 val response = TvLink.request(address, JSONObject().put("type", "pair")
                     .put("device", TvLink.deviceName()).put("secret", address.secret))
-                check(response.optBoolean("ok") && response.optString("tv") == address.tv)
+                if (!response.optBoolean("ok")) {
+                    val reason = response.optString("error", "refused")
+                    error(reason)
+                }
+                check(response.optString("tv") == address.tv)
                 response.getString("token").also {
                     check(it.matches(Regex("[0-9a-f]{64}")))
                     check(prefs.edit().putString(address.tv, it).commit())
@@ -54,7 +58,17 @@ class TvLinkSender(
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) {
                 result.onSuccess { (address, token, name) -> associated(address, token, name) }
-                    .onFailure { toast(R.string.tv_link_failed) }
+                    .onFailure { e ->
+                        val msg = when {
+                            e is java.net.SocketTimeoutException || e is java.net.ConnectException ->
+                                activity.getString(R.string.tv_link_unreachable)
+                            e.message in listOf("expired", "bad_secret", "too_many_attempts") ->
+                                activity.getString(R.string.tv_link_bad_code)
+                            e.message == "storage" -> activity.getString(R.string.tv_link_failed) + " (stockage)"
+                            else -> activity.getString(R.string.tv_link_failed)
+                        }
+                        Toast.makeText(activity, msg, Toast.LENGTH_LONG).show()
+                    }
             }
         }
     }
