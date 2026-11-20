@@ -1053,6 +1053,7 @@ function headerMove(focused, dir) {
 
 function onHeaderEnter(el) {
     if (el === SEARCH_BOX) startEditing();
+    else if (el === BTN_PAIR_TV) call('tvLinkShowQr');
     else if (el === BTN_SCOPE) openPicker('search');
     else if (el === BTN_ADD) openPicker('rows');
     else if (el === BTN_SETTINGS) openSettings();
