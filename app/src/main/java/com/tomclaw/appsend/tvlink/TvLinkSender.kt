@@ -84,8 +84,34 @@ class TvLinkSender(
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) {
                 result.onSuccess { (address, token, name) -> associated(address, token, name) }
-                    .onFailure { toast(R.string.tv_pair_code_failed) }
+                    .onFailure {
+                        toast(if (it is java.net.SocketTimeoutException || it is java.net.ConnectException ||
+                            it is java.net.NoRouteToHostException) R.string.tv_link_unreachable
+                            else R.string.tv_pair_code_failed)
+                    }
             }
+        }
+    }
+
+    fun showPasteEntry() {
+        val invitation = android.widget.EditText(activity).apply {
+            hint = "Invitation copiée depuis la TV"
+            isSingleLine = true
+        }
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.tv_pair_title)
+            .setView(invitation)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.tv_pair_confirm, null)
+            .show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+            val value = invitation.text.toString().trim()
+            if (runCatching { TvLink.Pairing.parse(value) }.isFailure) {
+                invitation.error = "Colle l’invitation complète copiée sur la TV."
+                return@setOnClickListener
+            }
+            dialog.dismiss()
+            pair(value)
         }
     }
 
