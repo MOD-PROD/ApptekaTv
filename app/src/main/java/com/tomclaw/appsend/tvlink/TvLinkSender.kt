@@ -23,7 +23,9 @@ class TvLinkSender(private val activity: Activity, private val appId: String, pr
             } else {
                 val response = TvLink.request(address, JSONObject().put("type", "pair")
                     .put("device", TvLink.deviceName()).put("secret", address.secret))
-                check(response.optBoolean("ok") && response.optString("tv") == address.tv)
+                if (!response.optBoolean("ok") || response.optString("tv") != address.tv) {
+                    error(response.optString("error", "refused"))
+                }
                 response.getString("token").also {
                     check(it.matches(Regex("[0-9a-f]{64}")))
                     check(prefs.edit().putString(address.tv, it).commit())
@@ -34,7 +36,17 @@ class TvLinkSender(private val activity: Activity, private val appId: String, pr
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) {
                 result.onSuccess { (address, token, name) -> chooseAction(address, token, name) }
-                    .onFailure { toast(R.string.tv_link_failed) }
+                    .onFailure { e ->
+                        val res = when {
+                            e is java.net.SocketTimeoutException ||
+                                e is java.net.ConnectException ||
+                                e is java.net.NoRouteToHostException -> R.string.tv_link_unreachable
+                            e.message in listOf("expired", "bad_secret", "too_many_attempts") ->
+                                R.string.tv_pair_code_failed
+                            else -> R.string.tv_link_failed
+                        }
+                        toast(res)
+                    }
             }
         }
     }
