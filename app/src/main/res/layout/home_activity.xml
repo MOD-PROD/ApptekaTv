@@ -18,16 +18,19 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:popupTheme="@style/AppTheme.PopupOverlay" />
+            app:popupTheme="@style/AppTheme.PopupOverlay">
 
-        <!--
-            Store filters. Per-tab chrome on a shared app bar, the same
-            way the toolbar's title and menu are swapped — HomeView
-            shows this row for the store tab and hides it for the rest.
-            It belongs in the bar rather than at the top of the list so
-            it takes the lifted colour along with it, and so the filters
-            stay reachable however far the catalog is scrolled.
-        -->
+            <ImageButton
+                android:id="@+id/demo_tv_target"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="start|center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:visibility="gone"
+                app:tint="?attr/colorOnSurface" />
+        </androidx.appcompat.widget.Toolbar>
+
         <HorizontalScrollView
             android:id="@+id/store_filters"
             android:layout_width="match_parent"
@@ -71,13 +74,6 @@
                     android:checkable="true"
                     android:text="@string/exclusive_short" />
 
-                <!--
-                    Not a filter of this screen: it reports the account's
-                    own content setting, which is why it is an assist chip
-                    among filter chips and leads to settings rather than
-                    toggling anything here. Hidden unless something is
-                    actually being withheld.
-                -->
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_content_filter"
                     style="@style/Widget.Material3.Chip.Assist"
