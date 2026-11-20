@@ -154,11 +154,8 @@ class StorePresenterImpl(
         loadApps()
     }
 
-    private var appsRequest: io.reactivex.rxjava3.disposables.Disposable? = null
-
     private fun loadApps() {
-        appsRequest?.let { subscriptions.remove(it) }
-        val request = storeInteractor
+        subscriptions += storeInteractor
             .listApps(categoryId = category?.id, openSource = openSource, exclusive = exclusive)
             .observeOn(schedulers.mainThread())
             .doOnSubscribe { if (view?.isPullRefreshing() == false) view?.showProgress() }
@@ -166,13 +163,10 @@ class StorePresenterImpl(
                 { onLoaded(it) },
                 { onError() }
             )
-        appsRequest = request
-        subscriptions += request
     }
 
     private fun loadApps(offsetAppId: String) {
-        appsRequest?.let { subscriptions.remove(it) }
-        val request = storeInteractor
+        subscriptions += storeInteractor
             .listApps(offsetAppId, category?.id, openSource, exclusive)
             .observeOn(schedulers.mainThread())
             .retryWhenNonAuthErrors()
@@ -180,8 +174,6 @@ class StorePresenterImpl(
                 { onLoaded(it) },
                 { onError() }
             )
-        appsRequest = request
-        subscriptions += request
     }
 
     private fun onLoaded(page: AppsPage) {

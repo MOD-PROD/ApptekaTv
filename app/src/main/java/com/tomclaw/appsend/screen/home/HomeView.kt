@@ -219,27 +219,10 @@ class HomeViewImpl(view: View) : HomeView {
     }
 
     override fun showProfileToolbar() {
-        val demo = com.tomclaw.appsend.screen.tv.DemoTv.onPhone(toolbar.context)
-
         with(toolbar) {
             setTitle(R.string.tab_profile)
             menu.clear()
             inflateMenu(R.menu.user_menu)
-            if (demo?.selected == true) {
-                val device = menu.add(if (demo.connected) "Déconnecter la TV de démo" else "Connecter la TV de démo")
-                device.setIcon(R.drawable.ic_target_tv)
-                device.setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
-                device.setOnMenuItemClickListener {
-                    demo.connected = !demo.connected
-                    showProfileToolbar()
-                    android.widget.Toast.makeText(
-                        context,
-                        if (demo.connected) "TV de démo connectée" else "TV de démo déconnectée",
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
-                    true
-                }
-            }
             invalidateMenu()
         }
         storeFilters.isVisible = false

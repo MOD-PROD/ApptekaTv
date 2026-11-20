@@ -2,7 +2,6 @@ package com.tomclaw.appsend.screen.home
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -41,8 +40,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     lateinit var presenter: HomePresenter
 
     private var redirectedToTv = false
-    private val hasLandscapePreview by lazy { BuildConfig.DEBUG && !isTvDevice() }
-    private var landscapePreviewOpened = false
+    private val useNativeDebugHome by lazy { BuildConfig.DEBUG && !isTvDevice() }
 
     @Inject
     lateinit var analytics: Analytics
@@ -64,8 +62,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        landscapePreviewOpened = savedInstanceState?.getBoolean(KEY_LANDSCAPE_PREVIEW_OPENED) == true
-        if (!hasLandscapePreview && savedInstanceState == null &&
+        if (!useNativeDebugHome && savedInstanceState == null &&
             !intent.getBooleanExtra(EXTRA_CLASSIC, false) &&
             (intent.action == null || intent.action == Intent.ACTION_MAIN)
         ) {
@@ -219,18 +216,6 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         super.onStop()
     }
 
-    override fun onPostResume() {
-        super.onPostResume()
-        if (!hasLandscapePreview || intent.getBooleanExtra(EXTRA_CLASSIC, false)) return
-
-        if (resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE) {
-            landscapePreviewOpened = false
-        } else if (!landscapePreviewOpened) {
-            landscapePreviewOpened = true
-            startActivity(TvWebActivity.createLandscapePreviewIntent(this))
-        }
-    }
-
     override fun onDestroy() {
         if (!redirectedToTv) presenter.detachView()
         super.onDestroy()
@@ -239,7 +224,6 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (redirectedToTv) return
-        outState.putBoolean(KEY_LANDSCAPE_PREVIEW_OPENED, landscapePreviewOpened)
         outState.putBundle(KEY_PRESENTER_STATE, presenter.saveState())
     }
 
@@ -297,7 +281,6 @@ fun createClassicHomeIntent(
     context: Context,
 ): Intent = Intent(context, HomeActivity::class.java).putExtra(EXTRA_CLASSIC, true)
 
-private const val KEY_LANDSCAPE_PREVIEW_OPENED = "landscape_preview_opened"
 private const val EXTRA_CLASSIC = "classic_ui"
 
 private const val KEY_PRESENTER_STATE = "presenter_state"

@@ -113,10 +113,7 @@ class InstalledActivity : AppCompatActivity(), InstalledPresenter.InstalledRoute
         setContentView(R.layout.installed_activity)
 
         val adapter = SimpleRecyclerAdapter(adapterPresenter, binder)
-        val view = InstalledViewImpl(
-            window.decorView, preferences, adapter,
-            !picker && com.tomclaw.appsend.screen.tv.DemoTv.onPhone(this)?.selected == true,
-        )
+        val view = InstalledViewImpl(window.decorView, preferences, adapter)
 
         presenter.attachView(view)
 
@@ -266,17 +263,6 @@ class InstalledActivity : AppCompatActivity(), InstalledPresenter.InstalledRoute
     }
 
     override fun removeApp(packageName: String) {
-        val demo = com.tomclaw.appsend.screen.tv.DemoTv.onPhone(this)?.takeIf {
-            !intent.getBooleanExtra(EXTRA_PICKER, false) && it.selected
-        }
-        if (demo != null) {
-            val app = com.tomclaw.appsend.screen.tv.DemoTv.apps.firstOrNull { it.packageName == packageName } ?: return
-            if (demo.connected) {
-                demo.setInstalled(app, false)
-                presenter.invalidateApps()
-            }
-            return
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val permission = Manifest.permission.REQUEST_DELETE_PACKAGES
             when {

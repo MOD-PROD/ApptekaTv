@@ -90,8 +90,7 @@ class InstalledModule(
         apkStorage,
         streamsProvider,
         infoProvider,
-        schedulers,
-        com.tomclaw.appsend.screen.tv.DemoTv.onPhone(context)?.takeIf { !picker && it.selected },
+        schedulers
     )
 
     @Provides

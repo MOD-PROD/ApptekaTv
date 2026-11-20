@@ -1,7 +1,6 @@
 package com.tomclaw.appsend.screen.installed
 
 import android.net.Uri
-import com.tomclaw.appsend.screen.tv.DemoTv
 import com.tomclaw.appsend.core.StoreApi
 import com.tomclaw.appsend.core.StreamsProvider
 import com.tomclaw.appsend.download.ApkStorage
@@ -33,23 +32,16 @@ interface InstalledInteractor {
 
 }
 
-internal class InstalledInteractorImpl(
+class InstalledInteractorImpl(
     private val api: StoreApi,
     private val locale: Locale,
     private val apkStorage: ApkStorage,
     private val streamsProvider: StreamsProvider,
     private val infoProvider: InstalledInfoProvider,
-    private val schedulers: SchedulersFactory,
-    private val demo: DemoTv? = null
+    private val schedulers: SchedulersFactory
 ) : InstalledInteractor {
 
     override fun listInstalledApps(systemApps: Boolean): Observable<List<InstalledAppEntity>> {
-        if (demo != null) {
-            return Observable.fromCallable {
-                if (demo.connected) DemoTv.apps.filter(demo::isInstalled).map { it.installedEntry() }
-                else emptyList()
-            }
-        }
         return Single
             .create {
                 it.onSuccess(
@@ -65,7 +57,6 @@ internal class InstalledInteractorImpl(
         apps: Map<String, Long>,
         certs: Map<String, String>,
     ): Observable<InstalledUpdates> {
-        if (demo != null) return Observable.just(InstalledUpdates.EMPTY)
         val request = CheckUpdatesRequest(
             locale = locale.language,
             apps = apps,

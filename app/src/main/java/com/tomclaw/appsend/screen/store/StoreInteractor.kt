@@ -1,7 +1,5 @@
 package com.tomclaw.appsend.screen.store
 
-import android.content.Context
-import com.tomclaw.appsend.screen.tv.DemoTv
 import com.tomclaw.appsend.core.StoreApi
 import com.tomclaw.appsend.dto.AppsPage
 import com.tomclaw.appsend.util.SchedulersFactory
@@ -22,8 +20,7 @@ interface StoreInteractor {
 class StoreInteractorImpl(
     private val api: StoreApi,
     private val locale: Locale,
-    private val schedulers: SchedulersFactory,
-    private val context: Context
+    private val schedulers: SchedulersFactory
 ) : StoreInteractor {
 
     override fun listApps(
@@ -32,12 +29,6 @@ class StoreInteractorImpl(
         openSource: Boolean,
         exclusive: Boolean
     ): Observable<AppsPage> {
-        if (DemoTv.onPhone(context)?.selected == true) {
-            val entries = if (offsetAppId != null || openSource || exclusive) emptyList() else {
-                DemoTv.apps.filter { categoryId == null || it.category == categoryId }.map { it.catalogEntry() }
-            }
-            return Observable.just(AppsPage(entries))
-        }
         return api.getTopList(
             appId = offsetAppId,
             locale = locale.language,

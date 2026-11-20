@@ -1,2 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<full-backup-content />
+<full-backup-content>
+        <exclude domain="sharedpref" path="tv_link_v2.xml" />
+        <exclude domain="sharedpref" path="tv_link_v2_client.xml" />
+</full-backup-content>
