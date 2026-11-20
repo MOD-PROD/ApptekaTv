@@ -2,12 +2,23 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html, 'atv/**' ]
+    branches: [ tv-html, atv/self-update, atv/integration-real-tv ]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish validated stable release (tv-html only)
+        type: boolean
+        default: false
+      version_code:
+        description: Strictly increasing Android version code for release
+        type: string
+        required: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -28,8 +39,21 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Validate release inputs
+        if: inputs.publish == true
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          test "$GITHUB_REF" = refs/heads/tv-html
+          [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]
+          test "$VERSION_CODE" -gt 1195
+          test "$VERSION_CODE" -le 2100000000
+
+      - name: Unit tests (self-update + existing)
+        run: ./gradlew testDebugUnitTest --stacktrace
+
       - name: Build debug APK
-        run: ./gradlew assembleDebug testDebugUnitTest --stacktrace
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Find APK
         id: apk
@@ -52,12 +76,12 @@ jobs:
       # ANDROID_KEY_PASSWORD (facultatif : seulement si la clé a un mot de passe différent du fichier).
       - name: Build signed release APK
         id: release
-        if: github.ref == 'refs/heads/tv-html'
         env:
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_CODE: ${{ inputs.version_code || '1195' }}
         run: |
           set -euo pipefail
           KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
@@ -67,7 +91,7 @@ jobs:
             exit 0
           fi
           echo "$ANDROID_KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > modprod-release.keystore
-          ./gradlew assembleRelease --stacktrace \
+          ./gradlew assembleRelease --stacktrace -PversionCode="$VERSION_CODE" \
             -PstoreFile=modprod-release.keystore \
             -PstorePassword="$ANDROID_KEYSTORE_PASSWORD" \
             -PkeyAlias="$ANDROID_KEY_ALIAS" \
@@ -88,3 +112,36 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish stable release
+        if: inputs.publish == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          BUILT: ${{ steps.release.outputs.built }}
+        run: |
+          set -euo pipefail
+          test "$BUILT" = true
+          mkdir -p release
+          cp app/build/outputs/apk/release/*.apk release/apptekatv-release.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          export APK_INFO=$("$BT/aapt" dump badging release/apptekatv-release.apk | head -n 1)
+          if gh release view --json tagName >/dev/null 2>&1; then
+            export OLD_CODE=$(gh release download --pattern update.json --output - | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])')
+          else
+            export OLD_CODE=1195
+          fi
+          test "$VERSION_CODE" -gt "$OLD_CODE"
+          python3 - <<'PY'
+          import hashlib, json, os, re, pathlib
+          p=pathlib.Path("release/apptekatv-release.apk")
+          code=int(os.environ["VERSION_CODE"])
+          info=os.environ["APK_INFO"]
+          assert "name='app.modprod.apptekatv'" in info
+          assert f"versionCode='{code}'" in info
+          name=re.search("versionName='([^']+)'",info).group(1)
+          tag=f"v{code}"
+          data=dict(packageName="app.modprod.apptekatv",channel="stable",versionCode=code,versionName=name,size=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest(),url=f"https://github.com/MOD-PROD/ApptekaTv/releases/download/{tag}/apptekatv-release.apk")
+          pathlib.Path("release/update.json").write_text(json.dumps(data))
+          PY
+          gh release create "v$VERSION_CODE" release/apptekatv-release.apk release/update.json --target "$GITHUB_SHA" --title "Appteka TV $VERSION_CODE" --generate-notes --latest
