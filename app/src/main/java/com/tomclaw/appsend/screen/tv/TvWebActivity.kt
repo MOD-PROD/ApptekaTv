@@ -73,6 +73,7 @@ class TvWebActivity : AppCompatActivity() {
     @Inject
     lateinit var apkStorage: ApkStorage
 
+    private val updateController by lazy { com.tomclaw.appsend.update.UpdateController(this) }
     private lateinit var webView: WebView
     private val disposables = CompositeDisposable()
     private val gson = Gson()
@@ -140,6 +141,7 @@ class TvWebActivity : AppCompatActivity() {
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
         if (isTv) startTvLink()
+        if (savedInstanceState == null) updateController.check()
     }
 
     // ------------------------------------------- Liaison portable -> TV
