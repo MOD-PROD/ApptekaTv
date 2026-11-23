@@ -17,8 +17,8 @@ class UpdateDownloader(private val context: Context) {
         .followSslRedirects(false)
         .build()
 
-    fun check(installedVersion: Long): ReleaseUpdate? {
-        client.newCall(Request.Builder().url(ReleaseUpdate.MANIFEST_URL).build()).execute().use { response ->
+    fun check(installedVersion: Long, channel: String = "stable"): ReleaseUpdate? {
+        client.newCall(Request.Builder().url(ReleaseUpdate.manifestUrl(channel)).build()).execute().use { response ->
             if (response.code == 404) return null
             check(response.isSuccessful)
             val body = requireNotNull(response.body)
@@ -31,7 +31,7 @@ class UpdateDownloader(private val context: Context) {
                 require(bytes.size() + n <= 65536)
                 bytes.write(buffer, 0, n)
             }
-            return ReleaseUpdate.parse(bytes.toString("UTF-8"), installedVersion)
+            return ReleaseUpdate.parse(bytes.toString("UTF-8"), installedVersion, channel)
         }
     }
 
