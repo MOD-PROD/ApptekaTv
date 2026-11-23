@@ -12,6 +12,7 @@ data class ReleaseUpdate(
     val size: Long
 ) {
     companion object {
+        const val MANIFEST_URL = "https://github.com/MOD-PROD/ApptekaTv/releases/latest/download/update.json"
         private const val BASE = "https://github.com/MOD-PROD/ApptekaTv/releases"
         fun manifestUrl(channel: String): String = when (channel) {
             "test" -> "$BASE/download/test-latest/update.json"
