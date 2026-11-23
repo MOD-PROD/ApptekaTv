@@ -70,7 +70,8 @@ function loadJson(key, def) {
     try { const v = getPref(key); return v ? JSON.parse(v) : def; } catch (e) { return def; }
 }
 function call(fn, ...args) {
-    if (window.Android && typeof window.Android[fn] === 'function') window.Android[fn](...args.map(String));
+    if (window.Android && typeof window.Android[fn] === 'function') return window.Android[fn](...args.map(String));
+    return undefined;
 }
 
 // ------------------------------------------------------------------ état
@@ -769,7 +770,7 @@ function renderSettings(focusKey) {
         ${IS_MOBILE ? '' : settingsSection('tvlink', 'Liaison portable', tvLinkHtml())}
         <div class="set-section">
             <div class="set-label">Mise à jour Appteka TV</div>
-            <div class="set-sub" data-no-i18n>Version : ${escapeHtml(String(call('installedUpdateVersion') || '—'))}</div>
+            <div class="set-sub" data-no-i18n>Version installée : ${escapeHtml(String(call('installedUpdateVersion') || 'indisponible'))}</div>
             <button class="btn focusable" type="button" data-k="self-update" data-act="self-update" aria-label="Rechercher une mise à jour">Rechercher une mise à jour</button>
         </div>
         ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
@@ -885,7 +886,7 @@ function classicHtml() {
 }
 
 function onSettingsAction(b) {
-    if (b.dataset.act === 'self-update') { call('checkSelfUpdate'); return; }
+    if (b.dataset.act === 'self-update') { settingsMsg = { text: 'Recherche de mise à jour lancée…', err: false }; call('checkSelfUpdate'); renderSettings('self-update'); return; }
     const { section, skin, accent } = b.dataset;
     if (b.dataset.classic) {
         const uid = account.profile && account.profile.userId;
