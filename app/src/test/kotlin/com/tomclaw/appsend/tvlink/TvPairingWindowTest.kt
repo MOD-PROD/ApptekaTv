@@ -58,4 +58,35 @@ class TvPairingWindowTest {
         window.close(current)
         assertEquals(TvPairingWindow.Result.EXPIRED, window.verify("new"))
     }
+
+    @Test
+    fun peekDoesNotConsumeAndCommitIsCapped() {
+        window.open("qr", "K7Q9T2WX")
+        repeat(5) { checkNotNull(window.peekCode()) }
+        val attempt = checkNotNull(window.peekCode())
+        assertEquals(true, window.commitCode(attempt))
+        assertEquals(true, window.commitCode(attempt))
+        assertEquals(false, window.commitCode(attempt))
+        assertEquals(null, window.peekCode())
+    }
+
+    @Test
+    fun dismissedQrStaysValidOnlyForTheGracePeriod() {
+        val graced = TvPairingWindow(now = { time }, ttlMs = 300L, maxFailures = 2, graceAfterCloseMs = 50L)
+        val id = graced.open("secret")
+        graced.dismiss(id)
+        time = 149L
+        assertEquals(TvPairingWindow.Result.INVALID, graced.verify("wrong"))
+        time = 150L
+        assertEquals(TvPairingWindow.Result.EXPIRED, graced.verify("secret"))
+    }
+
+    @Test
+    fun dismissNeverExtendsTheDeadline() {
+        val graced = TvPairingWindow(now = { time }, ttlMs = 300L, maxFailures = 2, graceAfterCloseMs = 1_000L)
+        val id = graced.open("secret")
+        graced.dismiss(id)
+        time = 400L
+        assertEquals(TvPairingWindow.Result.EXPIRED, graced.verify("secret"))
+    }
 }

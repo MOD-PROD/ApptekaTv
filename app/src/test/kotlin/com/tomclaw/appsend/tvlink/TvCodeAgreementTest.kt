@@ -34,4 +34,23 @@ class TvCodeAgreementTest {
 
     @Test(expected = CryptoException::class)
     fun rejectsDifferentCertificate() = confirm(code, "b".repeat(64))
+
+    @Test(expected = CryptoException::class)
+    fun rejectsTamperedKnowledgeProof() {
+        val tv = TvCodeAgreement(TvCodeAgreement.Side.TV, code, pin)
+        val phone = TvCodeAgreement(TvCodeAgreement.Side.PHONE, code, pin)
+        val payload = TvCodePayloads.encode(phone.start())
+        val proof = payload.getAsJsonArray("proof1")
+        val r = java.math.BigInteger(proof.get(1).asString, 16).add(java.math.BigInteger.ONE)
+        proof.set(1, com.google.gson.JsonPrimitive(r.toString(16)))
+        tv.exchange(TvCodePayloads.round1(payload, TvCodeAgreement.Side.PHONE))
+    }
+
+    @Test(expected = CryptoException::class)
+    fun rejectsIdentityGroupElement() {
+        val tv = TvCodeAgreement(TvCodeAgreement.Side.TV, code, pin)
+        val phone = TvCodeAgreement(TvCodeAgreement.Side.PHONE, code, pin)
+        val payload = TvCodePayloads.encode(phone.start()).apply { addProperty("gx2", "1") }
+        tv.exchange(TvCodePayloads.round1(payload, TvCodeAgreement.Side.PHONE))
+    }
 }

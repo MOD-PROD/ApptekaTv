@@ -42,7 +42,7 @@ class TvLinkSender(
                 saved
             } else {
                 val response = TvLink.request(address, JSONObject().put("type", "pair")
-                    .put("device", TvLink.deviceName()).put("secret", address.secret))
+                    .put("device", TvLink.deviceName()).put("install", installId(prefs)).put("secret", address.secret))
                 if (!response.optBoolean("ok") || response.optString("tv") != address.tv) {
                     error(response.optString("error", "refused"))
                 }
@@ -73,7 +73,7 @@ class TvLinkSender(
 
     fun pairCode(host: String, port: Int, code: String) = thread {
         val result = runCatching {
-            val (address, response) = TvLink.pairByCode(host, port, code)
+            val (address, response) = TvLink.pairByCode(host, port, code, installId(preferences()))
             val token = response.getString("token")
             check(token.matches(Regex("[0-9a-f]{64}")))
             check(preferences().edit().putString(address.tv, token).commit())
@@ -156,14 +156,22 @@ class TvLinkSender(
         }
     }
 
+    /**
+     * ATV-01 durcissement : identifiant aléatoire de cette installation, envoyé à la TV pour
+     * qu'une nouvelle association remplace l'ancienne au lieu d'ajouter un second jeton.
+     */
+    private fun installId(prefs: android.content.SharedPreferences): String =
+        prefs.getString(KEY_INSTALL, null)?.takeIf { it.matches(Regex("[0-9a-f-]{36}")) }
+            ?: java.util.UUID.randomUUID().toString().also { prefs.edit().putString(KEY_INSTALL, it).commit() }
+
     @Suppress("DEPRECATION")
-    private fun preferences() = EncryptedSharedPreferences.create(
+    private fun preferences() = TvLink.purgeLegacy(activity).let { EncryptedSharedPreferences.create(
         activity,
         "tv_link_v2_client",
         MasterKey.Builder(activity).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
+    ) }
 
     private fun chooseAction(address: TvLink.Pairing, token: String, name: String) {
         MaterialAlertDialogBuilder(activity)
@@ -187,4 +195,8 @@ class TvLinkSender(
     }
 
     private fun toast(res: Int) = Toast.makeText(activity, res, Toast.LENGTH_LONG).show()
+
+    private companion object {
+        const val KEY_INSTALL = "install_id"
+    }
 }
