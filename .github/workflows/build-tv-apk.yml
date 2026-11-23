@@ -91,7 +91,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          VERSION_CODE: ${{ inputs.version_code || '1197' }}
+          VERSION_CODE: ${{ inputs.version_code || github.run_number + 2000 }}
         run: |
           set -euo pipefail
           KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
@@ -134,10 +134,10 @@ jobs:
           retention-days: 30
 
       - name: Publish selected release channel
-        if: inputs.publish == true
+        if: (inputs.publish == true || github.event_name == 'push' && github.ref == 'refs/heads/atv/fix-tv-settings-focus-themes') && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_CODE: ${{ inputs.version_code || github.run_number + 2000 }}
           BUILT: ${{ steps.release.outputs.built }}
           CHANNEL: ${{ inputs.channel || 'test' }}
         run: |
@@ -149,6 +149,8 @@ jobs:
           export APK_INFO=$("$BT/aapt" dump badging release/apptekatv-release.apk | head -n 1)
           if [ "$CHANNEL" = stable ] && gh release view --json tagName >/dev/null 2>&1; then
             export OLD_CODE=$(gh release download --pattern update.json --output - | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])')
+          elif [ "$CHANNEL" != stable ] && gh release view "$CHANNEL-latest" >/dev/null 2>&1; then
+            export OLD_CODE=$(gh release download "$CHANNEL-latest" --pattern update.json --output - | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])')
           else
             export OLD_CODE=1195
           fi
