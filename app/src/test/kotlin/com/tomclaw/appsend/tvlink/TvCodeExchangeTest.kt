@@ -18,7 +18,23 @@ class TvCodeExchangeTest {
     @Test
     fun incorrectCodeCannotCompleteTheExchange() = exchange("K7Q9T2WY", false)
 
-    private fun exchange(phoneCode: String, accepted: Boolean) {
+    /** TV usurpée / intermédiaire : bon code, mais le téléphone voit un autre certificat. */
+    @Test
+    fun spoofedTvCertificateCannotCompleteTheExchange() = exchange("K7Q9T2WX", false, phonePin = "b".repeat(64))
+
+    @Test
+    fun attemptIsCountedOnlyAfterValidRoundOne() {
+        val counted = java.util.concurrent.atomic.AtomicInteger()
+        exchange("K7Q9T2WX", true, counter = counted)
+        assertEquals(1, counted.get())
+    }
+
+    private fun exchange(
+        phoneCode: String,
+        accepted: Boolean,
+        phonePin: String = "a".repeat(64),
+        counter: java.util.concurrent.atomic.AtomicInteger? = null,
+    ) {
         val pin = "a".repeat(64)
         val tvInput = PipedInputStream(65_536)
         val phoneInput = PipedInputStream(65_536)
@@ -35,7 +51,7 @@ class TvCodeExchangeTest {
                             TvCodeExchange(tvInput, tvOutput).tv(
                                 TvCodeAgreement(TvCodeAgreement.Side.TV, "K7Q9T2WX", pin),
                                 first.getAsJsonObject("payload"),
-                            )
+                            ) { counter?.incrementAndGet(); true }
                         }
                     }
                 }
@@ -45,7 +61,7 @@ class TvCodeExchangeTest {
                     phoneOutput.use {
                         runCatching {
                             TvCodeExchange(phoneInput, phoneOutput).phone(
-                                TvCodeAgreement(TvCodeAgreement.Side.PHONE, phoneCode, pin),
+                                TvCodeAgreement(TvCodeAgreement.Side.PHONE, phoneCode, phonePin),
                             )
                         }
                     }

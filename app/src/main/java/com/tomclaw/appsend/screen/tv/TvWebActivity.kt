@@ -199,7 +199,9 @@ class TvWebActivity : AppCompatActivity() {
         val expireDialog = Runnable { dialog.dismiss() }
         dialog.setOnDismissListener {
             handler.removeCallbacks(expireDialog)
-            // ATV: keep the invitation valid until TTL expiry or successful pairing.
+            // ATV: keep the invitation briefly after the QR is closed (a phone may be mid-scan),
+            // at most 60 s instead of the full 5 min TTL (ATV-01 durcissement).
+            server.dismissPairing(pairing.sessionId)
         }
         handler.postDelayed(expireDialog, 5 * 60 * 1000L)
     }
@@ -208,6 +210,8 @@ class TvWebActivity : AppCompatActivity() {
         val server = TvLink.Server(this, object : TvLink.Host {
             override fun onPaired(device: String) {
                 js("onPaired", mapOf("device" to device))
+                // ATV-01 durcissement : une association ne doit jamais passer inaperçue.
+                Toast.makeText(this@TvWebActivity, getString(R.string.tv_link_paired_notice, device), Toast.LENGTH_LONG).show()
             }
 
             override fun onOpen(appId: String, install: Boolean, device: String) {
@@ -874,6 +878,9 @@ class TvWebActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun tvLinkForget(id: String): Unit = runOnUiThread { tvLink?.forget(id) }
+
+        @JavascriptInterface
+        fun tvLinkForgetAll(): Unit = runOnUiThread { tvLink?.forgetAll() }
 
         @JavascriptInterface
         fun tvLinkShowQr(): Unit = runOnUiThread { showPairingQr() }
