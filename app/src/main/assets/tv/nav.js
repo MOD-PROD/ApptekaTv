@@ -12,6 +12,18 @@ window.TvNav = (function () {
         const list = focusables(root);
         if (!list.length) return false;
         if (!list.includes(cur)) { list[0].focus({ preventScroll: true }); list[0].scrollIntoView({ block: 'nearest' }); return true; }
+        // Dans les réglages, les sections sont empilées verticalement.
+        // La navigation spatiale pouvait sauter « Rechercher une mise à jour »
+        // pour rejoindre directement « Plus de fonctions ».
+        // Priorité stricte à l'ordre des contrôles pour Haut/Bas.
+        if (root.id === 'settings-panel' && (dir === 'down' || dir === 'up')) {
+            const index = list.indexOf(cur);
+            const next = list[index + (dir === 'down' ? 1 : -1)];
+            if (!next) return false;
+            next.focus({ preventScroll: true });
+            next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            return true;
+        }
         const r = cur.getBoundingClientRect();
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
         let best = null, bestScore = Infinity;
