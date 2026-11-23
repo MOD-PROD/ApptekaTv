@@ -19,6 +19,11 @@ on:
         type: string
         required: false
 
+# One active build per branch: newer commits supersede obsolete runs.
+concurrency:
+  group: tv-apk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
