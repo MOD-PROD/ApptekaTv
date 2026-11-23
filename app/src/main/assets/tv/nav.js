@@ -4,14 +4,14 @@
 window.TvNav = (function () {
     function focusables(root) {
         return Array.from(root.querySelectorAll('.focusable, .app-card'))
-            .filter(el => el.offsetParent !== null && !el.disabled);
+            .filter(el => el.getClientRects().length > 0 && !el.disabled && !el.closest('[hidden], [aria-hidden="true"]'));
     }
 
     function move(root, dir) {
         const cur = document.activeElement;
         const list = focusables(root);
         if (!list.length) return false;
-        if (!list.includes(cur)) { list[0].focus({ preventScroll: true }); return true; }
+        if (!list.includes(cur)) { list[0].focus({ preventScroll: true }); list[0].scrollIntoView({ block: 'nearest' }); return true; }
         const r = cur.getBoundingClientRect();
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
         let best = null, bestScore = Infinity;
@@ -38,6 +38,17 @@ window.TvNav = (function () {
             best.focus({ preventScroll: true });
             best.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
             return true;
+        }
+        // À l'extrémité d'une rangée, permettre de rejoindre les contrôles
+        // suivants/précédents dans l'ordre DOM, notamment la mise à jour.
+        if (dir === 'down' || dir === 'up') {
+            const index = list.indexOf(cur);
+            const next = list[index + (dir === 'down' ? 1 : -1)];
+            if (next) {
+                next.focus({ preventScroll: true });
+                next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return true;
+            }
         }
         return false;
     }
