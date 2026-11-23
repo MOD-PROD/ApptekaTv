@@ -9,6 +9,11 @@ on:
         description: Publish validated stable release (tv-html only)
         type: boolean
         default: false
+      channel:
+        description: Release channel
+        type: choice
+        options: [test, beta, stable]
+        default: test
       version_code:
         description: Strictly increasing Android version code for release
         type: string
@@ -44,7 +49,7 @@ jobs:
         env:
           VERSION_CODE: ${{ inputs.version_code }}
         run: |
-          test "$GITHUB_REF" = refs/heads/tv-html
+          if [ "${{ inputs.channel }}" = stable ]; then test "$GITHUB_REF" = refs/heads/tv-html; fi
           [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]
           test "$VERSION_CODE" -gt 1195
           test "$VERSION_CODE" -le 2100000000
@@ -123,12 +128,13 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish stable release
+      - name: Publish selected release channel
         if: inputs.publish == true
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_CODE: ${{ inputs.version_code }}
           BUILT: ${{ steps.release.outputs.built }}
+          CHANNEL: ${{ inputs.channel || 'test' }}
         run: |
           set -euo pipefail
           test "$BUILT" = true
@@ -136,7 +142,7 @@ jobs:
           cp app/build/outputs/apk/release/*.apk release/apptekatv-release.apk
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           export APK_INFO=$("$BT/aapt" dump badging release/apptekatv-release.apk | head -n 1)
-          if gh release view --json tagName >/dev/null 2>&1; then
+          if [ "$CHANNEL" = stable ] && gh release view --json tagName >/dev/null 2>&1; then
             export OLD_CODE=$(gh release download --pattern update.json --output - | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])')
           else
             export OLD_CODE=1195
@@ -150,8 +156,18 @@ jobs:
           assert "name='app.modprod.apptekatv'" in info
           assert f"versionCode='{code}'" in info
           name=re.search("versionName='([^']+)'",info).group(1)
-          tag=f"v{code}"
-          data=dict(packageName="app.modprod.apptekatv",channel="stable",versionCode=code,versionName=name,size=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest(),url=f"https://github.com/MOD-PROD/ApptekaTv/releases/download/{tag}/apptekatv-release.apk")
+          channel=os.environ["CHANNEL"]
+          tag=f"v{code}" if channel=="stable" else f"v{code}-{channel}"
+          data=dict(packageName="app.modprod.apptekatv",channel=channel,versionCode=code,versionName=name,size=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest(),url=f"https://github.com/MOD-PROD/ApptekaTv/releases/download/{tag}/apptekatv-release.apk")
           pathlib.Path("release/update.json").write_text(json.dumps(data))
           PY
-          gh release create "v$VERSION_CODE" release/apptekatv-release.apk release/update.json --target "$GITHUB_SHA" --title "Appteka TV $VERSION_CODE" --generate-notes --latest
+          if [ "$CHANNEL" = stable ]; then
+            gh release create "v$VERSION_CODE" release/apptekatv-release.apk release/update.json --target "$GITHUB_SHA" --title "Appteka TV $VERSION_CODE" --generate-notes --latest
+          else
+            gh release create "v$VERSION_CODE-$CHANNEL" release/apptekatv-release.apk release/update.json --target "$GITHUB_SHA" --title "Appteka TV $CHANNEL $VERSION_CODE" --generate-notes --prerelease --latest=false
+            if gh release view "$CHANNEL-latest" >/dev/null 2>&1; then
+              gh release upload "$CHANNEL-latest" release/update.json --clobber
+            else
+              gh release create "$CHANNEL-latest" release/update.json --target "$GITHUB_SHA" --title "Appteka TV $CHANNEL channel" --prerelease --latest=false
+            fi
+          fi
