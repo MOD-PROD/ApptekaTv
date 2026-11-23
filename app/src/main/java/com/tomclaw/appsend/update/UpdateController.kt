@@ -8,6 +8,8 @@ import android.os.Build
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.tomclaw.appsend.appComponent
+import com.tomclaw.appsend.install.InstallRequest
 import java.util.concurrent.atomic.AtomicBoolean
 
 class UpdateController(private val activity: Activity) {
@@ -75,30 +77,48 @@ class UpdateController(private val activity: Activity) {
                 val file = result.getOrNull()
                 if (!active() || cancelled.get()) { file?.delete(); return@runOnUiThread }
                 if (file == null) { message("Téléchargement ou vérification impossible"); return@runOnUiThread }
+                val uri = runCatching {
+                    FileProvider.getUriForFile(activity, activity.packageName + ".provider", file)
+                }.getOrElse { error ->
+                    Log.e("ApptekaUpdate", "Cannot share the verified APK", error)
+                    message("Installation impossible : " + (error.localizedMessage ?: error.javaClass.simpleName))
+                    return@runOnUiThread
+                }
+                // Same route as catalog installs: a PackageInstaller session (installer of record),
+                // whose confirmation Android shows itself, also on Android TV. ACTION_VIEW /
+                // ACTION_INSTALL_PACKAGE often resolve to nothing on TV firmwares.
                 runCatching {
-                    val uri = FileProvider.getUriForFile(activity, activity.packageName + ".provider", file)
-                    // Android TV: ACTION_VIEW may resolve to no installer even with a valid APK.
-                    // ACTION_INSTALL_PACKAGE requests the system package installer explicitly.
-                    val install = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-                        data = uri
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        putExtra(Intent.EXTRA_RETURN_RESULT, true)
-                    }
-                    try {
-                        activity.startActivity(install)
-                    } catch (e: android.content.ActivityNotFoundException) {
-                        Log.w("ApptekaUpdate", "ACTION_INSTALL_PACKAGE unavailable; trying ACTION_VIEW", e)
-                        activity.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(uri, "application/vnd.android.package-archive")
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        })
-                    }
+                    activity.appComponent.appInstaller().install(
+                        InstallRequest(key = SELF_UPDATE_KEY, label = "Appteka TV " + update.versionName, uri = uri)
+                    )
+                    message("Confirmez l'installation sur l'écran Android qui s'ouvre")
                 }.onFailure { error ->
-                    Log.e("ApptekaUpdate", "Cannot open Android package installer", error)
-                    message("Installateur Android indisponible : " + (error.localizedMessage ?: error.javaClass.simpleName))
-                    // Keep the verified APK in cache for diagnostics/retry.
+                    Log.e("ApptekaUpdate", "Session install failed to start; trying the system installer", error)
+                    openSystemInstaller(uri)
                 }
             }
         }.start()
+    }
+
+    /** Last resort when the session cannot start: Android's own installer screen. */
+    private fun openSystemInstaller(uri: android.net.Uri) {
+        val install = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+            data = uri
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val view = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val opened = listOf(install, view).any { intent ->
+            runCatching { activity.startActivity(intent) }
+                .onFailure { Log.w("ApptekaUpdate", "Installer intent refused: " + intent.action, it) }
+                .isSuccess
+        }
+        if (!opened) message("Aucun installateur Android disponible sur cet appareil")
+    }
+
+    private companion object {
+        const val SELF_UPDATE_KEY = "appteka-tv-self-update"
     }
 }

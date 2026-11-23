@@ -174,6 +174,9 @@ interface AppComponent {
 
     fun inject(activity: com.tomclaw.appsend.screen.tv.TvWebActivity)
 
+    // ATV: self-update (OTA) installs through the same PackageInstaller session as catalog apps
+    fun appInstaller(): com.tomclaw.appsend.install.AppInstaller
+
     fun analytics(): Analytics
 
     fun bananalytics(): Bananalytics
