@@ -1,4 +1,4 @@
-.logo-capsule { display: block; width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
+.logo-capsule { display: block; width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; filter: hue-rotate(var(--capsule-hue-rotation, 0deg)); }
 .logo { align-items: center; }
 .green-skin .bg-glow { display: none; }
 
