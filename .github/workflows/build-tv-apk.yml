@@ -104,6 +104,16 @@ jobs:
           ls -la app/build/outputs/apk/release/
           echo "built=true" >> $GITHUB_OUTPUT
 
+      - name: Verify test release APK identity
+        if: steps.release.outputs.built == 'true'
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$APK"
+          "$BT/aapt" dump badging "$APK" | head -n 1
+          test -s "$APK"
+
       - name: Upload release APK
         if: steps.release.outputs.built == 'true'
         uses: actions/upload-artifact@v5
