@@ -1,5 +1,5 @@
-.logo-capsule { display: none; }
-.green-skin .logo-capsule { display: block; }
+.logo-capsule { display: block; width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
+.logo { align-items: center; }
 .green-skin .bg-glow { display: none; }
 
 .set-disclosure {
