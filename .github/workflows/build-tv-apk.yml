@@ -91,9 +91,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          VERSION_CODE: ${{ inputs.version_code || github.run_number + 2000 }}
+          VERSION_CODE: ${{ inputs.version_code || '' }}
         run: |
           set -euo pipefail
+          if [ -z "$VERSION_CODE" ]; then VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER)); fi
           KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
           if [ -z "${ANDROID_KEYSTORE_B64:-}" ]; then
             echo "::warning::Secrets de signature absents : release non construite (ajoute ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS au dépôt)."
@@ -137,12 +138,13 @@ jobs:
         if: (inputs.publish == true || github.event_name == 'push' && github.ref == 'refs/heads/atv/fix-tv-settings-focus-themes') && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_CODE: ${{ inputs.version_code || github.run_number + 2000 }}
+          VERSION_CODE: ${{ inputs.version_code || '' }}
           BUILT: ${{ steps.release.outputs.built }}
           CHANNEL: ${{ inputs.channel || 'test' }}
         run: |
           set -euo pipefail
           test "$BUILT" = true
+          if [ -z "$VERSION_CODE" ]; then VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER)); fi
           mkdir -p release
           cp app/build/outputs/apk/release/*.apk release/apptekatv-release.apk
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
