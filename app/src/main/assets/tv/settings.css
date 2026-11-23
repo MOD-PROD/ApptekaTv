@@ -107,35 +107,3 @@ html:not(.mobile) #settings-panel button:focus-visible {
 html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
     overflow: visible;
 }
-
-/* ATV: la gélule suit l'accent même avec le thème classique. */
-.logo-capsule {
-    display: block !important;
-    filter: drop-shadow(0 0 5px rgba(var(--accent-rgb, 212, 175, 55), .35));
-}
-.logo-capsule {
-    /* Colorisation à partir de l'image source, sans altérer sa silhouette. */
-    background: rgba(var(--accent-rgb, 212, 175, 55), .2);
-    border-radius: 999px;
-}
-
-/* Gélule recolorée par l'accent choisi : masque de la silhouette WebP. */
-.logo .logo-capsule {
-    background: rgb(var(--accent-rgb, 212, 175, 55));
-    -webkit-mask-image: url('capsule.webp');
-    mask-image: url('capsule.webp');
-    -webkit-mask-size: contain;
-    mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-position: center;
-    mask-position: center;
-    filter: none;
-}
-
-.logo .logo-capsule {
-    display: inline-block !important;
-    width: 44px;
-    height: 44px;
-    flex: 0 0 44px;
-}
