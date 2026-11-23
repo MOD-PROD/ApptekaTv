@@ -2,17 +2,17 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/03-installer-sur-tv ]
+    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/simulateur-atksimultv ]
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish validated stable release (tv-html only)
+        description: Publish the selected channel (stable from tv-html only; simultv = ATKsimulTv)
         type: boolean
         default: false
       channel:
         description: Release channel
         type: choice
-        options: [test, beta, stable]
+        options: [test, beta, stable, simultv]
         default: test
       version_code:
         description: Strictly increasing Android version code for release
@@ -60,24 +60,24 @@ jobs:
           test "$VERSION_CODE" -le 2100000000
 
       - name: Unit tests (self-update + existing)
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: ./gradlew testStandardDebugUnitTest --stacktrace
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleStandardDebug --stacktrace
 
       - name: Find APK
         id: apk
         run: |
-          APK=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
+          APK=$(find app/build/outputs/apk/standard/debug -name "*.apk" | head -n 1)
           echo "path=$APK" >> $GITHUB_OUTPUT
           echo "Found APK: $APK"
-          ls -la app/build/outputs/apk/debug/ || true
+          ls -la app/build/outputs/apk/standard/debug/ || true
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v5
         with:
           name: appteka-tv-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/standard/debug/*.apk
           if-no-files-found: error
           retention-days: 14
 
@@ -102,40 +102,102 @@ jobs:
             exit 0
           fi
           echo "$ANDROID_KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > modprod-release.keystore
-          ./gradlew assembleRelease --stacktrace -PversionCode="$VERSION_CODE" \
+          # ATV: both flavors, same key: Appteka TV (standard) and ATKsimulTv (simultv, TV simulator for phones).
+          ./gradlew assembleStandardRelease assembleSimultvRelease --stacktrace -PversionCode="$VERSION_CODE" \
             -PstoreFile=modprod-release.keystore \
             -PstorePassword="$ANDROID_KEYSTORE_PASSWORD" \
             -PkeyAlias="$ANDROID_KEY_ALIAS" \
             -PkeyPassword="$KEY_PASS"
           rm -f modprod-release.keystore
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          "$BT/apksigner" verify --print-certs "$APK"
-          unzip -l "$APK" | grep -c "classes.*\.dex" | xargs echo "Fichiers dex :"
-          ls -la app/build/outputs/apk/release/
+          for FLAVOR in standard simultv; do
+            APK=$(find app/build/outputs/apk/$FLAVOR/release -name "*.apk" | head -n 1)
+            "$BT/apksigner" verify --print-certs "$APK"
+            unzip -l "$APK" | grep -c "classes.*\.dex" | xargs echo "Fichiers dex :"
+            ls -la app/build/outputs/apk/$FLAVOR/release/
+          done
           echo "built=true" >> $GITHUB_OUTPUT
 
       - name: Verify test release APK identity
         if: steps.release.outputs.built == 'true'
         run: |
           set -euo pipefail
-          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$BT/apksigner" verify --print-certs "$APK"
-          "$BT/aapt" dump badging "$APK" | head -n 1
-          test -s "$APK"
+          for FLAVOR in standard simultv; do
+            APK=$(find app/build/outputs/apk/$FLAVOR/release -name "*.apk" | head -n 1)
+            "$BT/apksigner" verify --print-certs "$APK"
+            "$BT/aapt" dump badging "$APK" | head -n 1
+            test -s "$APK"
+          done
+          # Distinct packages so both install side by side on one phone.
+          STD_INFO=$("$BT/aapt" dump badging app/build/outputs/apk/standard/release/*.apk)
+          SIM_INFO=$("$BT/aapt" dump badging app/build/outputs/apk/simultv/release/*.apk)
+          grep -q "package: name='app.modprod.apptekatv'" <<< "$STD_INFO"
+          grep -q "package: name='app.modprod.apptekatv.simultv'" <<< "$SIM_INFO"
 
       - name: Upload release APK
         if: steps.release.outputs.built == 'true'
         uses: actions/upload-artifact@v5
         with:
           name: appteka-tv-release
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/standard/release/*.apk
           if-no-files-found: error
           retention-days: 30
 
+      - name: Upload ATKsimulTv release APK
+        if: steps.release.outputs.built == 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: atksimultv-release
+          path: app/build/outputs/apk/simultv/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # ATV: ATKsimulTv has its own release channel (simultv-latest/update.json, package
+      # app.modprod.apptekatv.simultv), never mixed with the Appteka TV stable/beta/test channels.
+      # The Appteka TV APK of the same commit is attached too, so both apps on one phone speak
+      # the same pairing protocol.
+      - name: Publish ATKsimulTv channel
+        if: (inputs.publish == true && inputs.channel == 'simultv' || github.event_name == 'push' && github.ref == 'refs/heads/atv/simulateur-atksimultv') && steps.release.outputs.built == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION_CODE: ${{ inputs.version_code || '' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERSION_CODE" ]; then VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER)); fi
+          mkdir -p release-simultv
+          cp app/build/outputs/apk/simultv/release/*.apk release-simultv/atksimultv-release.apk
+          cp app/build/outputs/apk/standard/release/*.apk release-simultv/apptekatv-release.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          export APK_INFO=$("$BT/aapt" dump badging release-simultv/atksimultv-release.apk | head -n 1)
+          if gh release view simultv-latest >/dev/null 2>&1; then
+            export OLD_CODE=$(gh release download simultv-latest --pattern update.json --output - | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])')
+          else
+            export OLD_CODE=1195
+          fi
+          test "$VERSION_CODE" -gt "$OLD_CODE"
+          python3 - <<'PY'
+          import hashlib, json, os, re, pathlib
+          p=pathlib.Path("release-simultv/atksimultv-release.apk")
+          code=int(os.environ["VERSION_CODE"])
+          info=os.environ["APK_INFO"]
+          assert "name='app.modprod.apptekatv.simultv'" in info
+          assert f"versionCode='{code}'" in info
+          name=re.search("versionName='([^']+)'",info).group(1)
+          tag=f"v{code}-simultv"
+          data=dict(packageName="app.modprod.apptekatv.simultv",channel="simultv",versionCode=code,versionName=name,size=p.stat().st_size,sha256=hashlib.sha256(p.read_bytes()).hexdigest(),url=f"https://github.com/MOD-PROD/ApptekaTv/releases/download/{tag}/atksimultv-release.apk")
+          pathlib.Path("release-simultv/update.json").write_text(json.dumps(data))
+          PY
+          NOTES="ATKsimulTv $VERSION_CODE : simulateur Appteka TV pour téléphone (mode TV forcé, paysage), paquet app.modprod.apptekatv.simultv, signé ModProd. apptekatv-release.apk = Appteka TV du même commit, à installer à côté pour tester l'association. Commit $GITHUB_SHA."
+          gh release create "v$VERSION_CODE-simultv" release-simultv/atksimultv-release.apk release-simultv/apptekatv-release.apk release-simultv/update.json --target "$GITHUB_SHA" --title "ATKsimulTv $VERSION_CODE" --notes "$NOTES" --prerelease --latest=false
+          if gh release view simultv-latest >/dev/null 2>&1; then
+            gh release upload simultv-latest release-simultv/update.json release-simultv/atksimultv-release.apk release-simultv/apptekatv-release.apk --clobber
+          else
+            gh release create simultv-latest release-simultv/update.json release-simultv/atksimultv-release.apk release-simultv/apptekatv-release.apk --target "$GITHUB_SHA" --title "ATKsimulTv (dernière version)" --notes "Lien fixe vers la dernière version d'ATKsimulTv." --prerelease --latest=false
+          fi
+
       - name: Publish selected release channel
-        if: (inputs.publish == true || github.event_name == 'push' && github.ref == 'refs/heads/atv/fix-tv-settings-focus-themes') && steps.release.outputs.built == 'true'
+        if: (inputs.publish == true && inputs.channel != 'simultv' || github.event_name == 'push' && github.ref == 'refs/heads/atv/fix-tv-settings-focus-themes') && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_CODE: ${{ inputs.version_code || '' }}
@@ -146,7 +208,7 @@ jobs:
           test "$BUILT" = true
           if [ -z "$VERSION_CODE" ]; then VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER)); fi
           mkdir -p release
-          cp app/build/outputs/apk/release/*.apk release/apptekatv-release.apk
+          cp app/build/outputs/apk/standard/release/*.apk release/apptekatv-release.apk
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           export APK_INFO=$("$BT/aapt" dump badging release/apptekatv-release.apk | head -n 1)
           if [ "$CHANNEL" = stable ] && gh release view --json tagName >/dev/null 2>&1; then

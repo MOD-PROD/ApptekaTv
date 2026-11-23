@@ -99,6 +99,21 @@ class ReleaseUpdateTest {
         assertEquals(upper.lowercase(), update.sha256)
     }
 
+    @Test
+    fun `simulator manifest is isolated from the Appteka TV channels`() {
+        val simUrl = "https://github.com/MOD-PROD/ApptekaTv/releases/download/v2200-simultv/atksimultv-release.apk"
+        fun sim(json: String) = ReleaseUpdate.parse(json, 1195, ReleaseUpdate.SIMULTV_CHANNEL,
+            ReleaseUpdate.SIMULTV_PACKAGE, ReleaseUpdate.SIMULTV_APK_NAME)
+        val update = sim(json(packageName = ReleaseUpdate.SIMULTV_PACKAGE, channel = "simultv", url = simUrl))
+        assertEquals(simUrl, update!!.url)
+        // An Appteka TV manifest (other package, channel or APK) is never accepted by ATKsimulTv.
+        assertThrows { sim(json(channel = "simultv", url = simUrl)) }
+        assertThrows { sim(json(packageName = ReleaseUpdate.SIMULTV_PACKAGE, channel = "test", url = simUrl)) }
+        assertThrows { sim(json(packageName = ReleaseUpdate.SIMULTV_PACKAGE, channel = "simultv")) }
+        // And the Appteka TV parser never accepts the simulator manifest.
+        assertThrows { ReleaseUpdate.parse(json(packageName = ReleaseUpdate.SIMULTV_PACKAGE, channel = "stable", url = simUrl), 1195) }
+    }
+
     private fun assertThrows(block: () -> Unit) {
         try {
             block()

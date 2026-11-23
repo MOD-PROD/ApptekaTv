@@ -36,6 +36,15 @@ class EdgeToEdgeActivityCallback : Application.ActivityLifecycleCallbacks {
     override fun onActivityDestroyed(activity: Activity) = Unit
 
     private fun lockPhonePortrait(activity: Activity) {
+        // ATV: ATKsimulTv keeps every screen (HTML TV UI and native screens) in landscape.
+        if (com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR) {
+            try {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } catch (_: IllegalStateException) {
+                // Translucent windows on API 26 inherit the underlying orientation.
+            }
+            return
+        }
         if (activity.isTvDevice()) return
         // Android 8.0 rejects fixed orientation for translucent activities.
         try {

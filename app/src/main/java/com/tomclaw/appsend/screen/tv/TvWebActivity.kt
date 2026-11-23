@@ -29,6 +29,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.tomclaw.appsend.BuildConfig
 import com.google.gson.Gson
 import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
@@ -150,6 +154,7 @@ class TvWebActivity : AppCompatActivity() {
         webView = WebView(this)
         webView.setBackgroundColor(0xffe0e5ec.toInt())
         setContentView(webView)
+        applySimulatorFullscreen()
         webView.requestFocus()
 
         setupWebView()
@@ -195,7 +200,22 @@ class TvWebActivity : AppCompatActivity() {
                 TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }))
             .setView(image)
             .setPositiveButton(android.R.string.ok, null)
+            .apply { if (BuildConfig.FORCE_TV_SIMULATOR) setNeutralButton(R.string.tv_simultv_copy_invitation, null) }
             .show()
+        if (BuildConfig.FORCE_TV_SIMULATOR) {
+            // ATV: ATKsimulTv runs on the same phone as Appteka TV, which cannot scan its own
+            // screen: copy the invitation so the phone app can paste it ("Coller l'invitation").
+            // The dialog stays open so the invitation is not shortened by the dismiss grace.
+            dialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL)?.setOnClickListener {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                if (clipboard == null) {
+                    toast(getString(R.string.tv_simultv_copy_failed))
+                } else {
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Appteka TV", pairing.payload))
+                    toast(getString(R.string.tv_simultv_copied))
+                }
+            }
+        }
         val expireDialog = Runnable { dialog.dismiss() }
         dialog.setOnDismissListener {
             handler.removeCallbacks(expireDialog)
@@ -267,6 +287,20 @@ class TvWebActivity : AppCompatActivity() {
             Log.e(TAG, "openClassic $screen failed", e)
             toast("Écran indisponible")
         }
+    }
+
+    /** ATV: ATKsimulTv fills the phone screen like a TV (system bars hidden, swipe to show). */
+    private fun applySimulatorFullscreen() {
+        if (!BuildConfig.FORCE_TV_SIMULATOR) return
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) window.decorView.post { applySimulatorFullscreen() }
     }
 
     override fun onResume() {

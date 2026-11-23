@@ -1,0 +1,6 @@
+<resources>
+    <!-- ATV : ATKsimulTv (variante simulateur TV) uniquement. -->
+    <string name="tv_simultv_copy_invitation">Copier l’invitation</string>
+    <string name="tv_simultv_copied">Invitation copiée. Ouvre Appteka TV → 📺 → Coller l’invitation.</string>
+    <string name="tv_simultv_copy_failed">Presse-papiers indisponible</string>
+</resources>
