@@ -3,6 +3,7 @@ package com.tomclaw.appsend.update
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.util.Log
 import android.os.Build
 import android.widget.ProgressBar
 import android.widget.Toast
@@ -76,9 +77,27 @@ class UpdateController(private val activity: Activity) {
                 if (file == null) { message("Téléchargement ou vérification impossible"); return@runOnUiThread }
                 runCatching {
                     val uri = FileProvider.getUriForFile(activity, activity.packageName + ".provider", file)
-                    activity.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
-                }.onFailure { file.delete(); message("Installation impossible") }
+                    // Android TV: ACTION_VIEW may resolve to no installer even with a valid APK.
+                    // ACTION_INSTALL_PACKAGE requests the system package installer explicitly.
+                    val install = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                        data = uri
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                    }
+                    try {
+                        activity.startActivity(install)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        Log.w("ApptekaUpdate", "ACTION_INSTALL_PACKAGE unavailable; trying ACTION_VIEW", e)
+                        activity.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        })
+                    }
+                }.onFailure { error ->
+                    Log.e("ApptekaUpdate", "Cannot open Android package installer", error)
+                    message("Installateur Android indisponible : " + (error.localizedMessage ?: error.javaClass.simpleName))
+                    // Keep the verified APK in cache for diagnostics/retry.
+                }
             }
         }.start()
     }
