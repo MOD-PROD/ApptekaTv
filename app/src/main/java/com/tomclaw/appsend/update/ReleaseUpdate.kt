@@ -12,12 +12,17 @@ data class ReleaseUpdate(
     val size: Long
 ) {
     companion object {
-        const val MANIFEST_URL = "https://github.com/MOD-PROD/ApptekaTv/releases/latest/download/update.json"
+        private const val BASE = "https://github.com/MOD-PROD/ApptekaTv/releases"
+        fun manifestUrl(channel: String): String = when (channel) {
+            "test" -> "$BASE/download/test-latest/update.json"
+            "beta" -> "$BASE/download/beta-latest/update.json"
+            else -> "$BASE/latest/download/update.json"
+        }
 
-        fun parse(json: String, installedVersion: Long): ReleaseUpdate? {
+        fun parse(json: String, installedVersion: Long, channel: String = "stable"): ReleaseUpdate? {
             val obj = JSONObject(json)
             require(obj.getString("packageName") == "app.modprod.apptekatv")
-            require(obj.getString("channel") == "stable")
+            require(obj.getString("channel") == channel)
             val code = obj.getLong("versionCode")
             if (code <= installedVersion) return null
             val name = obj.getString("versionName")
