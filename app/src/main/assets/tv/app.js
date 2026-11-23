@@ -663,6 +663,21 @@ function applySkin() {
         root.style.setProperty('--accent-light-rgb', rgb.map(channel => Math.round(channel * 0.6 + 255 * 0.4)).join(', '));
         root.style.setProperty('--accent-dark', `rgb(${rgb.map(channel => Math.round(channel * 0.82)).join(', ')})`);
     }
+    // La gélule originale conserve ses reflets chromés : on ne teinte que sa teinte verte
+    // via une rotation de teinte (les gris neutres restent inchangés).
+    // Source de référence : liquide vert (~120°), couleur de destination : accent actif.
+    const activeAccent = rgb || getComputedStyle(root).getPropertyValue('--accent-rgb').trim().split(',').map(Number);
+    if (activeAccent.length === 3 && activeAccent.every(Number.isFinite)) {
+        const [r, g, b] = activeAccent.map(v => v / 255);
+        const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
+        let hue = 120;
+        if (delta > 0) {
+            if (max === r) hue = 60 * (((g - b) / delta) % 6);
+            else if (max === g) hue = 60 * ((b - r) / delta + 2);
+            else hue = 60 * ((r - g) / delta + 4);
+        }
+        root.style.setProperty('--capsule-hue-rotation', (((hue + 360) % 360) - 120).toFixed(1) + 'deg');
+    }
     document.querySelectorAll('link.skin-classic').forEach(link => { link.media = green ? 'not all' : 'all'; });
     document.querySelectorAll('link.skin-green').forEach(link => { link.media = green ? 'all' : 'not all'; });
     document.querySelectorAll('link.skin-neu').forEach(link => { link.media = neu ? 'all' : 'not all'; });
