@@ -16,6 +16,11 @@ class ControlsItemPresenter(
     override fun bindView(view: ControlsItemView, item: ControlsItem, position: Int) {
         view.hideButtons()
         view.enableButtons()
+        // ATV-03: TV target → a single « Installer sur la TV » button (local state is the phone's).
+        if (view.showTvInstallButton()) {
+            view.setOnInstallClickListener { listener.onInstallClick() }
+            return
+        }
         val isProgress = when (item.downloadState) {
             IDLE -> false
             AWAIT -> true

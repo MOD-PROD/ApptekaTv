@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import com.tomclaw.appsend.BuildConfig
 import com.tomclaw.appsend.util.isTvDevice
 import com.tomclaw.appsend.tvlink.TvLinkSender
+import com.tomclaw.appsend.target.TvTarget
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -80,11 +81,13 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         if (!requireContext().isTvDevice()) bindTargetSwitch()
     }
 
-    private var connection: TvLinkSender.Connection? = null
+    // ATV-03: the selected TV is shared with the native details screen (TvTarget).
+    private val connection: TvLinkSender.Connection?
+        get() = context?.let { TvTarget.current(it) }
     private fun pairingSender() = TvLinkSender(requireActivity(), onAssociated = { paired ->
-        connection = paired
-        renderTarget()
         val context = context ?: return@TvLinkSender
+        TvTarget.select(context, paired)
+        renderTarget()
         android.widget.Toast.makeText(context, "Connecté à ${paired.name}", android.widget.Toast.LENGTH_SHORT).show()
     })
 
@@ -106,7 +109,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         target.visibility = View.VISIBLE
         target.setOnClickListener {
             if (connection != null) {
-                connection = null
+                TvTarget.select(requireContext(), null)
                 renderTarget()
             } else {
                 MaterialAlertDialogBuilder(requireContext())
@@ -128,6 +131,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     override fun onStart() {
         super.onStart()
         presenter.attachRouter(this)
+        renderTarget() // ATV-03: the TV may have revoked this phone meanwhile
     }
 
     override fun onStop() {
@@ -157,10 +161,8 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     }
 
     override fun openAppScreen(appId: String, title: String) {
-        connection?.let {
-            TvLinkSender(requireActivity(), appId, title).share(it)
-            return
-        }
+        // ATV-03: in TV mode the phone behaves as on the TV: the native details
+        // screen opens and its Install button installs on the TV.
         val intent = createDetailsActivityIntent(
             context = requireContext(),
             appId = appId,

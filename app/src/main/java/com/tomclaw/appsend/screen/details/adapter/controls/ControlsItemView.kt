@@ -13,6 +13,9 @@ interface ControlsItemView : ItemView {
 
     fun showInstallButton()
 
+    // ATV-03
+    fun showTvInstallButton(): Boolean
+
     fun disableInstallButton()
 
     fun showUpdateButton()
@@ -67,6 +70,16 @@ class ControlsItemViewHolder(view: View) : BaseItemViewHolder(view), ControlsIte
 
     override fun showInstallButton() {
         installButton.show()
+    }
+
+    // ATV-03: label and visibility of the install button when the target is the TV.
+    override fun showTvInstallButton(): Boolean {
+        val tv = com.tomclaw.appsend.target.TvTarget.current(installButton.context) != null
+        (installButton as? android.widget.TextView)?.setText(
+            if (tv) R.string.tv_install_on_tv else R.string.install
+        )
+        if (tv) installButton.show()
+        return tv
     }
 
     override fun disableInstallButton() {

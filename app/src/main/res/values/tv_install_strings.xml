@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATV-03: install on the TV from the phone's native screens -->
+<resources>
+    <string name="tv_install_on_tv">Install on TV</string>
+    <string name="tv_install_title">%1$s → %2$s</string>
+    <string name="tv_install_checking">Contacting the TV…</string>
+    <string name="tv_install_queued">The TV is preparing the download…</string>
+    <string name="tv_install_downloading_start">The TV is starting the download…</string>
+    <string name="tv_install_downloading">The TV is downloading… %1$d%%</string>
+    <string name="tv_install_installing">Installing on the TV…</string>
+    <string name="tv_install_confirm">Confirm the installation on the TV screen with the remote.</string>
+    <string name="tv_install_done">Installed on the TV.</string>
+    <string name="tv_install_failed_info">The TV could not get the app details. Check its Internet connection.</string>
+    <string name="tv_install_failed_download">The TV could not download the app.</string>
+    <string name="tv_install_failed_install">The installation was cancelled or refused on the TV.</string>
+    <string name="tv_install_lost">The TV is no longer tracking this installation (Appteka TV restarted?).</string>
+    <string name="tv_install_sent_no_status">Request sent. Follow the installation on the TV.</string>
+    <string name="tv_install_offline">TV unreachable. Check that the TV is on, Appteka TV is open and both devices are on the same Wi-Fi.</string>
+    <string name="tv_install_unauthorized">The TV no longer recognises this phone. Pair it again with the TV icon next to “Store”.</string>
+    <string name="tv_install_refused">The TV refused the request (%1$s).</string>
+    <string name="tv_install_abi">This app is not compatible with the TV\'s processor (%1$s).</string>
+    <string name="tv_install_status_lost">Lost contact with the TV. The installation may continue on the TV.</string>
+    <string name="tv_install_hide">Hide</string>
+</resources>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATV-03 : installer sur la TV depuis les écrans natifs du téléphone -->
+<resources>
+    <string name="tv_install_on_tv">Installer sur la TV</string>
+    <string name="tv_install_title">%1$s → %2$s</string>
+    <string name="tv_install_checking">Connexion à la TV…</string>
+    <string name="tv_install_queued">La TV prépare le téléchargement…</string>
+    <string name="tv_install_downloading_start">La TV démarre le téléchargement…</string>
+    <string name="tv_install_downloading">Téléchargement sur la TV… %1$d %%</string>
+    <string name="tv_install_installing">Installation sur la TV…</string>
+    <string name="tv_install_confirm">Confirmez l\'installation sur l\'écran de la TV avec la télécommande.</string>
+    <string name="tv_install_done">Installée sur la TV.</string>
+    <string name="tv_install_failed_info">La TV n\'a pas pu obtenir la fiche de l\'appli. Vérifiez sa connexion Internet.</string>
+    <string name="tv_install_failed_download">La TV n\'a pas pu télécharger l\'appli.</string>
+    <string name="tv_install_failed_install">L\'installation a été annulée ou refusée sur la TV.</string>
+    <string name="tv_install_lost">La TV ne suit plus cette installation (Appteka TV redémarrée ?).</string>
+    <string name="tv_install_sent_no_status">Demande envoyée. Suivez l\'installation sur la TV.</string>
+    <string name="tv_install_offline">TV injoignable. Vérifiez que la TV est allumée, qu\'Appteka TV est ouverte et que les deux appareils sont sur le même Wi-Fi.</string>
+    <string name="tv_install_unauthorized">La TV ne reconnaît plus ce téléphone. Associez-la de nouveau avec l\'icône TV à côté de « Store ».</string>
+    <string name="tv_install_refused">La TV a refusé la demande (%1$s).</string>
+    <string name="tv_install_abi">Cette appli n\'est pas compatible avec le processeur de la TV (%1$s).</string>
+    <string name="tv_install_status_lost">Contact perdu avec la TV. L\'installation continue peut-être sur la TV.</string>
+    <string name="tv_install_hide">Masquer</string>
+</resources>
