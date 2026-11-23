@@ -14,7 +14,7 @@ class UpdateDownloader(private val context: Context) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
-        .followSslRedirects(false)
+        .followSslRedirects(true)
         .build()
 
     fun check(installedVersion: Long, channel: String = "stable"): ReleaseUpdate? {
