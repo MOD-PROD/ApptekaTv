@@ -16,19 +16,20 @@ class UpdateController(private val activity: Activity) {
     private fun message(text: String) = Toast.makeText(activity, text, Toast.LENGTH_LONG).show()
 
     @Suppress("DEPRECATION")
-    fun check(manual: Boolean = false) {
+    fun check(manual: Boolean = false, channel: String = "stable") {
+        require(channel in setOf("stable", "beta", "test"))
         if (!busy.compareAndSet(false, true)) return
         Thread {
             val result = runCatching {
                 val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-                downloader.check(if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong())
+                downloader.check(if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong(), channel)
             }
             activity.runOnUiThread {
                 if (!active()) { busy.set(false); return@runOnUiThread }
                 result.onSuccess { update ->
                     if (update == null) {
                         busy.set(false)
-                        if (manual) message("Aucune mise à jour disponible")
+                        if (manual) message("Aucune mise à jour disponible ($channel)")
                     } else {
                         val dialog = AlertDialog.Builder(activity)
                         .setTitle("Appteka TV — Mise à jour")
@@ -40,7 +41,7 @@ class UpdateController(private val activity: Activity) {
                         dialog.show()
                         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { busy.set(false); dialog.dismiss() }
                     }
-                }.onFailure { busy.set(false); if (manual) message("Vérification impossible") }
+                }.onFailure { busy.set(false); if (manual) message("Vérification impossible ($channel)") }
             }
         }.start()
     }
