@@ -749,7 +749,7 @@ class TvWebActivity : AppCompatActivity() {
 
     inner class TvJsBridge {
         @JavascriptInterface
-        fun checkSelfUpdate(): Unit = runOnUiThread { updateController.check(manual = true) }
+        fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test") } ?: "stable") }
 
         @JavascriptInterface
         fun installedUpdateVersion(): String = com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
