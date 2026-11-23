@@ -93,3 +93,17 @@
     text-overflow: ellipsis;
 }
 .footer.show, .footer.sticky { opacity: 1; transform: translate(-50%, 0); }
+
+/* ATV: télécommande — focus indépendant de la couleur d'accent et de l'état sélectionné. */
+html:not(.mobile) #settings-panel .focusable:focus,
+html:not(.mobile) #settings-panel .focusable:focus-visible,
+html:not(.mobile) #settings-panel button:focus-visible {
+    outline: 3px solid #52dfff !important;
+    outline-offset: 3px !important;
+    box-shadow: 0 0 0 2px rgba(4, 20, 30, .9), 0 0 16px rgba(82, 223, 255, .7) !important;
+    position: relative;
+    z-index: 2;
+}
+html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
+    overflow: visible;
+}
