@@ -33,6 +33,8 @@ import com.google.gson.Gson
 import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
 import com.tomclaw.appsend.tvlink.TvLink
+import com.tomclaw.appsend.target.TvRemoteState
+import org.json.JSONObject
 import com.tomclaw.appsend.tvlink.TvLinkSender
 import com.tomclaw.appsend.util.isTvDevice
 import com.tomclaw.appsend.categories.Category
@@ -161,6 +163,7 @@ class TvWebActivity : AppCompatActivity() {
     /** TV (ou box) : interface 10 pieds ; sinon interface portable. */
     private val isTv by lazy { isTvDevice() }
     private var tvLink: TvLink.Server? = null
+    private val remoteInstalls by lazy { TvRemoteInstalls(this, downloadManager, appInstaller) }
     private var pendingPairApp: String? = null
     private var pendingPairLabel: String? = null
     private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
@@ -209,8 +212,13 @@ class TvWebActivity : AppCompatActivity() {
 
             override fun onOpen(appId: String, install: Boolean, device: String) {
                 js("onRemoteOpen", mapOf("id" to appId, "install" to install, "device" to device))
-                if (install) installApp(appId)
+                if (install) {
+                    remoteInstalls.track(appId) // ATV-03: suivi pour l'ordre status
+                    installApp(appId)
+                }
             }
+
+            override fun status(appId: String): JSONObject = remoteInstalls.status(appId).toJson()
         })
         runCatching { server.start() }.onFailure { Log.w(TAG, "TV link unavailable", it) }
         tvLink = server
@@ -632,6 +640,7 @@ class TvWebActivity : AppCompatActivity() {
                     withStoragePermission { startInstall(response.result) }
                 }, { error ->
                     Log.e(TAG, "Failed to get app info for download", error)
+                    remoteInstalls.fail(appId, TvRemoteState.REASON_INFO) // ATV-03
                     toast("Impossible de démarrer le téléchargement")
                 })
         )
@@ -641,6 +650,7 @@ class TvWebActivity : AppCompatActivity() {
         val info = details.info
         val label = info.label ?: info.packageName
         pendingInstalls[info.appId] = PendingInstall(label, info.version)
+        remoteInstalls.attach(info) // ATV-03: paquet et version visés
 
         // Fichier déjà téléchargé : installation directe
         if (downloadManager.exists(label, info.version, info.appId)) {
@@ -679,6 +689,7 @@ class TvWebActivity : AppCompatActivity() {
                 handler.postDelayed({ installDownloaded(appId, attempt + 1) }, INSTALL_RETRY_DELAY_MS)
             } else {
                 pendingInstalls.remove(appId)
+                remoteInstalls.fail(appId, TvRemoteState.REASON_DOWNLOAD) // ATV-03
                 toast("Fichier introuvable, réessaie l'installation")
             }
             return
@@ -963,6 +974,7 @@ class TvWebActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         tvLink?.stop()
+        remoteInstalls.dispose()
         handler.removeCallbacksAndMessages(null)
         stateSubscription?.dispose()
         aiPollSubscription?.dispose()

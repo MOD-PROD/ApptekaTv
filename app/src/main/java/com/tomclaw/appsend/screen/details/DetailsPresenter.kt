@@ -131,6 +131,9 @@ interface DetailsPresenter : ItemListener {
 
         fun openGallery(items: List<GalleryItem>, current: Int)
 
+        // ATV-03: true when the order was sent to the TV selected with the 📱/📺 icon.
+        fun installOnTv(appId: String, label: String, abi: List<String>?): Boolean = false
+
     }
 
 }
@@ -760,7 +763,14 @@ class DetailsPresenterImpl(
                 }
             }
         }
+        if (installOnTv()) return // ATV-03
         router?.requestStoragePermissions { onInstallBypassingAbiCheck() }
+    }
+
+    // ATV-03: in TV mode the TV downloads and installs; the phone only sends the order.
+    private fun installOnTv(): Boolean {
+        val info = details?.info ?: return false
+        return router?.installOnTv(info.appId, info.label.orEmpty(), info.abi) == true
     }
 
     private fun onInstallExistingClick() {
@@ -787,6 +797,7 @@ class DetailsPresenterImpl(
     }
 
     private fun onInstallBypassingAbiCheck() {
+        if (installOnTv()) return // ATV-03
         val abiList = details?.info?.abi
         if (!abiList.isNullOrEmpty() && !abiResourceProvider.checkCompatibility(abiList)) {
             view?.showAbiWarningDialog(

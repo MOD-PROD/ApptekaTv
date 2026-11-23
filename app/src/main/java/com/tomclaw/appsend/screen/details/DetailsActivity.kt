@@ -451,6 +451,13 @@ class DetailsActivity : AppCompatActivity(), DetailsPresenter.DetailsRouter {
         analytics.trackEvent("details-open-google-play")
     }
 
+    // ATV-03: Installer sur la TV
+    override fun installOnTv(appId: String, label: String, abi: List<String>?): Boolean {
+        val tv = com.tomclaw.appsend.target.TvTarget.current(this) ?: return false
+        com.tomclaw.appsend.target.TvRemoteInstall(this, tv).start(appId, label, abi)
+        return true
+    }
+
     override fun startDownload(
         label: String,
         version: String,

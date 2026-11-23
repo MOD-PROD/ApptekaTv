@@ -109,6 +109,9 @@ object TvLink {
     interface Host {
         fun onPaired(device: String)
         fun onOpen(appId: String, install: Boolean, device: String)
+
+        /** ATV-03 : progression d'une installation demandée (appelé sur le thread de la liaison). */
+        fun status(appId: String): JSONObject
     }
 
     class Server(private val context: Context, private val host: Host) {
@@ -288,7 +291,12 @@ object TvLink {
                     main.post { host.onOpen(appId, type == "install", from) }
                     ok()
                 }
-                "status", "list_apps", "launch", "uninstall", "account_link" -> error("not_implemented")
+                "status" -> {
+                    val appId = msg.optString("appId")
+                    if (!appId.matches(Regex("[a-zA-Z0-9_-]{1,64}"))) return error("bad_request")
+                    ok().put("status", host.status(appId))
+                }
+                "list_apps", "launch", "uninstall", "account_link" -> error("not_implemented")
                 else -> error("unknown")
             }
         }
