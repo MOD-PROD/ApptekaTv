@@ -107,3 +107,14 @@ html:not(.mobile) #settings-panel button:focus-visible {
 html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
     overflow: visible;
 }
+
+/* ATV: la gélule suit l'accent même avec le thème classique. */
+.logo-capsule {
+    display: block !important;
+    filter: drop-shadow(0 0 5px rgba(var(--accent-rgb, 212, 175, 55), .35));
+}
+.logo-capsule {
+    /* Colorisation à partir de l'image source, sans altérer sa silhouette. */
+    background: rgba(var(--accent-rgb, 212, 175, 55), .2);
+    border-radius: 999px;
+}
