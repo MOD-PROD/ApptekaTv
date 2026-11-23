@@ -77,11 +77,11 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'neu', accent: 'default', archs: null, margin: 20 },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'classic', accent: 'gold', archs: null, margin: 20 },
     loadJson('settings', {}) || {}
 );
-// bascule unique vers le néumorphisme clair (nouveau skin par défaut)
-if (settings.skinV !== 2) { settings.skin = 'neu'; settings.accent = 'default'; settings.skinV = 2; }
+// Première installation : thème sombre ; ne pas écraser les choix existants.
+if (settings.skinV !== 3) { if (settings.skinV == null) { settings.skin = 'classic'; settings.accent = 'gold'; } settings.skinV = 3; saveSettings(); }
 let favorites = loadJson('favorites', []);
 const rowData = {};           // key -> [apps] | null (erreur) | undefined (en cours)
 const rowLoading = {};
@@ -728,7 +728,7 @@ function renderSettings(focusKey) {
             <div class="set-sub">L'interface et le contenu Appteka (catégories, descriptions) suivent la langue choisie.</div>`)}
         ${settingsSection('appearance', 'Apparence', `
             <div class="set-row" role="group" aria-label="Skin">
-                ${[['classic', 'Noir et or'], ['green', 'Néumorphisme vert'], ['neu', 'Néumorphisme clair']].map(([id, label]) => `
+                ${[['classic', 'Noir et or'], ['green', 'Neuro sombre'], ['neu', 'Neuro clair']].map(([id, label]) => `
                     <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}
@@ -770,7 +770,7 @@ function renderSettings(focusKey) {
         <div class="set-section">
             <div class="set-label">Mise à jour Appteka TV</div>
             <div class="set-sub" data-no-i18n>Version : ${escapeHtml(String(call('installedUpdateVersion') || '—'))}</div>
-            <button class="btn focusable" type="button" data-k="self-update" data-act="self-update">Rechercher une mise à jour</button>
+            <button class="btn focusable" type="button" data-k="self-update" data-act="self-update" aria-label="Rechercher une mise à jour">Rechercher une mise à jour</button>
         </div>
         ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
         <div class="set-section">
