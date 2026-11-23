@@ -132,3 +132,10 @@ html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
     mask-position: center;
     filter: none;
 }
+
+.logo .logo-capsule {
+    display: inline-block !important;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+}
