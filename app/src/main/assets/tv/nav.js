@@ -12,13 +12,12 @@ window.TvNav = (function () {
         const list = focusables(root);
         if (!list.length) return false;
         if (!list.includes(cur)) { list[0].focus({ preventScroll: true }); list[0].scrollIntoView({ block: 'nearest' }); return true; }
-        // Dans les réglages, les sections sont empilées verticalement.
-        // La navigation spatiale pouvait sauter « Rechercher une mise à jour »
-        // pour rejoindre directement « Plus de fonctions ».
-        // Priorité stricte à l'ordre des contrôles pour Haut/Bas.
+        // Paramètres : Haut / Bas avancent ligne par ligne, dans l'ordre visuel.
+        // Bouton de catégorie → première ligne de la section ouverte → … → dernière ligne
+        // → bouton de catégorie suivant. Aucune option n'est sautée et on ne parcourt plus
+        // les puces d'une même ligne une à une (◀ ▶ servent à ça).
         if (root.id === 'settings-panel' && (dir === 'down' || dir === 'up')) {
-            const index = list.indexOf(cur);
-            const next = list[index + (dir === 'down' ? 1 : -1)];
+            const next = nextLine(list, cur, dir);
             if (!next) return false;
             next.focus({ preventScroll: true });
             next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
@@ -63,6 +62,29 @@ window.TvNav = (function () {
             }
         }
         return false;
+    }
+
+    // Élément de la ligne voisine (au-dessus / en dessous) le plus proche horizontalement.
+    // Une « ligne » = éléments dont le haut est à moins de 8 px de celui du plus proche.
+    function nextLine(list, cur, dir) {
+        const r = cur.getBoundingClientRect();
+        const cands = list.filter(el => {
+            if (el === cur) return false;
+            const e = el.getBoundingClientRect();
+            return dir === 'down' ? e.top >= r.bottom - 4 : e.bottom <= r.top + 4;
+        });
+        if (!cands.length) return null;
+        const edge = el => { const e = el.getBoundingClientRect(); return dir === 'down' ? e.top : e.bottom; };
+        const target = dir === 'down' ? Math.min(...cands.map(edge)) : Math.max(...cands.map(edge));
+        const line = cands.filter(el => Math.abs(edge(el) - target) <= 8);
+        let best = null, bestGap = Infinity, bestLeft = Infinity;
+        for (const el of line) {
+            const e = el.getBoundingClientRect();
+            const gap = Math.max(0, e.left - r.right, r.left - e.right);   // 0 si chevauchement
+            const left = Math.abs(e.left - r.left);
+            if (gap < bestGap || (gap === bestGap && left < bestLeft)) { best = el; bestGap = gap; bestLeft = left; }
+        }
+        return best;
     }
 
     // Dans un champ texte, ◀ ▶ déplacent le curseur tant qu'on n'est pas au bord

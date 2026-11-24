@@ -107,3 +107,14 @@ html:not(.mobile) #settings-panel button:focus-visible {
 html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
     overflow: visible;
 }
+
+/* ---- Paramètres : libellé à gauche des puces (« Skins: », « Accent Color: ») ---- */
+.set-inline-label { margin-bottom: 0; min-width: 120px; }
+/* Taille des cartes et Marges de l'écran côte à côte */
+.set-pair { display: flex; gap: 48px; flex-wrap: wrap; }
+.set-pair > div { flex: 0 1 auto; }
+.mobile .set-inline-label { min-width: 0; width: 100%; }
+.mobile .set-pair { gap: 16px; }
+
+/* Bouton d'association : seulement sur la TV */
+.mobile .tv-only { display: none !important; }

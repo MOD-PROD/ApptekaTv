@@ -7,7 +7,7 @@
     <string name="please_wait">Vui lòng chờ</string>
     <string name="app_extract_success">Ứng dụng đã được xuất thành công.</string>
     <string name="app_extract_failed">Không thể trích xuất ứng dụng</string>
-    <string name="tomclaw_software">Phần mềm TomClaw</string>
+    <string name="tomclaw_software">ModProd Software</string>
     <string name="app_version">Phiên bản %1$s (%2$d)</string>
     <string name="info">Thông tin</string>
     <string name="pref_summary_show_system">Hiển thị các ứng dụng hệ thống trong danh sách chung</string>
@@ -108,7 +108,7 @@
     <string name="source_code">Mã nguồn</string>
     <string name="source_code_subtitle">Xem trên GitHub</string>
     <string name="contributors_subtitle">Gặp gỡ đội ngũ</string>
-    <string name="feedback_subtitle">support@appteka.store</string>
+    <string name="feedback_subtitle">support@modprod.app</string>
     <string name="legal_subtitle">Chính sách bảo mật và điều khoản</string>
     <string name="links">Liên kết</string>
     <string name="support">Hỗ trợ</string>

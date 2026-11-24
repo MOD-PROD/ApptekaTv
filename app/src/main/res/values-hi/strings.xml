@@ -7,7 +7,7 @@
     <string name="please_wait">कृपया प्रतीक्षा करें ।</string>
     <string name="app_extract_success">एप्लिकेशन सफलतापूर्वक निर्यात कर दिया गया है.</string>
     <string name="app_extract_failed">एप्लिकेशन निकालने में विफल :(</string>
-    <string name="tomclaw_software">TomClaw Software</string>
+    <string name="tomclaw_software">ModProd Software</string>
     <string name="app_version">संस्करण %1$s (%2$d)</string>
     <string name="info">जानकारी</string>
     <string name="pref_summary_show_system">सामान्य सूची में सिस्टम एप्लिकेशन दिखाएँ</string>
@@ -108,7 +108,7 @@
     <string name="source_code">सोर्स कोड</string>
     <string name="source_code_subtitle">GitHub पर देखें</string>
     <string name="contributors_subtitle">टीम से मिलें</string>
-    <string name="feedback_subtitle">support@appteka.store</string>
+    <string name="feedback_subtitle">support@modprod.app</string>
     <string name="legal_subtitle">गोपनीयता नीति और शर्तें</string>
     <string name="links">लिंक</string>
     <string name="support">सहायता</string>

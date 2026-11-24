@@ -57,7 +57,7 @@ class AboutPresenterImpl(
         subscriptions += view.navigationClicks().subscribe { onBackPressed() }
         subscriptions += view.feedbackEmailClicks().subscribe {
             router?.openFeedbackEmail(
-                addr = "support@appteka.store",
+                addr = "support@modprod.app",
                 subject = userAgentProvider.getUserAgent(),
                 text = ""
             )

@@ -7,7 +7,7 @@
     <string name="please_wait">Por favor, espere…</string>
     <string name="app_extract_success">La aplicación se exportó correctamente.</string>
     <string name="app_extract_failed">Error al exportar :(</string>
-    <string name="tomclaw_software">TomClaw Software</string>
+    <string name="tomclaw_software">ModProd Software</string>
     <string name="app_version">Versión %1$s (%2$d)</string>
     <string name="info">Información</string>
     <string name="pref_summary_show_system">Mostrar aplicaciones del sistema en la lista</string>
@@ -107,7 +107,7 @@
     <string name="source_code">Código fuente</string>
     <string name="source_code_subtitle">Ver en GitHub</string>
     <string name="contributors_subtitle">Conozca al equipo</string>
-    <string name="feedback_subtitle">support@appteka.store</string>
+    <string name="feedback_subtitle">support@modprod.app</string>
     <string name="legal_subtitle">Política de privacidad y términos</string>
     <string name="links">Enlaces</string>
     <string name="support">Soporte</string>

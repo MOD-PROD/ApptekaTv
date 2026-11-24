@@ -7,7 +7,7 @@
     <string name="please_wait">يرجى الانتظار…</string>
     <string name="app_extract_success">تم تصدير التطبيق بنجاح</string>
     <string name="app_extract_failed">فشل التصدير :(</string>
-    <string name="tomclaw_software">TomClaw Software</string>
+    <string name="tomclaw_software">ModProd Software</string>
     <string name="app_version">الإصدار %1$s (%2$d)</string>
     <string name="info">معلومات</string>
     <string name="pref_summary_show_system">عرض تطبيقات النظام في القائمة</string>
@@ -107,7 +107,7 @@
     <string name="source_code">الكود المصدري</string>
     <string name="source_code_subtitle">اطلع عليه على GitHub</string>
     <string name="contributors_subtitle">تعرف على الفريق</string>
-    <string name="feedback_subtitle">support@appteka.store</string>
+    <string name="feedback_subtitle">support@modprod.app</string>
     <string name="legal_subtitle">سياسة الخصوصية والشروط</string>
     <string name="links">روابط</string>
     <string name="support">الدعم</string>

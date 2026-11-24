@@ -61,7 +61,11 @@ class AboutViewImpl(view: View) : AboutView {
 
         feedbackEmailButton.clicks(feedbackEmailRelay)
         sourceCodeButton.clicks(sourceCodeRelay)
-        telegramGroupButton.clicks(telegramGroupRelay)
+        // ModProd : groupe Telegram pas encore prêt, bouton bloqué (ni clic ni focus télécommande)
+        telegramGroupButton.isEnabled = false
+        telegramGroupButton.isClickable = false
+        telegramGroupButton.isFocusable = false
+        telegramGroupButton.alpha = 0.4f
         legalInfoButton.clicks(legalInfoRelay)
         contributorsButton.clicks(contributorsRelay)
     }

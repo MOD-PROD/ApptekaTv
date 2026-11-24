@@ -33,16 +33,12 @@ class AboutResourceProviderImpl(
     override fun getContributors(): List<Contributor> {
         return listOf(
             Contributor(
-                name = "Igor Solkin",
-                url = "https://github.com/solkin"
+                name = "ModProd",
+                url = "https://github.com/MOD-PROD"
             ),
             Contributor(
-                name = "Ameer Muawiya",
-                url = "https://github.com/ameermuawiya"
-            ),
-            Contributor(
-                name = "tojik_proof_93",
-                url = "https://github.com/FlutterGenerator"
+                name = "Claude",
+                url = "https://claude.ai"
             )
         )
     }

@@ -7,7 +7,7 @@
     <string name="please_wait">Iltimos, kuting…</string>
     <string name="app_extract_success">Ilova muvaffaqiyatli eksport qilindi</string>
     <string name="app_extract_failed">Eksport qilishda xatolik yuz berdi :(</string>
-    <string name="tomclaw_software">TomClaw Dasturi</string>
+    <string name="tomclaw_software">ModProd Software</string>
     <string name="app_version">%1$s versiyasi (%2$d)</string>
     <string name="info">Ma\'lumot</string>
     <string name="pref_summary_show_system">Tizim ilovalarini ro\'yxatda ko\'rsatish</string>
@@ -107,7 +107,7 @@
     <string name="source_code">Manba kodi</string>
     <string name="source_code_subtitle">GitHub-da ko\'rish</string>
     <string name="contributors_subtitle">Jamoa bilan tanishing</string>
-    <string name="feedback_subtitle">support@appteka.store</string>
+    <string name="feedback_subtitle">support@modprod.app</string>
     <string name="legal_subtitle">Maxfiylik siyosati va shartlari</string>
     <string name="links">Havolalar</string>
     <string name="support">Qo\'llab-quvvatlash</string>

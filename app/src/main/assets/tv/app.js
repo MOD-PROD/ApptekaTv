@@ -11,7 +11,10 @@ const BTN_SCOPE = document.getElementById('btn-scope');
 const BTN_ADD = document.getElementById('btn-add');
 const BTN_SETTINGS = document.getElementById('btn-settings');
 const BTN_EXIT = document.getElementById('btn-exit');
-const HEADER_ITEMS = [BTN_SCOPE, SEARCH_BOX, BTN_ADD, BTN_SETTINGS, BTN_EXIT];
+const BTN_PAIR = document.getElementById('btn-pair');
+// Le bouton d'association n'existe que sur la TV (le portable n'affiche pas de QR)
+const HEADER_ITEMS = (document.documentElement.classList.contains('mobile') ? [] : [BTN_PAIR])
+    .concat([BTN_SCOPE, SEARCH_BOX, BTN_ADD, BTN_SETTINGS, BTN_EXIT]);
 const PICKER = document.getElementById('picker');
 const PICKER_GRID = document.getElementById('picker-grid');
 const PICKER_TITLE = document.getElementById('picker-title');
@@ -725,15 +728,13 @@ function renderSettings(focusKey) {
         </button>`).join('');
 
     SETTINGS_PANEL.innerHTML = `
-        <div class="set-title">Réglages</div>
+        <div class="set-title">Paramètres</div>
         <div class="set-hint">${IS_MOBILE ? '' : 'Retour pour fermer'}</div>
         <button class="close-btn mobile-only" type="button" data-act="close-settings" aria-label="Fermer">✕</button>
 
-        <div class="set-section">
-            <div class="set-label">Compte Appteka</div>
-            ${accountHtml()}
-            ${settingsMsg.text ? `<div class="set-msg ${settingsMsg.err ? 'err' : ''}">${escapeHtml(settingsMsg.text)}</div>` : ''}
-        </div>
+        ${settingsSection('account', accountRegistered() ? 'Profil' : 'Connexion au compte Appteka', `
+            ${accountHtml()}`)}
+        ${settingsMsg.text ? `<div class="set-msg ${settingsMsg.err ? 'err' : ''}">${escapeHtml(settingsMsg.text)}</div>` : ''}
         ${settingsSection('language', 'Langue', `
             <div class="set-row" role="group" aria-label="Langue">
                 ${[['auto', 'Automatique (langue de la TV)']].concat(window.TvI18n ? window.TvI18n.langs : []).map(([code, label]) => {
@@ -746,38 +747,42 @@ function renderSettings(focusKey) {
             </div>
             <div class="set-sub">L'interface et le contenu Appteka (catégories, descriptions) suivent la langue choisie.</div>`)}
         ${settingsSection('appearance', 'Apparence', `
-            <div class="set-row" role="group" aria-label="Skin">
+            <div class="set-row set-inline" role="group" aria-label="Skins">
+                <div class="set-label set-inline-label">Skins:</div>
                 ${[['classic', 'Noir et or'], ['green', 'Neuro sombre'], ['neu', 'Neuro clair']].map(([id, label]) => `
                     <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}
                     </button>`).join('')}
             </div>
-            <div class="set-label set-spacing">Couleur d’accent</div>
-            <div class="set-row" role="group" aria-label="Couleur d’accent">
-                ${Object.entries(ACCENTS).map(([id, { label, rgb }]) => `
+            <div class="set-row set-inline set-spacing" role="group" aria-label="Accent Color">
+                <div class="set-label set-inline-label" data-no-i18n>Accent Color:</div>
+                ${Object.entries(ACCENTS).filter(([id]) => id !== 'default').map(([id, { label, rgb }]) => `
                     <button type="button" class="chip-toggle focusable ${settings.accent === id ? 'on' : ''}"
                             data-k="accent-${id}" data-accent="${id}" aria-pressed="${settings.accent === id}">
                         ${rgb ? `<span class="accent-swatch" style="background:rgb(${rgb.join(', ')})" aria-hidden="true"></span>` : ''}
                         ${label}
                     </button>`).join('')}
-            </div>`)}
-        ${settingsSection('display', 'Affichage', `
-            <div class="set-label">Taille des cartes</div>
-            <div class="set-row">
-                <button class="btn focusable" data-k="set-minus" data-act="minus">−</button>
-                <div class="set-value">${Math.round((settings.cardScale || 1) * 100)} %</div>
-                <button class="btn focusable" data-k="set-plus" data-act="plus">+</button>
             </div>
-            <div class="set-spacing">
-                <div class="set-label">Marges de l'écran</div>
-                <div class="set-row">
-                    <button class="btn focusable" data-k="mar-minus" data-act="mar-minus">−</button>
-                    <div class="set-value">${settings.margin == null ? 20 : settings.margin} px</div>
-                    <button class="btn focusable" data-k="mar-plus" data-act="mar-plus">+</button>
+            <div class="set-pair set-spacing">
+                <div>
+                    <div class="set-label">Taille des cartes</div>
+                    <div class="set-row">
+                        <button class="btn focusable" data-k="set-minus" data-act="minus">−</button>
+                        <div class="set-value">${Math.round((settings.cardScale || 1) * 100)} %</div>
+                        <button class="btn focusable" data-k="set-plus" data-act="plus">+</button>
+                    </div>
                 </div>
-                <div class="set-sub">Baisse jusqu'à 0 si l'image paraît trop étroite ; monte si les bords sont coupés par ta TV.</div>
-            </div>`)}
+                <div>
+                    <div class="set-label">Marges de l'écran</div>
+                    <div class="set-row">
+                        <button class="btn focusable" data-k="mar-minus" data-act="mar-minus">−</button>
+                        <div class="set-value">${settings.margin == null ? 20 : settings.margin} px</div>
+                        <button class="btn focusable" data-k="mar-plus" data-act="mar-plus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="set-sub">Marges : baisse jusqu'à 0 si l'image paraît trop étroite ; monte si les bords sont coupés par ta TV.</div>`)}
         ${settingsSection('compatibility', 'Compatibilité APK', `
             <div class="set-row">${chips}
                 <button class="chip-toggle focusable" data-k="abi-reset" data-act="abi-reset">↺ Cette TV</button>
@@ -785,8 +790,8 @@ function renderSettings(focusKey) {
             <div class="set-sub">Les apps sans architecture compatible sont masquées dans les rangées et dans les versions
                 d'une fiche. Cette TV : ${escapeHtml(deviceAbis.join(', '))}.</div>
         `)}
-        ${IS_MOBILE ? '' : settingsSection('tvlink', 'Liaison portable', tvLinkHtml())}
-        <div class="set-section">
+        ${IS_MOBILE ? '' : settingsSection('tvlink', 'Portables associés', tvLinkHtml())}
+        ${settingsSection('update', 'Mise à jour', `
             <div class="set-label">${IS_SIMULATOR ? 'Mise à jour ATKsimulTv' : 'Mise à jour Appteka TV'}</div>
             <div class="set-sub" data-no-i18n>Version installée : ${escapeHtml(String(call('installedUpdateVersion') || 'indisponible'))}</div>
             ${IS_SIMULATOR ? `<div class="set-row">
@@ -798,8 +803,7 @@ function renderSettings(focusKey) {
                 <button class="btn focusable" type="button" data-k="self-update-beta" data-act="self-update" data-channel="beta">Bêta</button>
                 <button class="btn focusable" type="button" data-k="self-update-test" data-act="self-update" data-channel="test">Test</button>
             </div>
-            <div class="set-sub">Choisir un canal pour rechercher une mise à jour.</div>`}
-        </div>
+            <div class="set-sub">Choisir un canal pour rechercher une mise à jour.</div>`}`)}
         ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
         <div class="set-section">
             <button class="btn focusable" type="button" data-k="export-config" data-act="export-config">
@@ -813,6 +817,10 @@ function renderSettings(focusKey) {
 
     const target = (keep && SETTINGS_PANEL.querySelector(`[data-k="${keep}"]`)) || SETTINGS_PANEL.querySelector('.focusable');
     if (target) target.focus({ preventScroll: true });
+}
+
+function accountRegistered() {
+    return account.state === 'ok' && Boolean(account.profile && account.profile.registered);
 }
 
 function accountHtml() {
@@ -872,12 +880,11 @@ function tvLinkHtml() {
     try { info = JSON.parse((window.Android && window.Android.tvLinkInfo && window.Android.tvLinkInfo()) || '{}'); } catch (e) { /* */ }
     const devices = info.devices || [];
     return `
-        <div class="set-sub">Dans Appteka sur ton téléphone, choisis « Envoyer à la TV » puis scanne le QR sur le même réseau.</div>
+        <div class="set-sub">Pour associer un nouveau portable, utilise le bouton QR en haut de l'accueil.</div>
         <div class="set-row" style="margin-top:10px">
             <div class="set-value" data-no-i18n style="min-width:0">${escapeHtml(info.name || '')}</div>
             <div class="set-sub" data-no-i18n style="margin:0">${info.ip ? escapeHtml(info.ip + (info.port && info.port !== 8336 ? ':' + info.port : '')) : ''}</div>
         </div>
-        <button class="btn focusable" type="button" data-k="tvlink-pair" data-act="tvlink-pair">Afficher le QR d’association</button>
         <div class="set-label set-spacing">Appareils associés</div>
         ${devices.length ? devices.map(device => `
             <div class="set-row">
@@ -1097,6 +1104,7 @@ function headerMove(focused, dir) {
 
 function onHeaderEnter(el) {
     if (el === SEARCH_BOX) startEditing();
+    else if (el === BTN_PAIR) call('tvLinkShowQr');
     else if (el === BTN_SCOPE) openPicker('search');
     else if (el === BTN_ADD) openPicker('rows');
     else if (el === BTN_SETTINGS) openSettings();

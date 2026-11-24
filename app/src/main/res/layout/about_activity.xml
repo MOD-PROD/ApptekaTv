@@ -51,11 +51,16 @@
                     android:orientation="vertical"
                     android:padding="24dp">
 
+                    <!-- ModProd : bannière Appteka TV du 19/11 à la place de l'icône -->
                     <com.google.android.material.imageview.ShapeableImageView
-                        android:layout_width="88dp"
-                        android:layout_height="88dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:maxWidth="320dp"
+                        android:maxHeight="180dp"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
                         android:contentDescription="@string/app_icon"
-                        android:src="@mipmap/ic_launcher"
+                        android:src="@drawable/tv_banner"
                         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Large" />
 
                     <TextView
