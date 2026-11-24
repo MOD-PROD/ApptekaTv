@@ -978,11 +978,11 @@ function onSettingsAction(b) {
             return;
         case 'tvlink-forget':
             call('tvLinkForget', b.dataset.device);
-            setTimeout(() => renderSettings('section-tvlink'), 200);
+            setTimeout(() => { updatePairButton(); renderSettings('section-tvlink'); }, 200);
             return;
         case 'tvlink-forget-all':
             call('tvLinkForgetAll');
-            setTimeout(() => renderSettings('section-tvlink'), 200);
+            setTimeout(() => { updatePairButton(); renderSettings('section-tvlink'); }, 200);
             return;
         case 'export-config': {
             const { skin, accent, cardScale, margin, archs, sources, searchCats, profile } = settings;
@@ -1097,9 +1097,22 @@ window.onAuthError = function (json) {
 // ------------------------------------------------------------ navigation
 
 function headerMove(focused, dir) {
-    const i = HEADER_ITEMS.indexOf(focused);
+    // Les boutons masqués (bouton QR quand un portable est associé) sont sautés
+    const items = HEADER_ITEMS.filter(el => el.getClientRects().length > 0);
+    const i = items.indexOf(focused);
     const j = i + (dir === 'right' ? 1 : -1);
-    if (j >= 0 && j < HEADER_ITEMS.length) HEADER_ITEMS[j].focus();
+    if (j >= 0 && j < items.length) items[j].focus();
+}
+
+// Bouton QR de l'accueil : visible seulement tant qu'aucun portable n'est associé.
+// Il réapparaît après « Oublier » / « Tout oublier » du dernier portable.
+function updatePairButton() {
+    if (!BTN_PAIR) return;
+    let devices = [];
+    try { devices = JSON.parse((window.Android && window.Android.tvLinkInfo && window.Android.tvLinkInfo()) || '{}').devices || []; } catch (e) { /* */ }
+    const hide = devices.length > 0;
+    if (hide && document.activeElement === BTN_PAIR) BTN_SCOPE.focus();
+    BTN_PAIR.classList.toggle('hidden-paired', hide);
 }
 
 function onHeaderEnter(el) {
@@ -1169,6 +1182,7 @@ function setupFocusManagement() {
     setupTouch();
     SEARCH_BOX.addEventListener('submit', (e) => { e.preventDefault(); submitSearch(); });
     HEADER_ITEMS.forEach(el => { if (el !== SEARCH_BOX) el.addEventListener('click', () => onHeaderEnter(el)); });
+    updatePairButton();
 
     // Fin d'un appui court sur une icône de rangée : va à la 1re carte
     document.addEventListener('keyup', (e) => {
@@ -1323,6 +1337,7 @@ window.onPaired = function (json) {
     // ATV (vraie TV, 24/11) : la liste « Appareils associés » restait sur « — » tant que les
     // réglages n'étaient pas rouverts ; on la redessine dès que l'association est acceptée.
     if (!SETTINGS.classList.contains('hidden')) renderSettings();
+    updatePairButton();
 };
 // Un portable associé envoie une app : la fiche s'ouvre (et l'installation démarre si demandé)
 window.onRemoteOpen = function (json) {

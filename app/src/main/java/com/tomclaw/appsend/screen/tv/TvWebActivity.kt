@@ -181,6 +181,9 @@ class TvWebActivity : AppCompatActivity() {
         }
     }
 
+    /** Fenêtre du QR d'association ouverte (fermée automatiquement après une association). */
+    private var pairingDialog: androidx.appcompat.app.AlertDialog? = null
+
     private fun showPairingQr() {
         val server = tvLink ?: return toast("Association TV indisponible")
         val pairing = server.pairingQr() ?: return toast("Association TV indisponible")
@@ -247,8 +250,10 @@ class TvWebActivity : AppCompatActivity() {
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
         }
+        pairingDialog = dialog
         val expireDialog = Runnable { dialog.dismiss() }
         dialog.setOnDismissListener {
+            if (pairingDialog === dialog) pairingDialog = null
             handler.removeCallbacks(expireDialog)
             // ATV: keep the invitation briefly after the QR is closed (a phone may be mid-scan),
             // at most 60 s instead of the full 5 min TTL (ATV-01 durcissement).
@@ -260,6 +265,8 @@ class TvWebActivity : AppCompatActivity() {
     private fun startTvLink() {
         val server = TvLink.Server(this, object : TvLink.Host {
             override fun onPaired(device: String) {
+                // ATV (vraie TV, 24/11) : la fenêtre du QR / code se ferme dès que l'association réussit.
+                runOnUiThread { pairingDialog?.takeIf { it.isShowing }?.dismiss() }
                 js("onPaired", mapOf("device" to device))
                 // ATV-01 durcissement : une association ne doit jamais passer inaperçue.
                 Toast.makeText(this@TvWebActivity, getString(R.string.tv_link_paired_notice, device), Toast.LENGTH_LONG).show()

@@ -118,3 +118,6 @@ html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
 
 /* Bouton d'association : seulement sur la TV */
 .mobile .tv-only { display: none !important; }
+
+/* Un portable est déjà associé : le bouton QR de l'accueil disparaît */
+.hbtn.hidden-paired { display: none !important; }
