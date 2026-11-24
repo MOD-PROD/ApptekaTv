@@ -18,6 +18,8 @@ interface DistroInteractor {
 
     fun getPackageUploadInfo(fileName: String): Pair<UploadPackage, UploadApk>?
 
+    fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>?
+
     fun removeApk(fileName: String): Observable<Unit>
 
     fun copyFile(source: String, target: Uri): Observable<Unit>
@@ -47,6 +49,10 @@ class DistroInteractorImpl(
 
     override fun getPackageUploadInfo(fileName: String): Pair<UploadPackage, UploadApk>? {
         return infoProvider.getPackageUploadInfo(fileName)
+    }
+
+    override fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>? {
+        return infoProvider.getArchiveUploadInfo(path)
     }
 
     override fun removeApk(fileName: String): Observable<Unit> {

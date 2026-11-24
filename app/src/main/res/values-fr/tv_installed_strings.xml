@@ -23,4 +23,6 @@
     <string name="tv_reconnect_retry">Réessayer %1$s</string>
     <string name="tv_reconnect_unreachable">%1$s est injoignable. Garde Appteka TV ouverte sur la TV, sur le même Wi-Fi.</string>
     <string name="tv_press_back_again">Appuie encore sur Retour pour quitter</string>
+    <string name="tv_install_confirm">Confirme l\'installation sur %1$s</string>
+    <string name="tv_download_deleted">Supprimé de %1$s</string>
 </resources>

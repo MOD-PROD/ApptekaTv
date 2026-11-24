@@ -40,6 +40,7 @@ object TvLink {
     /** ATV : durée maximale d'un échange d'APK (connexion entrante sur la TV). */
     private const val STREAM_DEADLINE_MS = 15 * 60 * 1000L
     private const val PUSH_CHECK_TIMEOUT_MS = 60_000
+    private const val DOWNLOAD_RESPONSE_TIMEOUT_MS = 45_000
 
     /** ATV-01 durcissement : efface les préférences du protocole v1 (jetons en clair). */
     internal fun purgeLegacy(context: Context) {
@@ -55,6 +56,8 @@ object TvLink {
     fun request(address: Pairing, message: JSONObject): JSONObject {
         open(address).use { socket ->
             if (message.optString("type") == "pair") socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS
+            // ATV (Downloaded en mode 📺) : la TV lit chaque archive avant de répondre.
+            if (message.optString("type") in DOWNLOAD_TYPES) socket.soTimeout = DOWNLOAD_RESPONSE_TIMEOUT_MS
             TvFrames.write(socket.outputStream, message.put("v", 2).toString())
             return JSONObject(TvFrames.read(socket.inputStream)).also { require(it.optInt("v") == 2) }
         }
@@ -127,6 +130,13 @@ object TvLink {
             }
         }
     }
+
+    /** Nom d'un APK téléchargé (sans extension) : pas de chemin, longueur bornée. */
+    fun validFileName(value: String): Boolean =
+        value.length in 1..200 && !value.startsWith(".") && value.none { it == '/' || it == '\\' || it < ' ' }
+
+    /** Ordres « Downloaded » : traités hors du verrou de la liaison (lecture des archives). */
+    internal val DOWNLOAD_TYPES = setOf("list_downloads", "download_install", "download_delete", "download_permissions", "download_icon")
 
     /** Nom de paquet Android plausible (ordres sur une appli de la TV). */
     fun validPackage(value: String): Boolean =
@@ -246,6 +256,19 @@ object TvLink {
 
         /** Fichier où recevoir un APK de [size] octets envoyé par le téléphone, ou null (place). */
         fun incomingApk(size: Long): java.io.File? = null
+
+        /** ATV (Downloaded en mode 📺) : APK téléchargés par la TV (`files`). */
+        fun downloads(): JSONObject = JSONObject().put("files", org.json.JSONArray())
+
+        /** `download_install`, `download_delete`, `download_permissions` sur un APK téléchargé par la TV. */
+        fun downloadAction(type: String, fileName: String): JSONObject =
+            JSONObject().put("ok", false).put("error", "not_implemented")
+
+        /** Icône PNG d'un APK téléchargé par la TV, ou null. */
+        fun downloadIcon(fileName: String): ByteArray? = null
+
+        /** Fichier d'un APK téléchargé par la TV à envoyer au téléphone, ou null. */
+        fun downloadFile(fileName: String): java.io.File? = null
 
         /** APK reçu du téléphone [device] : vérifier puis lancer l'installation sur la TV. */
         fun onApkReceived(file: java.io.File, device: String): JSONObject {
@@ -436,6 +459,8 @@ object TvLink {
                         deadline?.cancel(false)
                         deadline = closeAfter(client, STREAM_DEADLINE_MS)
                         stream(msg, input, output)
+                    } else if (msg.optInt("v") == 2 && msg.optString("type") in DOWNLOAD_TYPES) {
+                        downloads(msg)
                     } else respond(msg)
                     if (response != null) TvFrames.write(output, response.put("v", 2).toString())
                 } catch (_: Exception) {
@@ -472,6 +497,19 @@ object TvLink {
                     }
                     return null
                 }
+                "pull_download" -> {
+                    val fileName = msg.optString("file")
+                    if (!validFileName(fileName)) return error("bad_request")
+                    val file = host.downloadFile(fileName) ?: return error("not_found")
+                    val size = file.length()
+                    if (size !in 1..MAX_APK_BYTES) return error("too_big")
+                    file.inputStream().use { source ->
+                        TvFrames.write(output, ok().put("size", size).put("v", 2).toString())
+                        copyExactly(source, output, size) { _, _ -> }
+                        output.flush()
+                    }
+                    return null
+                }
                 "push_apk" -> {
                     val size = msg.optLong("size")
                     if (size !in 1..MAX_APK_BYTES) return error("bad_request")
@@ -487,6 +525,20 @@ object TvLink {
                 }
             }
             return error("unknown")
+        }
+
+        /** ATV (Downloaded en mode 📺) : hors du verrou, la TV lisant les archives (lent). */
+        private fun downloads(msg: JSONObject): JSONObject {
+            synchronized(this) { tokenDevice(msg.optString("token")) } ?: return error("unauthorized")
+            val type = msg.optString("type")
+            if (type == "list_downloads") return ok().put("content", host.downloads())
+            val fileName = msg.optString("file")
+            if (!validFileName(fileName)) return error("bad_request")
+            if (type == "download_icon") {
+                val png = host.downloadIcon(fileName) ?: return error("not_found")
+                return ok().put("png", android.util.Base64.encodeToString(png, android.util.Base64.NO_WRAP))
+            }
+            return host.downloadAction(type, fileName)
         }
 
         private fun randomHex(): String = ByteArray(32).also(random::nextBytes)
@@ -600,7 +652,7 @@ object TvLink {
         companion object {
             private const val KEY_LEGACY_TOKENS = "tokens"
             private const val KEY_ENTRIES = "tokens_v2"
-            private val STREAM_TYPES = setOf("pull_apk", "push_apk")
+            private val STREAM_TYPES = setOf("pull_apk", "push_apk", "pull_download")
         }
     }
 }

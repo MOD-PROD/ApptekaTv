@@ -204,7 +204,19 @@ class InstalledViewImpl(
     }
 
     override fun setRemoteTitle(title: String, subtitle: String?) {
-        toolbar.title = "📺 $title"
+        // ATV: TV icon supplied by Gonzo (Android robot), tinted like the title, before the TV's name.
+        val icon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_target_tv)?.mutate()
+        if (icon == null) {
+            toolbar.title = title
+        } else {
+            val size = (context.resources.displayMetrics.density * 24).toInt()
+            icon.setBounds(0, 0, size, size)
+            icon.setTint(com.google.android.material.color.MaterialColors.getColor(toolbar, com.google.android.material.R.attr.colorOnSurface))
+            toolbar.title = android.text.SpannableString("  $title").apply {
+                setSpan(android.text.style.ImageSpan(icon, android.text.style.DynamicDrawableSpan.ALIGN_BOTTOM),
+                    0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
         toolbar.subtitle = subtitle
     }
 

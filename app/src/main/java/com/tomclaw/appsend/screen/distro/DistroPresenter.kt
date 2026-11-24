@@ -2,6 +2,8 @@ package com.tomclaw.appsend.screen.distro
 
 import android.net.Uri
 import android.os.Bundle
+import com.tomclaw.appsend.R
+import com.tomclaw.appsend.screen.installed.InstalledTvBridge
 import com.tomclaw.appsend.util.adapter.AdapterPresenter
 import com.tomclaw.appsend.util.adapter.Item
 import com.tomclaw.appsend.screen.distro.adapter.ItemListener
@@ -70,8 +72,12 @@ class DistroPresenterImpl(
     private val adapterPresenter: Lazy<AdapterPresenter>,
     private val appConverter: ApkConverter,
     private val schedulers: SchedulersFactory,
-    state: Bundle?
+    state: Bundle?,
+    private val tv: InstalledTvBridge? = null,
 ) : DistroPresenter {
+
+    /** ATV (mode 📺) : la liste et le menu portent sur les APK téléchargés par la TV. */
+    private val isRemote: Boolean get() = tv?.remote != null
 
     private var view: DistroView? = null
     private var router: DistroPresenter.DistroRouter? = null
@@ -84,22 +90,32 @@ class DistroPresenterImpl(
     private var isError: Boolean = state?.getBoolean(KEY_ERROR) == true
     private var extractItem: ApkItem? =
         state?.getParcelableCompat(KEY_EXTRACT_ITEM, ApkItem::class.java)
+    private var extractPath: String? = state?.getString(KEY_EXTRACT_PATH)
 
     override fun attachView(view: DistroView) {
         this.view = view
+
+        view.setSendTarget(tv?.sendToName)
+        tv?.remote?.let { view.setRemoteTitle(it.tvName) }
 
         subscriptions += view.navigationClicks().subscribe {
             onBackPressed()
         }
         subscriptions += view.itemMenuClicks().subscribe { pair ->
             val app = items?.find { it.id == pair.second.id } ?: return@subscribe
+            if (isRemote) {
+                onRemoteMenu(pair.first, app)
+                return@subscribe
+            }
             when (pair.first) {
                 MENU_INSTALL -> {
                     app.path?.let { router?.installApp(it, app.title) }
                 }
 
                 MENU_SHARE -> {
-                    app.path?.let { router?.openShareApk(it) }
+                    // ATV (mode 📱) : « Send to <TV> » quand une TV est connue.
+                    if (tv?.sendTarget != null) sendToTv(app)
+                    else app.path?.let { router?.openShareApk(it) }
                 }
 
                 MENU_EXTRACT -> {
@@ -186,6 +202,7 @@ class DistroPresenterImpl(
         putString(KEY_FILTER, filter)
         putBoolean(KEY_ERROR, isError)
         putParcelable(KEY_EXTRACT_ITEM, extractItem)
+        putString(KEY_EXTRACT_PATH, extractPath)
     }
 
     override fun invalidateApps() {
@@ -194,6 +211,10 @@ class DistroPresenterImpl(
     }
 
     private fun loadApps() {
+        if (isRemote) {
+            loadRemoteApps()
+            return
+        }
         router?.requestStoragePermissions { success ->
             if (success) {
                 subscriptions += interactor.listDistroApps()
@@ -293,7 +314,8 @@ class DistroPresenterImpl(
     override fun saveFile(target: Uri) {
         val item = extractItem ?: return
         extractItem = null
-        val path = item.path ?: return
+        val path = extractPath ?: item.path ?: return
+        extractPath = null
         subscriptions += interactor
             .copyFile(
                 source = path,
@@ -312,9 +334,123 @@ class DistroPresenterImpl(
         return escapeFileSymbols("$label-$version-$packageName")
     }
 
+    // ------------------------------------------------------------ ATV (TV associée)
+
+    private fun loadRemoteApps() {
+        val bridge = tv ?: return
+        subscriptions += io.reactivex.rxjava3.core.Single.fromCallable { bridge.listDownloads() }
+            .subscribeOn(schedulers.io())
+            .observeOn(schedulers.mainThread())
+            .doOnSubscribe {
+                if (view?.isPullRefreshing() == false) {
+                    view?.showProgress()
+                }
+            }
+            .doFinally { onReady() }
+            .subscribe(
+                { onLoaded(it) },
+                {
+                    onError(it)
+                    view?.showSnackbar(bridge.describe(it))
+                }
+            )
+    }
+
+    /** Mode 📱 : « Send to <TV> » envoie l'APK téléchargé à la TV, qui l'installe. */
+    private fun sendToTv(app: ApkItem) {
+        val bridge = tv ?: return
+        val path = app.path ?: return
+        view?.showSnackbar(bridge.string(R.string.tv_transfer_to, bridge.tvName()))
+        subscriptions += bridge.pushApk(path)
+            .observeOn(schedulers.mainThread())
+            .doOnSubscribe { view?.showProgress() }
+            .doFinally { onReady() }
+            .subscribe(
+                { name -> view?.showSnackbar(bridge.string(R.string.tv_sent_confirm, name)) },
+                { view?.showSnackbar(bridge.describe(it)) }
+            )
+    }
+
+    /** Mode 📺 : chaque action du menu porte sur l'APK téléchargé par la TV. */
+    private fun onRemoteMenu(action: Int, app: ApkItem) {
+        val bridge = tv ?: return
+        val name = bridge.tvName()
+        when (action) {
+            MENU_INSTALL -> remoteAction("download_install", app) {
+                view?.showSnackbar(bridge.string(R.string.tv_install_confirm, name))
+            }
+
+            // « Send to <ce téléphone> » : l'APK de la TV est installé sur le téléphone.
+            MENU_SHARE -> pullFromTv(app) { file ->
+                view?.showSnackbar(bridge.string(R.string.tv_received_install, name))
+                router?.installApp(file.path, app.title)
+            }
+
+            MENU_EXTRACT -> pullFromTv(app) { file ->
+                extractPath = file.path
+                requestExtractApk(app)
+            }
+
+            MENU_UPLOAD -> pullFromTv(app) { file ->
+                val info = interactor.getArchiveUploadInfo(file.path)
+                if (info == null) view?.showExtractError()
+                else router?.openUploadScreen(info.first, info.second)
+            }
+
+            MENU_BLUETOOTH -> pullFromTv(app) { file ->
+                router?.openShareBluetooth(file.path)
+            }
+
+            MENU_FIND_ON_GP -> {
+                if (app.packageName.isNotEmpty()) router?.searchGooglePlay(app.packageName)
+            }
+
+            // La fiche Appteka du téléphone agit déjà sur la TV en mode 📺.
+            MENU_FIND_ON_STORE -> {
+                if (app.packageName.isNotEmpty()) router?.searchAppteka(app.packageName, app.title)
+            }
+
+            MENU_PERMISSIONS -> remoteAction("download_permissions", app) { response ->
+                val array = response.optJSONArray("permissions")
+                val permissions = (0 until (array?.length() ?: 0)).map { array!!.optString(it) }
+                router?.openPermissionsScreen(permissions)
+            }
+
+            MENU_REMOVE -> remoteAction("download_delete", app) {
+                view?.showSnackbar(bridge.string(R.string.tv_download_deleted, name))
+                items = items?.filter { it.fileName != app.fileName }
+                onReady()
+            }
+        }
+    }
+
+    private fun remoteAction(type: String, app: ApkItem, onSuccess: (org.json.JSONObject) -> Unit) {
+        val bridge = tv ?: return
+        subscriptions += bridge.downloadAction(type, app.fileName)
+            .observeOn(schedulers.mainThread())
+            .subscribe(
+                { onSuccess(it) },
+                { view?.showSnackbar(bridge.describe(it)) }
+            )
+    }
+
+    private fun pullFromTv(app: ApkItem, onReceived: (java.io.File) -> Unit) {
+        val bridge = tv ?: return
+        view?.showSnackbar(bridge.string(R.string.tv_transfer_from, bridge.tvName()))
+        subscriptions += bridge.pullDownload(app.fileName)
+            .observeOn(schedulers.mainThread())
+            .doOnSubscribe { view?.showProgress() }
+            .doFinally { onReady() }
+            .subscribe(
+                { onReceived(it) },
+                { view?.showSnackbar(bridge.describe(it)) }
+            )
+    }
+
 }
 
 private const val KEY_APPS = "apps"
 private const val KEY_FILTER = "filter"
 private const val KEY_ERROR = "error"
 private const val KEY_EXTRACT_ITEM = "extract_item"
+private const val KEY_EXTRACT_PATH = "extract_path"

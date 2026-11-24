@@ -145,7 +145,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     }
 
     override fun openDistroScreen() {
-        startActivity(createDistroActivityIntent(this))
+        startActivity(createDistroActivityIntent(this, remote = com.tomclaw.appsend.target.TvTarget.current(this) != null))
     }
 
     override fun openSettingsScreen() {

@@ -52,6 +52,30 @@ class TvAppsClient(private val context: Context, val connection: TvLinkSender.Co
         return response.optString("label")
     }
 
+    // ------------------------------------------------ Downloaded (APK téléchargés par la TV)
+
+    fun downloads(): JSONObject =
+        checked(TvLink.request(connection.address, order("list_downloads")))
+            .optJSONObject("content") ?: JSONObject()
+
+    fun downloadAction(type: String, fileName: String): JSONObject =
+        checked(TvLink.request(connection.address, order(type).put("file", fileName)))
+
+    fun downloadIcon(fileName: String): ByteArray =
+        Base64.decode(downloadAction("download_icon", fileName).getString("png"), Base64.DEFAULT)
+
+    /** Copie un APK téléchargé par la TV dans [target] (fichier complet ou supprimé). */
+    fun pullDownload(fileName: String, target: File, progress: (Long, Long) -> Unit) {
+        try {
+            target.outputStream().use { sink ->
+                checked(TvLink.pull(connection.address, order("pull_download").put("file", fileName), sink, progress))
+            }
+        } catch (e: Exception) {
+            target.delete()
+            throw e
+        }
+    }
+
     private fun order(type: String) = JSONObject().put("type", type).put("token", connection.token)
 
     private fun checked(response: JSONObject): JSONObject {

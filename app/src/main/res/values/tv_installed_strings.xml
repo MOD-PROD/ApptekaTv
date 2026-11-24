@@ -24,4 +24,6 @@
     <string name="tv_reconnect_retry">Retry %1$s</string>
     <string name="tv_reconnect_unreachable">%1$s is unreachable. Keep Appteka TV open on the TV, on the same Wi-Fi.</string>
     <string name="tv_press_back_again">Press Back again to exit</string>
+    <string name="tv_install_confirm">Confirm the installation on %1$s</string>
+    <string name="tv_download_deleted">Deleted from %1$s</string>
 </resources>

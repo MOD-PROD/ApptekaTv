@@ -170,6 +170,7 @@ class TvWebActivity : AppCompatActivity() {
     private var tvLink: TvLink.Server? = null
     private val remoteInstalls by lazy { TvRemoteInstalls(this, downloadManager, appInstaller) }
     private val remoteApps by lazy { TvRemoteApps(this) }
+    private val remoteDownloads by lazy { TvRemoteDownloads(this, apkStorage) }
     private var pendingPairApp: String? = null
     private var pendingPairLabel: String? = null
     private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
@@ -297,6 +298,17 @@ class TvWebActivity : AppCompatActivity() {
             override fun apkFile(packageName: String): java.io.File? = remoteApps.apkFile(packageName)
 
             override fun incomingApk(size: Long): java.io.File? = remoteApps.incomingApk(size)
+
+            override fun downloads(): JSONObject = remoteDownloads.list()
+
+            override fun downloadAction(type: String, fileName: String): JSONObject =
+                remoteDownloads.action(type, fileName) { uri, label ->
+                    appInstaller.install(InstallRequest(key = "download:$fileName", label = label, uri = uri))
+                }
+
+            override fun downloadIcon(fileName: String): ByteArray? = remoteDownloads.icon(fileName)
+
+            override fun downloadFile(fileName: String): java.io.File? = remoteDownloads.file(fileName)
 
             override fun onApkReceived(file: java.io.File, device: String): JSONObject =
                 remoteApps.received(file) { uri, label ->

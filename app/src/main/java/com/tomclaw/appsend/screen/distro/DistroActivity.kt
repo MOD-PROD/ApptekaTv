@@ -82,8 +82,11 @@ class DistroActivity : AppCompatActivity(), DistroPresenter.DistroRouter {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val presenterState = savedInstanceState?.getBundle(KEY_PRESENTER_STATE)
+        // ATV : en mode 📺, l'écran liste les APK téléchargés par la TV associée.
+        val remote = intent.getBooleanExtra(EXTRA_REMOTE, false) &&
+            com.tomclaw.appsend.target.TvTarget.current(this) != null
         appComponent
-            .distroComponent(DistroModule(this, presenterState))
+            .distroComponent(DistroModule(this, presenterState, remote))
             .inject(activity = this)
 
         super.onCreate(savedInstanceState)
@@ -287,6 +290,9 @@ class DistroActivity : AppCompatActivity(), DistroPresenter.DistroRouter {
 
 fun createDistroActivityIntent(
     context: Context,
+    remote: Boolean = false,
 ): Intent = Intent(context, DistroActivity::class.java)
+    .putExtra(EXTRA_REMOTE, remote)
 
 private const val KEY_PRESENTER_STATE = "presenter_state"
+private const val EXTRA_REMOTE = "remote_tv"

@@ -46,6 +46,12 @@ interface DistroView {
 
     fun showItemDialog(item: ApkItem)
 
+    /** ATV : « Send to <appareil> » remplace « Share APK via apps » (null = pas de TV connue). */
+    fun setSendTarget(name: String?)
+
+    /** ATV (mode 📺) : titre = TV associée. */
+    fun setRemoteTitle(title: String)
+
     fun showSnackbar(text: String)
 
     fun stopPullRefreshing()
@@ -87,6 +93,8 @@ class DistroViewImpl(
     private val shareExtractedRelay = PublishRelay.create<String>()
     private val retryRelay = PublishRelay.create<Unit>()
     private val refreshRelay = PublishRelay.create<Unit>()
+
+    private var sendTarget: String? = null
 
     init {
         toolbar.setTitle(R.string.nav_downloaded)
@@ -163,7 +171,8 @@ class DistroViewImpl(
 
         val actions = listOf(
             ActionItem(MENU_INSTALL, context.getString(R.string.install_app), R.drawable.ic_get_app),
-            ActionItem(MENU_SHARE, context.getString(R.string.share_apk), R.drawable.ic_share),
+            sendTarget?.let { ActionItem(MENU_SHARE, context.getString(R.string.tv_send_to, it), R.drawable.ic_share) }
+                ?: ActionItem(MENU_SHARE, context.getString(R.string.share_apk), R.drawable.ic_share),
             ActionItem(MENU_EXTRACT, context.getString(R.string.extract_apk), R.drawable.ic_floppy),
             ActionItem(MENU_UPLOAD, context.getString(R.string.upload_apk), R.drawable.ic_cloud_upload),
             ActionItem(MENU_BLUETOOTH, context.getString(R.string.bluetooth_apk), R.drawable.ic_bluetooth),
@@ -183,6 +192,27 @@ class DistroViewImpl(
 
         bottomSheetDialog.setContentView(sheetView)
         bottomSheetDialog.show()
+    }
+
+    override fun setSendTarget(name: String?) {
+        sendTarget = name
+    }
+
+    override fun setRemoteTitle(title: String) {
+        // ATV: TV icon supplied by Gonzo, tinted like the title, before the TV's name.
+        val icon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_target_tv)?.mutate()
+        if (icon == null) {
+            toolbar.title = title
+            return
+        }
+        val size = (context.resources.displayMetrics.density * 24).toInt()
+        icon.setBounds(0, 0, size, size)
+        icon.setTint(com.google.android.material.color.MaterialColors.getColor(toolbar, com.google.android.material.R.attr.colorOnSurface))
+        toolbar.title = android.text.SpannableString("  $title").apply {
+            setSpan(android.text.style.ImageSpan(icon, android.text.style.DynamicDrawableSpan.ALIGN_BOTTOM),
+                0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        toolbar.subtitle = context.getString(R.string.nav_downloaded)
     }
 
     override fun showSnackbar(text: String) {

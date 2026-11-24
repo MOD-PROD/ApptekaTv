@@ -16,6 +16,9 @@ interface DistroInfoProvider {
 
     fun getPackageUploadInfo(fileName: String): Pair<UploadPackage, UploadApk>?
 
+    /** ATV (mode 📺) : APK de la TV rapatrié sur le téléphone. */
+    fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>?
+
 }
 
 class DistroInfoProviderImpl(
@@ -50,6 +53,24 @@ class DistroInfoProviderImpl(
             path = path,
             fileName = apkInfo.fileName,
         )
+    }
+
+    override fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>? {
+        val file = java.io.File(path)
+        val packageInfo = packageInfoProvider.getPackageInfo(path) ?: return null
+        val pkg = UploadPackage(
+            uniqueId = file.path,
+            sha1 = null,
+            packageName = packageInfo.packageName,
+            size = file.length()
+        )
+        val apk = UploadApk(
+            path = path,
+            version = packageInfo.versionName.orEmpty(),
+            size = file.length(),
+            packageInfo = packageInfo
+        )
+        return Pair(pkg, apk)
     }
 
     override fun getPackageUploadInfo(fileName: String): Pair<UploadPackage, UploadApk>? {

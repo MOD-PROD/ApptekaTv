@@ -84,6 +84,44 @@ class InstalledTvBridge(
         tv.tvName
     }.subscribeOn(schedulers.io())
 
+    // ------------------------------------- Downloaded (écran « Downloaded » en mode 📺)
+
+    /** APK téléchargés par la TV (dossier Download/Appteka de la TV). */
+    fun listDownloads(): List<com.tomclaw.appsend.screen.distro.DistroAppEntity> {
+        val tv = checkNotNull(remote)
+        val files = tv.downloads().optJSONArray("files") ?: return emptyList()
+        return (0 until files.length()).mapNotNull { i ->
+            val entry = files.optJSONObject(i) ?: return@mapNotNull null
+            val fileName = entry.optString("file").takeIf { TvLink.validFileName(it) } ?: return@mapNotNull null
+            val packageName = entry.optString("package").takeIf { TvLink.validPackage(it) }.orEmpty()
+            val modified = entry.optLong("modified")
+            com.tomclaw.appsend.screen.distro.DistroAppEntity(
+                packageName = packageName,
+                label = entry.optString("label").ifBlank { fileName },
+                icon = TvIconLoader.downloadUri(tv.tvId, packageName, fileName, modified),
+                verName = entry.optString("version"),
+                verCode = entry.optLong("code"),
+                lastModified = modified,
+                size = entry.optLong("size"),
+                path = null,
+                fileName = fileName,
+            )
+        }
+    }
+
+    fun downloadAction(type: String, fileName: String): Single<JSONObject> =
+        Single.fromCallable { checkNotNull(remote).downloadAction(type, fileName) }
+            .subscribeOn(schedulers.io())
+
+    /** APK téléchargé par la TV, copié dans le cache du téléphone. */
+    fun pullDownload(fileName: String): Single<File> = Single.fromCallable {
+        val dir = File(context.cacheDir, "apk_cache").apply { mkdirs() }
+        dir.listFiles()?.filter { it.name.startsWith(PULLED) }?.forEach { it.delete() }
+        val file = File(dir, PULLED + fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(120) + ".apk")
+        checkNotNull(remote).pullDownload(fileName, file) { _, _ -> }
+        file
+    }.subscribeOn(schedulers.io())
+
     fun tvName(): String = remote?.tvName ?: sendTarget?.tvName.orEmpty()
 
     /** Message lisible pour un échec d'ordre envoyé à la TV. */
