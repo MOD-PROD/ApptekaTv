@@ -93,9 +93,29 @@ class SettingsFragment : PreferenceFragmentCompat(),
             preferenceScreen.addPreference(Preference(requireContext()).apply {
                 key = "self_update"
                 title = "Rechercher une mise à jour"
-                summary = "Appteka TV — " + com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
                 isPersistent = false
-                setOnPreferenceClickListener { updateController.check(manual = true); true }
+                // ATV: choose the channel (stable / beta / test) on the phone too; remembered.
+                fun refresh() {
+                    summary = "Appteka TV — " + com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" +
+                        com.tomclaw.appsend.BuildConfig.VERSION_CODE + ") · canal " +
+                        com.tomclaw.appsend.update.UpdateChannel.label(com.tomclaw.appsend.update.UpdateChannel.get(requireContext()))
+                }
+                refresh()
+                setOnPreferenceClickListener {
+                    val channels = com.tomclaw.appsend.update.UpdateChannel.CHANNELS
+                    val current = channels.indexOf(com.tomclaw.appsend.update.UpdateChannel.get(requireContext()))
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Canal de mise à jour")
+                        .setSingleChoiceItems(com.tomclaw.appsend.update.UpdateChannel.LABELS.toTypedArray(), current) { dialog, which ->
+                            com.tomclaw.appsend.update.UpdateChannel.set(requireContext(), channels[which])
+                            refresh()
+                            dialog.dismiss()
+                            updateController.check(manual = true, channel = channels[which])
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                    true
+                }
             })
         }
 

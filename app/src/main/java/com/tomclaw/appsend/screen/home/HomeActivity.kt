@@ -90,7 +90,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 
         if (savedInstanceState == null) {
             analytics.trackEvent("open-home-screen")
-            updateController.check()
+            updateController.check(channel = com.tomclaw.appsend.update.UpdateChannel.get(this)) // ATV: canal mémorisé
         }
     }
 
