@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="device_kind_phone">Phone</string>
+    <string name="device_kind_tablet">Tablet</string>
+    <string name="device_kind_tv">TV</string>
+    <string name="device_kind_box">Android TV box</string>
+    <string name="device_kind_auto">Automatic (%1$s)</string>
+    <string name="device_kind_this">This device: %1$s</string>
+    <string name="device_kind_remote">%1$s: %2$s</string>
+    <string name="device_kind_hint">Long press: change the device type</string>
+</resources>

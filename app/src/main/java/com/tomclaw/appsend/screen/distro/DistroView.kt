@@ -200,7 +200,7 @@ class DistroViewImpl(
 
     override fun setRemoteTitle(title: String) {
         // ATV: TV icon supplied by Gonzo, tinted like the title, before the TV's name.
-        val icon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_target_tv)?.mutate()
+        val icon = androidx.core.content.ContextCompat.getDrawable(context, com.tomclaw.appsend.target.DeviceKinds.remoteIcon(context))?.mutate()
         if (icon == null) {
             toolbar.title = title
             return

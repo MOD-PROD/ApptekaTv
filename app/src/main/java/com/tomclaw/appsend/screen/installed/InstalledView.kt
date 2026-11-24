@@ -205,7 +205,7 @@ class InstalledViewImpl(
 
     override fun setRemoteTitle(title: String, subtitle: String?) {
         // ATV: TV icon supplied by Gonzo (Android robot), tinted like the title, before the TV's name.
-        val icon = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_target_tv)?.mutate()
+        val icon = androidx.core.content.ContextCompat.getDrawable(context, com.tomclaw.appsend.target.DeviceKinds.remoteIcon(context))?.mutate()
         if (icon == null) {
             toolbar.title = title
         } else {

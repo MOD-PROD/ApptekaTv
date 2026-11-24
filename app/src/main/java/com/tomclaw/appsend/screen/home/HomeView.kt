@@ -191,7 +191,8 @@ class HomeViewImpl(view: View) : HomeView {
 
     override fun showStoreToolbar() {
         with(toolbar) {
-            setTitle(R.string.tab_store)
+            // ATV : plus de texte « Store », seule l'icône d'appareil reste à gauche.
+            title = null
             menu.clear()
             inflateMenu(R.menu.store_menu)
             invalidateMenu()

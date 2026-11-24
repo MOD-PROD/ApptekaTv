@@ -12,6 +12,9 @@ import com.tomclaw.appsend.util.isTvDevice
 import com.tomclaw.appsend.tvlink.TvLinkSender
 import com.tomclaw.appsend.target.TvTarget
 import com.tomclaw.appsend.target.TvReconnect
+import com.tomclaw.appsend.target.DeviceKind
+import com.tomclaw.appsend.target.DeviceKinds
+import com.tomclaw.appsend.tvlink.TvLink
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -98,11 +101,90 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
 
     private fun renderTarget() {
         presenter.setTvMode(connection != null) // ATV: TV category by default in 📺 mode
+        val context = context ?: return
+        val shown = connection
+        // ATV : une seule icône, celle du type de l'appareil piloté (cet appareil ou la TV).
+        val kind = DeviceKinds.current(context, shown)
         targetButton?.apply {
-            setImageResource(if (connection == null) R.drawable.ic_target_mobile else R.drawable.ic_target_tv)
-            contentDescription = connection?.let { "TV connectée : ${it.name}. Revenir au téléphone." }
-                ?: getString(R.string.tv_pair_title)
+            setImageResource(kind.icon)
+            contentDescription = (shown?.let { "TV connectée : ${it.name}. Revenir au téléphone." }
+                ?: getString(R.string.tv_pair_title)) + ". " + getString(R.string.device_kind_hint)
         }
+        if (shown != null) refreshRemoteKind(shown)
+    }
+
+    /** ATV : la TV annonce son type (TV ou box) dans « hello » ; mis en cache par TV. */
+    private fun refreshRemoteKind(shown: TvLinkSender.Connection) {
+        if (!kindAsked.add(shown.address.tv)) return
+        val appContext = requireContext().applicationContext
+        kotlin.concurrent.thread(name = "tv-kind") {
+            val announced = runCatching {
+                TvLink.request(shown.address, org.json.JSONObject().put("type", "hello")).optString("kind")
+            }.getOrNull()
+            if (DeviceKinds.remember(appContext, shown, announced)) {
+                activity?.runOnUiThread { if (isAdded) renderTarget() }
+            }
+        }
+    }
+
+    private val kindAsked = mutableSetOf<String>()
+
+    /** ATV : appui long = liste déroulante pour choisir le type parmi les 4 (ou automatique). */
+    private fun showKindChooser(anchor: View) {
+        val context = requireContext()
+        val shown = connection
+        val chosen = DeviceKinds.chosen(context, shown)
+        val detected = DeviceKinds.detected(context, shown)
+        data class Row(val kind: DeviceKind?, val label: String, val icon: Int, val checked: Boolean)
+        val rows = listOf(Row(null, getString(R.string.device_kind_auto, getString(detected.label)), detected.icon, chosen == null)) +
+            DeviceKind.values().map { Row(it, getString(it.label), it.icon, chosen == it) }
+        val density = resources.displayMetrics.density
+        val tint = com.google.android.material.color.MaterialColors.getColor(anchor, com.google.android.material.R.attr.colorOnSurface)
+        val popup = androidx.appcompat.widget.ListPopupWindow(context)
+        popup.anchorView = anchor
+        popup.width = (260 * density).toInt()
+        popup.isModal = true
+        popup.setAdapter(object : android.widget.BaseAdapter() {
+            override fun getCount() = rows.size
+            override fun getItem(position: Int) = rows[position]
+            override fun getItemId(position: Int) = position.toLong()
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val row = rows[position]
+                val pad = (16 * density).toInt()
+                return android.widget.LinearLayout(parent.context).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(pad, (10 * density).toInt(), pad, (10 * density).toInt())
+                    addView(android.widget.ImageView(parent.context).apply {
+                        setImageResource(row.icon)
+                        imageTintList = android.content.res.ColorStateList.valueOf(tint)
+                        alpha = if (row.kind == null) 0.6f else 1f
+                    }, android.widget.LinearLayout.LayoutParams((28 * density).toInt(), (28 * density).toInt()))
+                    addView(android.widget.TextView(parent.context).apply {
+                        text = row.label
+                        setTextColor(tint)
+                        textSize = 16f
+                        setPadding(pad, 0, 0, 0)
+                        if (row.checked) setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    }, android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                    if (row.checked) addView(android.widget.TextView(parent.context).apply {
+                        text = "✓"
+                        setTextColor(tint)
+                        textSize = 18f
+                    })
+                }
+            }
+        })
+        popup.setOnItemClickListener { _, _, position, _ ->
+            popup.dismiss()
+            DeviceKinds.choose(context, shown, rows[position].kind)
+            renderTarget()
+            val label = getString(DeviceKinds.current(context, shown).label)
+            val message = shown?.let { getString(R.string.device_kind_remote, it.name, label) }
+                ?: getString(R.string.device_kind_this, label)
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        }
+        popup.show()
     }
 
     private fun bindTargetSwitch() {
@@ -118,6 +200,10 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                 val last = TvTarget.last(requireContext())
                 if (last != null) reconnect(last) else showPairDialog()
             }
+        }
+        target.setOnLongClickListener {
+            showKindChooser(it)
+            true
         }
         renderTarget()
     }
@@ -180,6 +266,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
 
     override fun onDestroyView() {
         targetButton?.setOnClickListener(null)
+        targetButton?.setOnLongClickListener(null)
         targetButton?.visibility = View.GONE
         targetButton = null
         super.onDestroyView()
