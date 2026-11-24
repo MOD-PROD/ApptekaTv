@@ -96,30 +96,6 @@ class TvLinkSender(
         }
     }
 
-    fun showPasteEntry() {
-        val pad = (24 * activity.resources.displayMetrics.density).toInt()
-        val field = android.widget.EditText(activity).apply {
-            hint = "Invitation JSON (copie depuis la TV)"
-            minLines = 3
-            setPadding(pad, pad / 2, pad, pad / 2)
-        }
-        val dialog = MaterialAlertDialogBuilder(activity)
-            .setTitle(R.string.tv_pair_title)
-            .setView(field)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.tv_pair_confirm, null)
-            .show()
-        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-            val raw = field.text.toString().trim()
-            if (raw.isEmpty() || !raw.contains("\"v\"") && !raw.contains("\"host\"")) {
-                field.error = "Colle l'invitation complète copiée sur la TV."
-                return@setOnClickListener
-            }
-            dialog.dismiss()
-            pair(raw)
-        }
-    }
-
     fun showCodeEntry() {
         val pad = (24 * activity.resources.displayMetrics.density).toInt()
         val address = android.widget.EditText(activity).apply {

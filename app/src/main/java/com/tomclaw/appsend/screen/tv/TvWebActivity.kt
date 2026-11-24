@@ -212,7 +212,13 @@ class TvWebActivity : AppCompatActivity() {
                     if (clipboard == null) {
                         toast("Presse-papiers indisponible")
                     } else {
-                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+                        val clip = android.content.ClipData.newPlainText(label, value)
+                        // ATV-01: keep the code out of the clipboard preview.
+                        clip.description.extras = android.os.PersistableBundle().apply {
+                            putBoolean(if (Build.VERSION.SDK_INT >= 33) android.content.ClipDescription.EXTRA_IS_SENSITIVE
+                                else "android.content.extra.IS_SENSITIVE", true)
+                        }
+                        clipboard.setPrimaryClip(clip)
                         toast("$label copié")
                     }
                     true
