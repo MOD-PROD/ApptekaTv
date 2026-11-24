@@ -232,7 +232,12 @@ class DownloadManagerImpl(
                 return DownloadResult.ERROR
             }
             
-            input = BufferedInputStream(connection.inputStream)
+            // ATV: a body still marked gzip (not decoded by the platform) is unpacked here,
+            // otherwise the compressed bytes would be saved as the APK.
+            val encoded = connection.getHeaderField("Content-Encoding")?.contains("gzip", ignoreCase = true) == true
+            input = BufferedInputStream(
+                if (encoded) java.util.zip.GZIPInputStream(connection.inputStream) else connection.inputStream
+            )
             
             // Get total size: Content-Length for 200, Content-Range for 206
             val contentLength = connection.contentLength.toLong()
@@ -294,8 +299,10 @@ class DownloadManagerImpl(
             // The length says nothing about a resume that started at a wrong
             // offset, or about bytes mangled on the way
             if (!matchesChecksum(fileName, sha1)) {
+                // ATV: say what arrived instead (zip/html/gzip/json + size in KB) for the real-TV test.
+                val received = describeTmp(fileName)
                 apkStorage.deleteTmp(fileName)
-                errorCallback(IOException("Checksum mismatch"))
+                errorCallback(IOException("Checksum mismatch $received"))
                 return DownloadResult.ERROR
             }
             progressCallback(100)
@@ -345,8 +352,6 @@ class DownloadManagerImpl(
                 // client versions apart (e.g. redirect-capable ones) instead
                 // of the platform default Dalvik/... string
                 setRequestProperty("User-Agent", userAgentProvider.getUserAgent())
-                // ATV: no transparent gzip, which hides the length and breaks Range resume.
-                setRequestProperty("Accept-Encoding", "identity")
                 connectTimeout = TimeUnit.SECONDS.toMillis(30).toInt()
                 // Without it a stalled socket blocks in read() forever and burns
                 // the foreground service time budget until Android kills the app
@@ -383,6 +388,20 @@ class DownloadManagerImpl(
      * nothing to compare against, and failing them would block those downloads
      * outright.
      */
+    private fun describeTmp(fileName: String): String {
+        val size = apkStorage.getTmpSize(fileName)
+        val head = ByteArray(4)
+        val read = apkStorage.openReadTmp(fileName)?.use { it.read(head) } ?: 0
+        val kind = when {
+            read >= 2 && head[0] == 'P'.code.toByte() && head[1] == 'K'.code.toByte() -> "zip"
+            read >= 2 && head[0] == 0x1f.toByte() && head[1] == 0x8b.toByte() -> "gzip"
+            read >= 1 && head[0] == '<'.code.toByte() -> "html"
+            read >= 1 && (head[0] == '{'.code.toByte() || head[0] == '['.code.toByte()) -> "json"
+            else -> "autre"
+        }
+        return "${kind}_${size / 1024}k"
+    }
+
     private fun matchesChecksum(fileName: String, sha1: String?): Boolean {
         if (sha1.isNullOrBlank()) {
             return true
@@ -422,7 +441,8 @@ internal fun failureCode(error: Throwable): String {
     return when {
         message.startsWith("HTTP error: ") -> "http_" + message.removePrefix("HTTP error: ").take(3)
         message.startsWith("Incomplete download") -> "incomplete"
-        message.startsWith("Checksum mismatch") -> "checksum"
+        message.startsWith("Checksum mismatch") ->
+            ("checksum_" + message.removePrefix("Checksum mismatch").trim()).trimEnd('_').take(22)
         message.startsWith("ContentLength") -> "no_length"
         message.contains("CLEARTEXT", ignoreCase = true) -> "cleartext"
         message.contains("EACCES") || message.contains("EROFS") || error is SecurityException -> "storage"
