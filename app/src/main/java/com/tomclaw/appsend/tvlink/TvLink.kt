@@ -51,7 +51,7 @@ object TvLink {
         val factory = TvTls.client(address.pin).socketFactory
         (factory.createSocket() as SSLSocket).use { socket ->
             socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
-            socket.connect(InetSocketAddress(address.host, address.port), TIMEOUT_MS)
+            socket.connect(InetSocketAddress(connectHost(address.host), address.port), TIMEOUT_MS)
             socket.soTimeout = TIMEOUT_MS
             socket.startHandshake()
             if (message.optString("type") == "pair") socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS
@@ -65,7 +65,7 @@ object TvLink {
         val factory = TvTls.codeHandshakeContext().socketFactory
         (factory.createSocket() as SSLSocket).use { socket ->
             socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
-            socket.connect(InetSocketAddress(host, port), TIMEOUT_MS)
+            socket.connect(InetSocketAddress(connectHost(host), port), TIMEOUT_MS)
             socket.soTimeout = TIMEOUT_MS
             socket.startHandshake()
             val certificate = socket.session.peerCertificates.single()
@@ -114,6 +114,21 @@ object TvLink {
         val maker = Build.MANUFACTURER.orEmpty().replaceFirstChar { it.uppercase() }
         val model = Build.MODEL.orEmpty()
         return if (model.startsWith(maker, ignoreCase = true)) model else "$maker $model".trim()
+    }
+
+    /**
+     * ATV: when the "TV" is this same device (ATKsimulTv beside Appteka TV on one phone),
+     * reach it through loopback: connecting to one's own Wi-Fi/mobile address can fail
+     * (VPN, firewall). The TLS pin and the code authenticate the certificate, not the host.
+     */
+    private fun connectHost(host: String): String = try {
+        val own = NetworkInterface.getNetworkInterfaces().toList()
+            .flatMap { it.inetAddresses.toList() }
+            .filterIsInstance<Inet4Address>()
+            .mapNotNull { it.hostAddress }
+        if (host in own) "127.0.0.1" else host
+    } catch (_: Exception) {
+        host
     }
 
     fun localIpv4(): String? = try {
