@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/tv_files_menu_download"
+        android:icon="@drawable/ic_download"
+        android:title="@string/tv_files_download"
+        app:iconTint="?android:textColorPrimary"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/tv_files_menu_delete"
+        android:icon="@drawable/ic_delete"
+        android:title="@string/tv_files_delete"
+        app:iconTint="?android:textColorPrimary"
+        app:showAsAction="ifRoom" />
+</menu>

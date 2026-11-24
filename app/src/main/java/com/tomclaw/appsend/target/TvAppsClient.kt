@@ -2,6 +2,7 @@ package com.tomclaw.appsend.target
 
 import android.content.Context
 import android.util.Base64
+import com.tomclaw.appsend.tvlink.TvFiles
 import com.tomclaw.appsend.tvlink.TvLink
 import com.tomclaw.appsend.tvlink.TvLinkSender
 import org.json.JSONObject
@@ -75,6 +76,39 @@ class TvAppsClient(private val context: Context, val connection: TvLinkSender.Co
             throw e
         }
     }
+
+    // ------------------------------------------------ ATV-09 : fichiers à distance
+
+    /** Ouvre les fichiers de la TV (accord une fois sur la TV) : `access` et `roots`. */
+    fun fsAccess(): JSONObject = checked(TvLink.request(connection.address, order("fs_access")))
+
+    fun fsList(path: String, hidden: Boolean): JSONObject =
+        checked(TvLink.request(connection.address, order("fs_list").put("path", path).put("hidden", hidden)))
+
+    fun fsMkdir(parent: String, name: String): JSONObject =
+        checked(TvLink.request(connection.address, order("fs_mkdir").put("path", parent).put("name", name)))
+
+    fun fsRename(path: String, name: String): JSONObject =
+        checked(TvLink.request(connection.address, order("fs_rename").put("path", path).put("name", name)))
+
+    fun fsDelete(paths: List<String>): JSONObject =
+        checked(TvLink.request(connection.address, order("fs_delete").put("paths", org.json.JSONArray(paths))))
+
+    fun fsInstall(path: String): JSONObject =
+        checked(TvLink.request(connection.address, order("fs_install").put("path", path)))
+
+    /** Copie le fichier [path] de la TV dans [sink]. */
+    fun fsPull(path: String, sink: java.io.OutputStream, progress: (Long, Long) -> Unit): JSONObject =
+        checked(TvLink.pull(connection.address, order("fs_pull").put("path", path), sink, progress, 0..TvFiles.MAX_FILE_BYTES))
+
+    /** Envoie [size] octets de [source] dans le dossier [dir] de la TV ; renvoie le nom retenu. */
+    fun fsPush(dir: String, name: String, source: java.io.InputStream, size: Long, progress: (Long, Long) -> Unit): String =
+        checked(
+            TvLink.push(
+                connection.address, order("fs_push").put("path", dir).put("name", name),
+                source, size, progress, 0..TvFiles.MAX_FILE_BYTES,
+            )
+        ).optString("name", name)
 
     private fun order(type: String) = JSONObject().put("type", type).put("token", connection.token)
 

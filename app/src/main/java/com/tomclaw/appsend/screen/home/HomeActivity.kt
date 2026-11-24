@@ -144,6 +144,10 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         startActivity(createInstalledActivityIntent(this, remote = remote))
     }
 
+    override fun openTvFilesScreen() {
+        startActivity(com.tomclaw.appsend.screen.tvfiles.createTvFilesActivityIntent(this))
+    }
+
     override fun openDistroScreen() {
         startActivity(createDistroActivityIntent(this, remote = com.tomclaw.appsend.target.TvTarget.current(this) != null))
     }

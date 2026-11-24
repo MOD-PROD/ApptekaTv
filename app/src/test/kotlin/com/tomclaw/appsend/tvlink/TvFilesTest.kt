@@ -1,0 +1,95 @@
+package com.tomclaw.appsend.tvlink
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
+import java.nio.file.Files
+
+class TvFilesTest {
+
+    @get:Rule
+    val tmp = TemporaryFolder()
+
+    private lateinit var root: File
+    private lateinit var outside: File
+
+    private fun setUp(): List<File> {
+        root = tmp.newFolder("sdcard").canonicalFile
+        outside = tmp.newFolder("private").canonicalFile
+        File(root, "Movies").mkdirs()
+        File(root, "Movies/film.mkv").writeText("film")
+        File(root, ".hidden").writeText("h")
+        File(root, "Android/data/com.other").mkdirs()
+        File(root, "Android/media").mkdirs()
+        File(outside, "keep.txt").writeText("keep")
+        return listOf(root)
+    }
+
+    @Test
+    fun `list hides private and hidden entries`() {
+        val roots = setUp()
+        val listing = TvFiles.list(roots, root.path, hidden = false)
+        assertTrue(listing.getBoolean("ok"))
+        val names = (0 until listing.getJSONArray("entries").length()).map { listing.getJSONArray("entries").getJSONObject(it).getString("name") }
+        assertEquals(listOf("Android", "Movies"), names)
+        assertTrue(listing.isNull("parent"))
+        val android = TvFiles.list(roots, "${root.path}/Android", hidden = true)
+        val inAndroid = (0 until android.getJSONArray("entries").length()).map { android.getJSONArray("entries").getJSONObject(it).getString("name") }
+        assertEquals(listOf("media"), inAndroid)
+        assertEquals(root.path, android.getString("parent"))
+    }
+
+    @Test
+    fun `mkdir rename delete stay inside roots`() {
+        val roots = setUp()
+        assertTrue(TvFiles.mkdir(roots, root.path, "Nouveau").getBoolean("ok"))
+        assertEquals("exists", TvFiles.mkdir(roots, root.path, "Nouveau").getString("error"))
+        assertEquals("bad_name", TvFiles.mkdir(roots, root.path, "../x").getString("error"))
+        assertTrue(TvFiles.rename(roots, "${root.path}/Nouveau", "Renommé").getBoolean("ok"))
+        assertTrue(File(root, "Renommé").isDirectory)
+        assertEquals("bad_path", TvFiles.rename(roots, root.path, "x").getString("error"))
+        assertEquals("bad_path", TvFiles.delete(roots, listOf(root.path)).getString("error"))
+        assertEquals("bad_path", TvFiles.delete(roots, listOf("${outside.path}/keep.txt")).getString("error"))
+        assertTrue(TvFiles.delete(roots, listOf("${root.path}/Movies", "${root.path}/Renommé")).getBoolean("ok"))
+        assertFalse(File(root, "Movies").exists())
+        assertTrue(File(outside, "keep.txt").exists())
+    }
+
+    @Test
+    fun `delete does not follow links`() {
+        val roots = setUp()
+        val dir = File(root, "Links").apply { mkdirs() }
+        val inner = File(root, "Movies").toPath()
+        Files.createSymbolicLink(File(dir, "toMovies").toPath(), inner)
+        assertTrue(TvFiles.delete(roots, listOf(dir.path)).getBoolean("ok"))
+        assertTrue(File(root, "Movies/film.mkv").exists())
+    }
+
+    @Test
+    fun `incoming file gets a free name`() {
+        val roots = setUp()
+        val (pair, error) = TvFiles.incoming(roots, "${root.path}/Movies", "film.mkv", 4)
+        assertNull(error)
+        val (part, target) = pair!!
+        part.writeText("new!")
+        val done = TvFiles.complete(part, target)
+        assertEquals("film (1).mkv", done.getString("name"))
+        assertEquals("film", File(root, "Movies/film.mkv").readText())
+        assertEquals("bad_name", TvFiles.incoming(roots, root.path, "a/b", 1).second!!.getString("error"))
+        assertEquals("bad_path", TvFiles.incoming(roots, outside.path, "a", 1).second!!.getString("error"))
+    }
+
+    @Test
+    fun `readable refuses directories and outside files`() {
+        val roots = setUp()
+        assertNotNull(TvFiles.readable(roots, "${root.path}/Movies/film.mkv").first)
+        assertEquals("not_found", TvFiles.readable(roots, "${root.path}/Movies").second!!.getString("error"))
+        assertEquals("bad_path", TvFiles.readable(roots, "${outside.path}/keep.txt").second!!.getString("error"))
+    }
+}

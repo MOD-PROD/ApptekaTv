@@ -55,6 +55,9 @@ interface HomePresenter {
 
         fun openDistroScreen()
 
+        /** ATV-09 : fichiers de la TV associée. */
+        fun openTvFilesScreen()
+
         fun openSettingsScreen()
 
         fun openAboutScreen()
@@ -126,6 +129,7 @@ class HomePresenterImpl(
         subscriptions += view.profileShareClicks().subscribe { onShareClicks() }
         subscriptions += view.installedClicks().subscribe { router?.openInstalledScreen() }
         subscriptions += view.distroClicks().subscribe { router?.openDistroScreen() }
+        subscriptions += view.tvFilesClicks().subscribe { router?.openTvFilesScreen() }
         subscriptions += view.settingsClicks().subscribe { router?.openSettingsScreen() }
         subscriptions += view.aboutClicks().subscribe { router?.openAboutScreen() }
         subscriptions += view.exitAppClicks().subscribe { router?.exitApp() }

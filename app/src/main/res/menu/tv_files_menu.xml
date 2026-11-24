@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/tv_files_menu_volumes"
+        android:icon="@drawable/ic_storage"
+        android:title="@string/tv_files_volumes"
+        app:iconTint="?android:textColorPrimary"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/tv_files_menu_mkdir"
+        android:icon="@drawable/ic_tv_folder_plus"
+        android:title="@string/tv_files_new_folder"
+        app:iconTint="?android:textColorPrimary"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/tv_files_menu_sort"
+        android:title="@string/tv_files_sort">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/tv_files_sort_name"
+                    android:checked="true"
+                    android:title="@string/tv_files_sort_name" />
+                <item
+                    android:id="@+id/tv_files_sort_date"
+                    android:title="@string/tv_files_sort_date" />
+                <item
+                    android:id="@+id/tv_files_sort_size"
+                    android:title="@string/tv_files_sort_size" />
+            </group>
+        </menu>
+    </item>
+    <item
+        android:id="@+id/tv_files_menu_hidden"
+        android:checkable="true"
+        android:title="@string/tv_files_show_hidden" />
+    <item
+        android:id="@+id/tv_files_menu_refresh"
+        android:title="@string/tv_files_refresh" />
+</menu>

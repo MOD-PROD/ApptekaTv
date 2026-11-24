@@ -24,9 +24,17 @@
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- ATV-09 (fichiers à distance) : stockage de la TV. Android 9 et 10 : permission classique
+         (+ requestLegacyExternalStorage pour Android 10) ; Android 11+ : « Accès à tous les fichiers ». -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+        android:maxSdkVersion="29" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
         android:name=".Appteka"
@@ -37,6 +45,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="${launcherLabel}"
         android:networkSecurityConfig="@xml/network_security_config"
+        android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:enableOnBackInvokedCallback="true">
@@ -217,6 +226,7 @@
         <activity android:name=".screen.about.AboutActivity" />
         <activity android:name=".screen.installed.InstalledActivity" />
         <activity android:name=".screen.distro.DistroActivity" />
+        <activity android:name=".screen.tvfiles.TvFilesActivity" />
         <activity android:name=".screen.subscriptions.SubscriptionsActivity" />
         <activity android:name=".screen.feed.FeedActivity" />
         <activity android:name=".screen.post.PostActivity" />

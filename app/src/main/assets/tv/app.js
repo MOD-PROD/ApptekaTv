@@ -890,11 +890,27 @@ function tvLinkHtml() {
         <div class="set-label set-spacing">Appareils associés</div>
         ${devices.length ? devices.map(device => `
             <div class="set-row">
-                <span data-no-i18n>${escapeHtml(device.name)}${pairedSince(device.added)}</span>
+                <span data-no-i18n>${escapeHtml(device.name)}${pairedSince(device.added)}${device.files === 'true' ? ' · 📁' : ''}</span>
+                ${device.files === 'true' ? `<button class="btn focusable" type="button" data-k="files-${escapeHtml(device.id)}"
+                        data-act="tvlink-revoke-files" data-device="${escapeHtml(device.id)}">Retirer l'accès fichiers</button>` : ''}
                 <button class="btn focusable" type="button" data-k="forget-${escapeHtml(device.id)}"
                         data-act="tvlink-forget" data-device="${escapeHtml(device.id)}">Oublier</button>
             </div>`).join('') + `
-            <button class="btn focusable" type="button" data-k="tvlink-forget-all" data-act="tvlink-forget-all">Tout oublier</button>` : '—'}`;
+            <button class="btn focusable" type="button" data-k="tvlink-forget-all" data-act="tvlink-forget-all">Tout oublier</button>` : '—'}
+        ${filesLogHtml(info.filesLog || [])}`;
+}
+
+// ATV-09 : dernières opérations faites par les téléphones sur les fichiers de la TV
+function filesLogHtml(log) {
+    if (!log.length) return '';
+    const ops = { mkdir: '📁+', rename: '✏️', delete: '🗑️', push: '⬇️', pull: '⬆️', install: '📦' };
+    return `
+        <div class="set-label set-spacing">Fichiers : dernières opérations</div>
+        ${log.slice(0, 15).map(item => {
+            let when = '';
+            try { when = new Date(Number(item.at)).toLocaleString(); } catch (e) { /* */ }
+            return `<div class="set-sub" data-no-i18n style="margin:2px 0;word-break:break-all">${ops[item.op] || '•'} ${escapeHtml(item.path || '')} · ${escapeHtml(item.device || '')} · ${escapeHtml(when)}</div>`;
+        }).join('')}`;
 }
 
 // Date d'association affichée à côté du téléphone (ATV-01 durcissement)
@@ -981,6 +997,10 @@ function onSettingsAction(b) {
         case 'tvlink-forget':
             call('tvLinkForget', b.dataset.device);
             setTimeout(() => { updatePairButton(); renderSettings('section-tvlink'); }, 200);
+            return;
+        case 'tvlink-revoke-files':
+            call('tvLinkRevokeFiles', b.dataset.device);
+            setTimeout(() => renderSettings('section-tvlink'), 200);
             return;
         case 'tvlink-forget-all':
             call('tvLinkForgetAll');

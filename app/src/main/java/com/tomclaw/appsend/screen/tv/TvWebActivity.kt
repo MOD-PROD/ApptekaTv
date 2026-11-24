@@ -171,6 +171,7 @@ class TvWebActivity : AppCompatActivity() {
     private val remoteInstalls by lazy { TvRemoteInstalls(this, downloadManager, appInstaller) }
     private val remoteApps by lazy { TvRemoteApps(this) }
     private val remoteDownloads by lazy { TvRemoteDownloads(this, apkStorage) }
+    private val remoteFiles by lazy { TvRemoteFiles(this) }
     private var pendingPairApp: String? = null
     private var pendingPairLabel: String? = null
     private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
@@ -310,6 +311,32 @@ class TvWebActivity : AppCompatActivity() {
 
             override fun downloadFile(fileName: String): java.io.File? = remoteDownloads.file(fileName)
 
+            // ATV-09 : fichiers à distance.
+            override fun fsAccessMode(): String = remoteFiles.accessMode()
+
+            override fun fsRoots(): List<TvLink.FsRoot> = remoteFiles.roots()
+
+            override fun fsRequestStorage() = requestFilesStorage()
+
+            override fun onFilesOpened(device: String) {
+                // Gonzo 24/11 : la TV montre quand un téléphone gère ses fichiers.
+                Toast.makeText(this@TvWebActivity, getString(R.string.tv_files_opened, device), Toast.LENGTH_LONG).show()
+            }
+
+            override fun fsInstall(file: java.io.File, device: String): JSONObject {
+                val copy = remoteApps.incomingApk(file.length()) ?: return JSONObject().put("ok", false).put("error", "storage")
+                return try {
+                    file.inputStream().use { input -> copy.outputStream().use { input.copyTo(it) } }
+                    remoteApps.received(copy) { uri, label ->
+                        toast(getString(R.string.tv_apk_received, label, device))
+                        appInstaller.install(InstallRequest(key = "fs:" + copy.name, label = label, uri = uri))
+                    }
+                } catch (e: Exception) {
+                    copy.delete()
+                    JSONObject().put("ok", false).put("error", "unreadable")
+                }
+            }
+
             override fun onApkReceived(file: java.io.File, device: String): JSONObject =
                 remoteApps.received(file) { uri, label ->
                     toast(getString(R.string.tv_apk_received, label, device))
@@ -317,6 +344,7 @@ class TvWebActivity : AppCompatActivity() {
                 }
         })
         server.confirmPairing = ::confirmPairing // ATV-01 durcissement : accord explicite sur la TV
+        server.confirmFiles = ::confirmFiles // ATV-09 : droit « Fichiers » accordé sur la TV
         runCatching { server.start() }.onFailure { Log.w(TAG, "TV link unavailable", it) }
         tvLink = server
     }
@@ -337,11 +365,53 @@ class TvWebActivity : AppCompatActivity() {
         handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
     }
 
+    /** ATV-09 : un téléphone n'accède aux fichiers de la TV que si l'utilisateur de la TV accepte. */
+    private fun confirmFiles(device: String, answer: (Boolean) -> Unit) {
+        if (isFinishing || isDestroyed) return answer(false)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.tv_files_confirm_title)
+            .setMessage(getString(R.string.tv_files_confirm_message, device))
+            .setCancelable(true)
+            .setPositiveButton(R.string.tv_pair_confirm_accept) { _, _ -> answer(true) }
+            .setNegativeButton(R.string.tv_pair_confirm_refuse) { _, _ -> answer(false) }
+            .setOnDismissListener { answer(false) }
+            .show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE)?.requestFocus()
+        handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
+    }
+
+    /** ATV-09 : le téléphone veut les fichiers mais l'appli n'a pas encore accès au stockage de la TV. */
+    private var filesStorageDialog: androidx.appcompat.app.AlertDialog? = null
+
+    private fun requestFilesStorage() {
+        if (isFinishing || isDestroyed || filesStorageDialog?.isShowing == true) return
+        filesStorageDialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.tv_files_storage_title)
+            .setMessage(R.string.tv_files_storage_message)
+            .setPositiveButton(R.string.tv_files_storage_allow) { _, _ ->
+                if (remoteFiles.needsSettingsScreen) {
+                    if (!remoteFiles.openAllFilesSettings()) {
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle(R.string.tv_files_storage_title)
+                            .setMessage(getString(R.string.tv_files_storage_adb, packageName))
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show()
+                    }
+                } else {
+                    pendingStorageAction = { toast(getString(R.string.tv_files_storage_granted)) }
+                    storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun tvLinkInfo(): Map<String, Any?> = mapOf(
         "name" to TvLink.deviceName(),
         "ip" to TvLink.localIpv4(),
         "port" to tvLink?.port,
         "devices" to (tvLink?.pairedDevices() ?: emptyList<String>()),
+        "filesLog" to (tvLink?.filesLog() ?: emptyList<String>()),
     )
 
     // ------------------------------------- Écrans classiques (connecteurs)
@@ -1012,6 +1082,9 @@ class TvWebActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun tvLinkForgetAll(): Unit = runOnUiThread { tvLink?.forgetAll() }
+
+        @JavascriptInterface
+        fun tvLinkRevokeFiles(id: String): Unit = runOnUiThread { tvLink?.revokeFiles(id) }
 
         @JavascriptInterface
         fun tvLinkShowQr(): Unit = runOnUiThread { showPairingQr() }

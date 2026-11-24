@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ATV-09: remote file manager (TV side) -->
+    <string name="tv_files_confirm_title">Allow file access?</string>
+    <string name="tv_files_confirm_message">%1$s wants to browse, copy and delete files on this TV. Allow it?</string>
+    <string name="tv_files_opened">📱 %1$s is managing this TV\'s files</string>
+    <string name="tv_files_storage_title">Storage access</string>
+    <string name="tv_files_storage_message">To let your phone manage this TV\'s files, Appteka TV needs access to the TV storage.</string>
+    <string name="tv_files_storage_allow">Allow</string>
+    <string name="tv_files_storage_granted">Storage access granted. Tap Retry on the phone.</string>
+    <string name="tv_files_storage_adb">This TV has no \"All files access\" screen. From a computer, run:\nadb shell appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
+
+    <!-- ATV-09: remote file manager (phone side) -->
+    <string name="nav_tv_files">TV files</string>
+    <string name="tv_files_title">Files · %1$s</string>
+    <string name="tv_files_no_tv">Pair a TV first with the 📺 icon of the Store screen</string>
+    <string name="tv_files_connecting">Connecting to %1$s…</string>
+    <string name="tv_files_waiting_tv">Accept the request on %1$s…</string>
+    <string name="tv_files_refused">%1$s refused file access.</string>
+    <string name="tv_files_storage_needed">Allow storage access on %1$s, then tap Retry.</string>
+    <string name="tv_files_offline">%1$s is unreachable. Keep Appteka TV open on the TV, on the same Wi-Fi.</string>
+    <string name="tv_files_needs_update">Update Appteka TV on %1$s (Test channel) to manage its files.</string>
+    <string name="tv_files_retry">Retry</string>
+    <string name="tv_files_empty">Empty folder</string>
+    <string name="tv_files_upload_here">Send here</string>
+    <string name="tv_files_upload">Send files to the TV</string>
+    <string name="tv_files_new_folder">New folder</string>
+    <string name="tv_files_volumes">Storage</string>
+    <string name="tv_files_show_hidden">Show hidden files</string>
+    <string name="tv_files_sort">Sort</string>
+    <string name="tv_files_sort_name">Name</string>
+    <string name="tv_files_sort_date">Date</string>
+    <string name="tv_files_sort_size">Size</string>
+    <string name="tv_files_refresh">Refresh</string>
+    <string name="tv_files_download">Download to the phone</string>
+    <string name="tv_files_install">Install on the TV</string>
+    <string name="tv_files_rename">Rename</string>
+    <string name="tv_files_delete">Delete</string>
+    <string name="tv_files_select">Select</string>
+    <string name="tv_files_selected">%1$d selected</string>
+    <string name="tv_files_name">Name</string>
+    <string name="tv_files_delete_confirm">Delete %1$s from %2$s? This cannot be undone.</string>
+    <string name="tv_files_delete_folder_confirm">%1$s contains files. Delete the folder and everything inside?</string>
+    <string name="tv_files_delete_many">%1$d items</string>
+    <string name="tv_files_deleted">Deleted</string>
+    <string name="tv_files_items">%1$d items</string>
+    <string name="tv_files_read_only">This folder is read-only on the TV</string>
+    <string name="tv_files_exists">An item with this name already exists</string>
+    <string name="tv_files_error">%1$s: %2$s</string>
+    <string name="tv_files_install_sent">Confirm the installation on %1$s</string>
+    <string name="tv_files_download_permission">Storage permission is needed to save files on this phone</string>
+    <string name="tv_files_channel">TV file transfers</string>
+    <string name="tv_files_downloading">Downloading %1$s</string>
+    <string name="tv_files_uploading">Sending %1$s to %2$s</string>
+    <string name="tv_files_downloaded">Saved in Download/Appteka TV: %1$s</string>
+    <string name="tv_files_uploaded">Sent to %2$s: %1$s</string>
+    <string name="tv_files_failed">Transfer failed: %1$s</string>
+    <string name="tv_files_cancelled">Transfer cancelled</string>
+    <string name="tv_files_cancel">Cancel</string>
+    <string name="tv_files_queue">%1$d waiting</string>
+</resources>

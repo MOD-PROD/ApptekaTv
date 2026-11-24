@@ -99,6 +99,8 @@ interface HomeView {
 
     fun distroClicks(): Observable<Unit>
 
+    fun tvFilesClicks(): Observable<Unit>
+
     fun settingsClicks(): Observable<Unit>
 
     fun aboutClicks(): Observable<Unit>
@@ -137,6 +139,7 @@ class HomeViewImpl(view: View) : HomeView {
     private val profileShareRelay = PublishRelay.create<Unit>()
     private val installedRelay = PublishRelay.create<Unit>()
     private val distroRelay = PublishRelay.create<Unit>()
+    private val tvFilesRelay = PublishRelay.create<Unit>()
     private val settingsRelay = PublishRelay.create<Unit>()
     private val aboutRelay = PublishRelay.create<Unit>()
     private val exitAppRelay = PublishRelay.create<Unit>()
@@ -149,6 +152,7 @@ class HomeViewImpl(view: View) : HomeView {
                 R.id.menu_share -> profileShareRelay.accept(Unit)
                 R.id.menu_installed -> installedRelay.accept(Unit)
                 R.id.menu_distro -> distroRelay.accept(Unit)
+                R.id.menu_tv_files -> tvFilesRelay.accept(Unit)
                 R.id.menu_settings -> settingsRelay.accept(Unit)
                 R.id.menu_about -> aboutRelay.accept(Unit)
             }
@@ -357,6 +361,8 @@ class HomeViewImpl(view: View) : HomeView {
     override fun installedClicks(): Observable<Unit> = installedRelay
 
     override fun distroClicks(): Observable<Unit> = distroRelay
+
+    override fun tvFilesClicks(): Observable<Unit> = tvFilesRelay
 
     override fun settingsClicks(): Observable<Unit> = settingsRelay
 

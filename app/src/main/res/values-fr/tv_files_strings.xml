@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ATV-09 : gestionnaire de fichiers à distance (TV) -->
+    <string name="tv_files_confirm_title">Autoriser l\'accès aux fichiers ?</string>
+    <string name="tv_files_confirm_message">%1$s veut parcourir, copier et supprimer des fichiers sur cette TV. L\'autoriser ?</string>
+    <string name="tv_files_opened">📱 %1$s gère les fichiers de la TV</string>
+    <string name="tv_files_storage_title">Accès au stockage</string>
+    <string name="tv_files_storage_message">Pour que ton téléphone gère les fichiers de la TV, Appteka TV doit accéder au stockage de la TV.</string>
+    <string name="tv_files_storage_allow">Autoriser</string>
+    <string name="tv_files_storage_granted">Accès au stockage accordé. Appuie sur Réessayer sur le téléphone.</string>
+    <string name="tv_files_storage_adb">Cette TV n\'a pas d\'écran « Accès à tous les fichiers ». Depuis un ordinateur, lance :\nadb shell appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
+
+    <!-- ATV-09 : gestionnaire de fichiers à distance (téléphone) -->
+    <string name="nav_tv_files">Fichiers TV</string>
+    <string name="tv_files_title">Fichiers · %1$s</string>
+    <string name="tv_files_no_tv">Associe d\'abord une TV avec l\'icône 📺 de l\'écran Store</string>
+    <string name="tv_files_connecting">Connexion à %1$s…</string>
+    <string name="tv_files_waiting_tv">Accepte la demande sur %1$s…</string>
+    <string name="tv_files_refused">%1$s a refusé l\'accès aux fichiers.</string>
+    <string name="tv_files_storage_needed">Autorise l\'accès au stockage sur %1$s, puis appuie sur Réessayer.</string>
+    <string name="tv_files_offline">%1$s est injoignable. Garde Appteka TV ouverte sur la TV, sur le même Wi-Fi.</string>
+    <string name="tv_files_needs_update">Mets à jour Appteka TV sur %1$s (canal Test) pour gérer ses fichiers.</string>
+    <string name="tv_files_retry">Réessayer</string>
+    <string name="tv_files_empty">Dossier vide</string>
+    <string name="tv_files_upload_here">Envoyer ici</string>
+    <string name="tv_files_upload">Envoyer des fichiers à la TV</string>
+    <string name="tv_files_new_folder">Nouveau dossier</string>
+    <string name="tv_files_volumes">Stockage</string>
+    <string name="tv_files_show_hidden">Afficher les fichiers cachés</string>
+    <string name="tv_files_sort">Trier</string>
+    <string name="tv_files_sort_name">Nom</string>
+    <string name="tv_files_sort_date">Date</string>
+    <string name="tv_files_sort_size">Taille</string>
+    <string name="tv_files_refresh">Actualiser</string>
+    <string name="tv_files_download">Télécharger sur le téléphone</string>
+    <string name="tv_files_install">Installer sur la TV</string>
+    <string name="tv_files_rename">Renommer</string>
+    <string name="tv_files_delete">Supprimer</string>
+    <string name="tv_files_select">Sélectionner</string>
+    <string name="tv_files_selected">%1$d sélectionné(s)</string>
+    <string name="tv_files_name">Nom</string>
+    <string name="tv_files_delete_confirm">Supprimer %1$s de %2$s ? C\'est définitif.</string>
+    <string name="tv_files_delete_folder_confirm">%1$s contient des fichiers. Supprimer le dossier et tout son contenu ?</string>
+    <string name="tv_files_delete_many">%1$d éléments</string>
+    <string name="tv_files_deleted">Supprimé</string>
+    <string name="tv_files_items">%1$d éléments</string>
+    <string name="tv_files_read_only">Ce dossier est en lecture seule sur la TV</string>
+    <string name="tv_files_exists">Un élément porte déjà ce nom</string>
+    <string name="tv_files_error">%1$s : %2$s</string>
+    <string name="tv_files_install_sent">Confirme l\'installation sur %1$s</string>
+    <string name="tv_files_download_permission">La permission de stockage est nécessaire pour enregistrer des fichiers sur ce téléphone</string>
+    <string name="tv_files_channel">Transferts de fichiers TV</string>
+    <string name="tv_files_downloading">Téléchargement de %1$s</string>
+    <string name="tv_files_uploading">Envoi de %1$s à %2$s</string>
+    <string name="tv_files_downloaded">Enregistré dans Download/Appteka TV : %1$s</string>
+    <string name="tv_files_uploaded">Envoyé à %2$s : %1$s</string>
+    <string name="tv_files_failed">Échec du transfert : %1$s</string>
+    <string name="tv_files_cancelled">Transfert annulé</string>
+    <string name="tv_files_cancel">Annuler</string>
+    <string name="tv_files_queue">%1$d en attente</string>
+</resources>

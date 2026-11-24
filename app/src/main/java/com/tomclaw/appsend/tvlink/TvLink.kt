@@ -41,6 +41,10 @@ object TvLink {
     private const val STREAM_DEADLINE_MS = 15 * 60 * 1000L
     private const val PUSH_CHECK_TIMEOUT_MS = 60_000
     private const val DOWNLOAD_RESPONSE_TIMEOUT_MS = 45_000
+    /** ATV-09 : un échange de fichier peut durer longtemps ; chaque lecture reste bornée par soTimeout. */
+    private const val FS_STREAM_DEADLINE_MS = 3 * 60 * 60 * 1000L
+    /** ATV-09 : `fs_access` peut attendre l'accord de l'utilisateur de la TV. */
+    private const val FS_ACCESS_RESPONSE_TIMEOUT_MS = 40_000
 
     /** ATV-01 durcissement : efface les préférences du protocole v1 (jetons en clair). */
     internal fun purgeLegacy(context: Context) {
@@ -58,6 +62,9 @@ object TvLink {
             if (message.optString("type") == "pair") socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS
             // ATV (Downloaded en mode 📺) : la TV lit chaque archive avant de répondre.
             if (message.optString("type") in DOWNLOAD_TYPES) socket.soTimeout = DOWNLOAD_RESPONSE_TIMEOUT_MS
+            // ATV-09 : accord sur la TV, gros dossiers, suppressions récursives.
+            if (message.optString("type") == "fs_access") socket.soTimeout = FS_ACCESS_RESPONSE_TIMEOUT_MS
+            else if (message.optString("type") in FS_TYPES) socket.soTimeout = DOWNLOAD_RESPONSE_TIMEOUT_MS
             TvFrames.write(socket.outputStream, message.put("v", 2).toString())
             return JSONObject(TvFrames.read(socket.inputStream)).also { require(it.optInt("v") == 2) }
         }
@@ -83,14 +90,20 @@ object TvLink {
      * par une trame JSON avec `size`, puis envoie exactement `size` octets bruts.
      * Renvoie la réponse JSON ; le fichier n'est complet que si `ok` vaut vrai.
      */
-    fun pull(address: Pairing, message: JSONObject, sink: java.io.OutputStream, progress: (Long, Long) -> Unit): JSONObject {
+    fun pull(
+        address: Pairing,
+        message: JSONObject,
+        sink: java.io.OutputStream,
+        progress: (Long, Long) -> Unit,
+        sizes: LongRange = 1..MAX_APK_BYTES,
+    ): JSONObject {
         open(address).use { socket ->
             TvFrames.write(socket.outputStream, message.put("v", 2).toString())
             val header = JSONObject(TvFrames.read(socket.inputStream))
             require(header.optInt("v") == 2)
             if (!header.optBoolean("ok")) return header
             val size = header.getLong("size")
-            require(size in 1..MAX_APK_BYTES)
+            require(size in sizes)
             copyExactly(socket.inputStream, sink, size, progress)
             sink.flush()
             return header
@@ -101,8 +114,15 @@ object TvLink {
      * ATV (Installées en mode 📱) : envoie un APK à la TV (ordre `push_apk`). La TV accepte
      * d'abord la taille annoncée, reçoit les octets bruts, vérifie l'APK puis répond.
      */
-    fun push(address: Pairing, message: JSONObject, source: java.io.InputStream, size: Long, progress: (Long, Long) -> Unit): JSONObject {
-        require(size in 1..MAX_APK_BYTES)
+    fun push(
+        address: Pairing,
+        message: JSONObject,
+        source: java.io.InputStream,
+        size: Long,
+        progress: (Long, Long) -> Unit,
+        sizes: LongRange = 1..MAX_APK_BYTES,
+    ): JSONObject {
+        require(size in sizes)
         open(address).use { socket ->
             TvFrames.write(socket.outputStream, message.put("size", size).put("v", 2).toString())
             val ready = JSONObject(TvFrames.read(socket.inputStream))
@@ -134,6 +154,9 @@ object TvLink {
     /** Nom d'un APK téléchargé (sans extension) : pas de chemin, longueur bornée. */
     fun validFileName(value: String): Boolean =
         value.length in 1..200 && !value.startsWith(".") && value.none { it == '/' || it == '\\' || it < ' ' }
+
+    /** ATV-09 : ordres « Fichiers » traités hors du verrou de la liaison (hors flux). */
+    internal val FS_TYPES = setOf("fs_access", "fs_list", "fs_mkdir", "fs_rename", "fs_delete", "fs_install")
 
     /** Ordres « Downloaded » : traités hors du verrou de la liaison (lecture des archives). */
     internal val DOWNLOAD_TYPES = setOf("list_downloads", "download_install", "download_delete", "download_permissions", "download_icon")
@@ -270,12 +293,34 @@ object TvLink {
         /** Fichier d'un APK téléchargé par la TV à envoyer au téléphone, ou null. */
         fun downloadFile(fileName: String): java.io.File? = null
 
+        /**
+         * ATV-09 : accès de l'appli au stockage de la TV : `full` (tout le stockage), ou `none`
+         * (permission à accorder sur la TV).
+         */
+        fun fsAccessMode(): String = "none"
+
+        /** ATV-09 : racines visibles par le téléphone (stockage interne, clés USB…). */
+        fun fsRoots(): List<FsRoot> = emptyList()
+
+        /** ATV-09 : demande sur la TV l'accès au stockage (thread principal). */
+        fun fsRequestStorage() {}
+
+        /** ATV-09 : un téléphone autorisé ouvre les fichiers de la TV (thread principal). */
+        fun onFilesOpened(device: String) {}
+
+        /** ATV-09 : installe l'APK [file] présent sur la TV (thread de la liaison). */
+        fun fsInstall(file: java.io.File, device: String): JSONObject =
+            JSONObject().put("ok", false).put("error", "not_implemented")
+
         /** APK reçu du téléphone [device] : vérifier puis lancer l'installation sur la TV. */
         fun onApkReceived(file: java.io.File, device: String): JSONObject {
             file.delete()
             return JSONObject().put("ok", false).put("error", "not_implemented")
         }
     }
+
+    /** ATV-09 : racine de fichiers de la TV ([label] lisible, [removable] pour une clé USB / carte SD). */
+    data class FsRoot(val file: java.io.File, val label: String, val removable: Boolean)
 
     class Server(private val context: Context, private val host: Host) {
         private val prefs = context.getSharedPreferences("tv_link_v2", Context.MODE_PRIVATE)
@@ -307,6 +352,10 @@ object TvLink {
          */
         @Volatile
         var confirmPairing: ((device: String, answer: (Boolean) -> Unit) -> Unit)? = null
+
+        /** ATV-09 : demande à l'utilisateur de la TV d'autoriser un téléphone à gérer les fichiers. */
+        @Volatile
+        var confirmFiles: ((device: String, answer: (Boolean) -> Unit) -> Unit)? = null
 
         data class PairingQr(val sessionId: UUID, val payload: String, val code: String)
 
@@ -354,20 +403,43 @@ object TvLink {
             watchdog.shutdownNow()
         }
 
-        fun pairedDevices(): List<Map<String, String>> =
-            entries().map {
-                mapOf("id" to it.id, "name" to it.device, "added" to it.created.toString())
+        fun pairedDevices(): List<Map<String, String>> {
+            val grants = fsGrants()
+            return entries().map {
+                mapOf(
+                    "id" to it.id, "name" to it.device, "added" to it.created.toString(),
+                    "files" to (it.id in grants).toString(),
+                )
             }.sortedBy { it["name"] }
+        }
+
+        /** ATV-09 : retire le droit « Fichiers » d'un téléphone associé. */
+        @Synchronized
+        fun revokeFiles(id: String) {
+            prefs.edit().putStringSet(KEY_FS_GRANTS, fsGrants() - id).commit()
+        }
+
+        /** ATV-09 : journal des dernières opérations sur les fichiers (plus récente d'abord). */
+        fun filesLog(): List<Map<String, Any>> = runCatching {
+            val array = org.json.JSONArray(prefs.getString(KEY_FS_LOG, "[]"))
+            (0 until array.length()).map { i ->
+                val item = array.getJSONObject(i)
+                mapOf("at" to item.optLong("at"), "device" to item.optString("device"),
+                    "op" to item.optString("op"), "path" to item.optString("path"))
+            }
+        }.getOrDefault(emptyList())
 
         @Synchronized
         fun forget(id: String) {
             save(TvTokens.remove(entries(), id))
+            prefs.edit().putStringSet(KEY_FS_GRANTS, fsGrants() - id).commit()
         }
 
         /** ATV-01 durcissement : révoque tous les téléphones associés. */
         @Synchronized
         fun forgetAll() {
             save(emptyList())
+            prefs.edit().remove(KEY_FS_GRANTS).commit()
         }
 
         @Synchronized
@@ -459,6 +531,12 @@ object TvLink {
                         deadline?.cancel(false)
                         deadline = closeAfter(client, STREAM_DEADLINE_MS)
                         stream(msg, input, output)
+                    } else if (msg.optInt("v") == 2 && msg.optString("type") in FS_STREAM_TYPES) {
+                        deadline?.cancel(false)
+                        deadline = closeAfter(client, FS_STREAM_DEADLINE_MS)
+                        fsStream(msg, input, output)
+                    } else if (msg.optInt("v") == 2 && msg.optString("type") in FS_TYPES) {
+                        files(msg)
                     } else if (msg.optInt("v") == 2 && msg.optString("type") in DOWNLOAD_TYPES) {
                         downloads(msg)
                     } else respond(msg)
@@ -522,6 +600,153 @@ object TvLink {
                         throw e
                     }
                     return host.onApkReceived(target, from)
+                }
+            }
+            return error("unknown")
+        }
+
+        // ------------------------------------------------ ATV-09 : fichiers à distance
+
+        private fun fsGrants(): Set<String> = prefs.getStringSet(KEY_FS_GRANTS, emptySet()).orEmpty().toSet()
+
+        private fun tokenEntry(token: String): TvTokens.Entry? =
+            TvTokens.find(entries(), TvFrames.tokenHash(token))
+
+        private fun fsRootFiles(): List<java.io.File> = host.fsRoots().map { it.file }
+
+        private fun log(device: String, op: String, path: String) = synchronized(this) {
+            val previous = runCatching { org.json.JSONArray(prefs.getString(KEY_FS_LOG, "[]")) }.getOrNull() ?: org.json.JSONArray()
+            val next = org.json.JSONArray().put(
+                JSONObject().put("at", System.currentTimeMillis()).put("device", device).put("op", op).put("path", path.take(512))
+            )
+            for (i in 0 until minOf(previous.length(), FS_LOG_SIZE - 1)) next.put(previous.get(i))
+            prefs.edit().putString(KEY_FS_LOG, next.toString()).apply()
+        }
+
+        /**
+         * Téléphone associé ET autorisé à gérer les fichiers, stockage accessible : renvoie
+         * l'entrée, sinon une réponse d'erreur.
+         */
+        private fun fsAuthorized(msg: JSONObject): Pair<TvTokens.Entry?, JSONObject?> {
+            val entry = synchronized(this) { tokenEntry(msg.optString("token")) } ?: return null to error("unauthorized")
+            if (entry.id !in synchronized(this) { fsGrants() }) return null to error("fs_forbidden")
+            if (host.fsAccessMode() == "none") return null to error("fs_storage")
+            return entry to null
+        }
+
+        private fun files(msg: JSONObject): JSONObject {
+            val type = msg.optString("type")
+            if (type == "fs_access") return fsAccess(msg)
+            val (entry, refused) = fsAuthorized(msg)
+            if (entry == null) return refused ?: error("unauthorized")
+            val roots = fsRootFiles()
+            val path = msg.optString("path")
+            return when (type) {
+                "fs_list" -> TvFiles.list(roots, path, msg.optBoolean("hidden"))
+                "fs_mkdir" -> TvFiles.mkdir(roots, path, msg.optString("name")).also {
+                    if (it.optBoolean("ok")) log(entry.device, "mkdir", it.optString("path"))
+                }
+                "fs_rename" -> TvFiles.rename(roots, path, msg.optString("name")).also {
+                    if (it.optBoolean("ok")) log(entry.device, "rename", path + " → " + msg.optString("name"))
+                }
+                "fs_delete" -> {
+                    val array = msg.optJSONArray("paths") ?: return error("bad_request")
+                    if (array.length() !in 1..500) return error("bad_request")
+                    val paths = (0 until array.length()).map { array.optString(it) }
+                    TvFiles.delete(roots, paths).also { result ->
+                        paths.take(20).forEach { log(entry.device, "delete", it) }
+                        if (!result.optBoolean("ok")) Log.w(TAG, "fs_delete partial: ${result.optString("error")}")
+                    }
+                }
+                "fs_install" -> {
+                    val (file, problem) = TvFiles.readable(roots, path)
+                    if (file == null) return problem ?: error("not_found")
+                    if (!file.name.endsWith(".apk", ignoreCase = true) || file.length() !in 1..MAX_APK_BYTES) return error("not_apk")
+                    log(entry.device, "install", path)
+                    host.fsInstall(file, entry.device)
+                }
+                else -> error("unknown")
+            }
+        }
+
+        /** Ouverture de l'écran « Fichiers » : accord une fois sur la TV, puis état du stockage. */
+        private fun fsAccess(msg: JSONObject): JSONObject {
+            val entry = synchronized(this) { tokenEntry(msg.optString("token")) } ?: return error("unauthorized")
+            if (entry.id !in synchronized(this) { fsGrants() }) {
+                if (!askTv(confirmFiles, entry.device)) return error("fs_refused")
+                synchronized(this) {
+                    // The phone may have been forgotten while the TV user was answering.
+                    if (entries().none { it.id == entry.id }) return error("unauthorized")
+                    prefs.edit().putStringSet(KEY_FS_GRANTS, fsGrants() + entry.id).commit()
+                }
+            }
+            val mode = host.fsAccessMode()
+            if (mode == "none") main.post { host.fsRequestStorage() } else main.post { host.onFilesOpened(entry.device) }
+            val roots = org.json.JSONArray()
+            if (mode != "none") host.fsRoots().forEach { root ->
+                val dir = runCatching { root.file.canonicalFile }.getOrNull() ?: return@forEach
+                roots.put(
+                    JSONObject().put("path", dir.path).put("label", root.label).put("removable", root.removable)
+                        .put("writable", dir.canWrite()).put("free", dir.usableSpace).put("total", dir.totalSpace)
+                )
+            }
+            return ok().put("access", mode).put("roots", roots).put("sdk", Build.VERSION.SDK_INT)
+        }
+
+        /** Pose une question oui/non à l'utilisateur de la TV (30 s), hors du verrou. */
+        private fun askTv(question: ((String, (Boolean) -> Unit) -> Unit)?, device: String): Boolean {
+            val ask = question ?: return false
+            val latch = java.util.concurrent.CountDownLatch(1)
+            val accepted = java.util.concurrent.atomic.AtomicBoolean(false)
+            val answered = java.util.concurrent.atomic.AtomicBoolean(false)
+            main.post {
+                ask(device) { yes ->
+                    if (answered.compareAndSet(false, true)) {
+                        accepted.set(yes)
+                        latch.countDown()
+                    }
+                }
+            }
+            val inTime = latch.await(CONFIRM_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            answered.set(true) // a late answer is ignored
+            return inTime && accepted.get()
+        }
+
+        /** `fs_pull` (TV → téléphone) et `fs_push` (téléphone → TV) : en-tête JSON puis octets bruts. */
+        private fun fsStream(msg: JSONObject, input: java.io.InputStream, output: java.io.OutputStream): JSONObject? {
+            val (entry, refused) = fsAuthorized(msg)
+            if (entry == null) return refused ?: error("unauthorized")
+            val roots = fsRootFiles()
+            when (msg.optString("type")) {
+                "fs_pull" -> {
+                    val (file, problem) = TvFiles.readable(roots, msg.optString("path"))
+                    if (file == null) return problem ?: error("not_found")
+                    val size = file.length()
+                    log(entry.device, "pull", file.path)
+                    file.inputStream().use { source ->
+                        TvFrames.write(output, ok().put("size", size).put("name", file.name).put("v", 2).toString())
+                        copyExactly(source, output, size) { _, _ -> }
+                        output.flush()
+                    }
+                    return null
+                }
+                "fs_push" -> {
+                    val size = msg.optLong("size", -1)
+                    val (pair, problem) = TvFiles.incoming(roots, msg.optString("path"), msg.optString("name"), size)
+                    val (part, target) = pair ?: return problem ?: error("bad_request")
+                    try {
+                        TvFrames.write(output, ok().put("v", 2).toString())
+                        java.io.FileOutputStream(part).use { sink ->
+                            copyExactly(input, sink, size) { _, _ -> }
+                            sink.fd.sync()
+                        }
+                    } catch (e: Exception) {
+                        part.delete()
+                        throw e
+                    }
+                    return TvFiles.complete(part, target).also {
+                        if (it.optBoolean("ok")) log(entry.device, "push", it.optString("path"))
+                    }
                 }
             }
             return error("unknown")
@@ -653,6 +878,10 @@ object TvLink {
             private const val KEY_LEGACY_TOKENS = "tokens"
             private const val KEY_ENTRIES = "tokens_v2"
             private val STREAM_TYPES = setOf("pull_apk", "push_apk", "pull_download")
+            private val FS_STREAM_TYPES = setOf("fs_pull", "fs_push")
+            private const val KEY_FS_GRANTS = "fs_grants"
+            private const val KEY_FS_LOG = "fs_log"
+            private const val FS_LOG_SIZE = 50
         }
     }
 }
