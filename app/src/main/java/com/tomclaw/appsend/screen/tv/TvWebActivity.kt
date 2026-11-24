@@ -755,7 +755,9 @@ class TvWebActivity : AppCompatActivity() {
                 version = info.version,
                 icon = info.icon,
                 appId = info.appId,
-                url = details.url,
+                // Vraie cause des échecs sur la MIBOX4 : `url` est l'adresse de la page web de
+                // l'appli (238 Ko de HTML) ; le fichier est `link`, comme dans la fiche native.
+                url = details.link,
                 sha1 = info.sha1
             )
         )
