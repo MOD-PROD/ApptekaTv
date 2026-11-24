@@ -17,6 +17,7 @@ import kotlin.concurrent.thread
 import android.os.SystemClock
 import java.util.UUID
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -28,6 +29,23 @@ object TvLink {
     const val DEFAULT_PORT = 8336
     private const val TAG = "TvLink"
     private const val TIMEOUT_MS = 6000
+    /** ATV-01 durcissement : durée maximale d'une connexion entrante sur la TV. */
+    private const val CONNECTION_DEADLINE_MS = 50_000L
+    /** ATV-01 durcissement : temps laissé à l'utilisateur pour accepter l'association sur la TV. */
+    private const val CONFIRM_TIMEOUT_MS = 30_000L
+    /** Côté téléphone : attente de la réponse finale pendant la confirmation sur la TV. */
+    private const val PAIR_RESPONSE_TIMEOUT_MS = 40_000
+
+    /** ATV-01 durcissement : efface les préférences du protocole v1 (jetons en clair). */
+    internal fun purgeLegacy(context: Context) {
+        for (name in listOf("tv_link", "tv_link_client")) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) context.deleteSharedPreferences(name)
+                else context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     fun request(address: Pairing, message: JSONObject): JSONObject {
         val factory = TvTls.client(address.pin).socketFactory
@@ -36,12 +54,13 @@ object TvLink {
             socket.connect(InetSocketAddress(address.host, address.port), TIMEOUT_MS)
             socket.soTimeout = TIMEOUT_MS
             socket.startHandshake()
+            if (message.optString("type") == "pair") socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS
             TvFrames.write(socket.outputStream, message.put("v", 2).toString())
             return JSONObject(TvFrames.read(socket.inputStream)).also { require(it.optInt("v") == 2) }
         }
     }
 
-    internal fun pairByCode(host: String, port: Int, code: String): Pair<Pairing, JSONObject> {
+    internal fun pairByCode(host: String, port: Int, code: String, install: String = ""): Pair<Pairing, JSONObject> {
         validateLocalEndpoint(host, port)
         val factory = TvTls.codeHandshakeContext().socketFactory
         (factory.createSocket() as SSLSocket).use { socket ->
@@ -52,9 +71,11 @@ object TvLink {
             val certificate = socket.session.peerCertificates.single()
             val pin = TvFrames.digest(certificate.encoded).joinToString("") { "%02x".format(it) }
             val proof = TvCodeAgreement(TvCodeAgreement.Side.PHONE, code, pin)
-            TvCodeExchange(socket.inputStream, socket.outputStream).phone(proof, deviceName())
+            TvCodeExchange(socket.inputStream, socket.outputStream).phone(proof, deviceName(), install)
+            socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS // the TV asks its user to confirm
             val response = JSONObject(TvFrames.read(socket.inputStream))
-            check(response.optInt("v") == 2 && response.optBoolean("ok"))
+            check(response.optInt("v") == 2)
+            check(response.optBoolean("ok")) { response.optString("error", "refused") }
             val tv = UUID.fromString(response.getString("tv")).toString()
             return Pairing(host, port, tv, "", pin) to response
         }
@@ -124,10 +145,23 @@ object TvLink {
         private var nsd: NsdManager? = null
         private var registration: NsdManager.RegistrationListener? = null
         private val pairingWindow = TvPairingWindow(SystemClock::elapsedRealtime)
+        private val watchdog = ScheduledThreadPoolExecutor(1) { r -> Thread(r, "tv-link-watchdog").apply { isDaemon = true } }
+            .apply { removeOnCancelPolicy = true }
+
+        init {
+            purgeLegacy(context)
+        }
 
         @Volatile
         var port: Int = 0
             private set
+
+        /**
+         * ATV-01 durcissement : demande à l'utilisateur de la TV d'accepter le téléphone
+         * (appelé sur le thread principal ; répondre une seule fois). Sans confirmateur, refus.
+         */
+        @Volatile
+        var confirmPairing: ((device: String, answer: (Boolean) -> Unit) -> Unit)? = null
 
         data class PairingQr(val sessionId: UUID, val payload: String, val code: String)
 
@@ -172,16 +206,23 @@ object TvLink {
             }
             socket = null
             pool.shutdown()
+            watchdog.shutdownNow()
         }
 
         fun pairedDevices(): List<Map<String, String>> =
-            tokens().map {
-                mapOf("id" to it.substringBefore(':'), "name" to it.substringAfter(':').substringAfter(':'))
+            entries().map {
+                mapOf("id" to it.id, "name" to it.device, "added" to it.created.toString())
             }.sortedBy { it["name"] }
 
         @Synchronized
         fun forget(id: String) {
-            prefs.edit().putStringSet(KEY_TOKENS, tokens().filterNot { it.substringBefore(':') == id }.toSet()).apply()
+            save(TvTokens.remove(entries(), id))
+        }
+
+        /** ATV-01 durcissement : révoque tous les téléphones associés. */
+        @Synchronized
+        fun forgetAll() {
+            save(emptyList())
         }
 
         @Synchronized
@@ -200,6 +241,12 @@ object TvLink {
         @Synchronized
         fun closePairing(sessionId: UUID) {
             pairingWindow.close(sessionId)
+        }
+
+        /** Le QR a été fermé : l'invitation reste valable au plus 60 s (ATV-01 durcissement). */
+        @Synchronized
+        fun dismissPairing(sessionId: UUID) {
+            pairingWindow.dismiss(sessionId)
         }
 
         private fun register() {
@@ -227,6 +274,20 @@ object TvLink {
         }
 
         private fun handle(client: java.net.Socket) {
+            // ATV-01 durcissement : clients du réseau local IPv4 uniquement, et durée bornée.
+            val remote = client.inetAddress
+            if (remote !is Inet4Address || !(remote.isSiteLocalAddress || remote.isLinkLocalAddress)) {
+                try {
+                    client.close()
+                } catch (_: Exception) {
+                }
+                return
+            }
+            val deadline = try {
+                watchdog.schedule({ try { client.close() } catch (_: Exception) {} }, CONNECTION_DEADLINE_MS, TimeUnit.MILLISECONDS)
+            } catch (_: RejectedExecutionException) {
+                null
+            }
             client.use {
                 try {
                     it.soTimeout = TIMEOUT_MS
@@ -234,19 +295,26 @@ object TvLink {
                     val output = it.getOutputStream()
                     val msg = JSONObject(TvFrames.read(input))
                     val response = if (msg.optInt("v") == 2 && msg.optString("type") == "code_start") {
-                        val attempt = synchronized(this) { pairingWindow.beginCode() }
+                        val attempt = synchronized(this) { pairingWindow.peekCode() }
                         if (attempt == null) error("code_unavailable") else {
                             val first = com.google.gson.JsonParser.parseString(msg.getJSONObject("payload").toString()).asJsonObject
                             val exchange = TvCodeExchange(input, output)
-                            exchange.tv(TvCodeAgreement(TvCodeAgreement.Side.TV, attempt.code, pin), first)
-                            synchronized(this) {
-                                if (pairingWindow.finishCode(attempt)) issueToken(msg) else error("expired")
+                            // The attempt only counts once the phone's J-PAKE round 1 is valid.
+                            exchange.tv(TvCodeAgreement(TvCodeAgreement.Side.TV, attempt.code, pin), first) {
+                                synchronized(this) { pairingWindow.commitCode(attempt) }
                             }
+                            val consumed = synchronized(this) { pairingWindow.finishCode(attempt) }
+                            if (consumed) confirmedToken(msg) else error("expired")
                         }
+                    } else if (msg.optInt("v") == 2 && msg.optString("type") == "pair") {
+                        val refused = synchronized(this) { checkSecret(msg) }
+                        refused ?: confirmedToken(msg)
                     } else respond(msg)
                     TvFrames.write(output, response.put("v", 2).toString())
                 } catch (_: Exception) {
                     // Malformed or incomplete connections are closed without logging their contents.
+                } finally {
+                    deadline?.cancel(false)
                 }
             }
         }
@@ -254,15 +322,22 @@ object TvLink {
         private fun randomHex(): String = ByteArray(32).also(random::nextBytes)
             .joinToString("") { "%02x".format(it) }
 
-        private fun tokens() = prefs.getStringSet(KEY_TOKENS, emptySet()).orEmpty()
-
-        private fun tokenDevice(token: String): String? {
-            val hash = TvFrames.tokenHash(token)?.toByteArray() ?: return null
-            return tokens().firstOrNull {
-                val storedHash = it.substringAfter(':').substringBefore(':')
-                TvFrames.matches(storedHash.toByteArray(), hash)
-            }?.substringAfter(':')?.substringAfter(':')
+        /** Associations enregistrées ; migre au passage l'ancien format « id:hash:device ». */
+        private fun entries(): List<TvTokens.Entry> {
+            val current = prefs.getStringSet(KEY_ENTRIES, null)
+            if (current != null) return current.mapNotNull(TvTokens::decode)
+            val legacy = prefs.getStringSet(KEY_LEGACY_TOKENS, emptySet()).orEmpty().mapNotNull(TvTokens::decodeLegacy)
+            return legacy
         }
+
+        private fun save(entries: List<TvTokens.Entry>): Boolean =
+            prefs.edit()
+                .putStringSet(KEY_ENTRIES, entries.map { it.encode() }.toSet())
+                .remove(KEY_LEGACY_TOKENS)
+                .commit()
+
+        private fun tokenDevice(token: String): String? =
+            TvTokens.find(entries(), TvFrames.tokenHash(token))?.device
 
         @Synchronized
         private fun respond(msg: JSONObject): JSONObject {
@@ -270,15 +345,6 @@ object TvLink {
             val type = msg.optString("type")
             if (type == "hello") return ok().put("name", deviceName()).put("tv", tvId)
                 .put("abis", org.json.JSONArray(Build.SUPPORTED_ABIS.toList()))
-            if (type == "pair") {
-                when (pairingWindow.verify(msg.optString("secret"))) {
-                    TvPairingWindow.Result.EXPIRED -> return error("expired")
-                    TvPairingWindow.Result.INVALID -> return error("bad_secret")
-                    TvPairingWindow.Result.LOCKED -> return error("too_many_attempts")
-                    TvPairingWindow.Result.ACCEPTED -> Unit
-                }
-                return issueToken(msg)
-            }
             val from = tokenDevice(msg.optString("token")) ?: return error("unauthorized")
             return when (type) {
                 "ping" -> ok()
@@ -293,12 +359,49 @@ object TvLink {
             }
         }
 
+        /** Consumes the QR invitation; returns an error response, or null when the secret is accepted. */
+        private fun checkSecret(msg: JSONObject): JSONObject? {
+            // A malformed secret cannot be the invitation: reject it without using up an attempt.
+            if (!msg.optString("secret").matches(Regex("[0-9a-f]{64}"))) return error("bad_secret")
+            return when (pairingWindow.verify(msg.optString("secret"))) {
+                TvPairingWindow.Result.EXPIRED -> error("expired")
+                TvPairingWindow.Result.INVALID -> error("bad_secret")
+                TvPairingWindow.Result.LOCKED -> error("too_many_attempts")
+                TvPairingWindow.Result.ACCEPTED -> null
+            }
+        }
+
+        /**
+         * The phone proved it knows the invitation; the TV user must still accept it before a
+         * token exists. Runs outside the server lock so other requests are not blocked meanwhile.
+         */
+        private fun confirmedToken(msg: JSONObject): JSONObject {
+            val device = TvTokens.cleanDevice(msg.optString("device"))
+            val confirm = confirmPairing ?: return error("refused")
+            val latch = java.util.concurrent.CountDownLatch(1)
+            val accepted = java.util.concurrent.atomic.AtomicBoolean(false)
+            val answered = java.util.concurrent.atomic.AtomicBoolean(false)
+            main.post {
+                confirm(device) { yes ->
+                    if (answered.compareAndSet(false, true)) {
+                        accepted.set(yes)
+                        latch.countDown()
+                    }
+                }
+            }
+            val inTime = latch.await(CONFIRM_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            answered.set(true) // a late answer is ignored
+            if (!inTime || !accepted.get()) return error("refused")
+            return synchronized(this) { issueToken(msg) }
+        }
+
         private fun issueToken(msg: JSONObject): JSONObject {
-            val device = msg.optString("device").take(40).ifBlank { "?" }
+            val device = TvTokens.cleanDevice(msg.optString("device"))
+            val install = TvTokens.normalizeInstall(msg.optString("install"))
             val token = randomHex()
             val hash = checkNotNull(TvFrames.tokenHash(token))
-            val entry = "${UUID.randomUUID()}:$hash:$device"
-            if (!prefs.edit().putStringSet(KEY_TOKENS, tokens() + entry).commit()) return error("storage")
+            // Same phone installation: the new token replaces the old one (real revocation).
+            if (!save(TvTokens.add(entries(), hash, install, device, System.currentTimeMillis()))) return error("storage")
             main.post { host.onPaired(device) }
             return ok().put("token", token).put("tv", tvId).put("name", deviceName())
         }
@@ -307,7 +410,8 @@ object TvLink {
         private fun error(reason: String) = JSONObject().put("ok", false).put("error", reason)
 
         companion object {
-            private const val KEY_TOKENS = "tokens"
+            private const val KEY_LEGACY_TOKENS = "tokens"
+            private const val KEY_ENTRIES = "tokens_v2"
         }
     }
 }

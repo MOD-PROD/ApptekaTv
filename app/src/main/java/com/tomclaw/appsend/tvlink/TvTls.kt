@@ -6,22 +6,29 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
+import java.security.spec.ECGenParameterSpec
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
+import javax.security.auth.x500.X500Principal
 
 internal object TvTls {
-    private const val ALIAS = "appteka-tv-link-v2"
+    // ATV-01 durcissement : clé EC P-256. Conscrypt signe avec les clés AndroidKeyStore
+    // par des opérations brutes (NONEwithECDSA) : DIGEST_NONE est indispensable, sinon la
+    // poignée de main TLS échoue sur l'appareil. L'ancienne clé RSA (sans DIGEST_NONE) est supprimée.
+    private const val ALIAS = "appteka-tv-link-v2-ec"
+    private const val LEGACY_RSA_ALIAS = "appteka-tv-link-v2"
 
     @Synchronized
     fun server(): Pair<SSLContext, String> {
         val keys = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        if (keys.containsAlias(LEGACY_RSA_ALIAS)) keys.deleteEntry(LEGACY_RSA_ALIAS)
         if (!keys.containsAlias(ALIAS)) {
-            KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore").apply {
+            KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore").apply {
                 initialize(KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_SIGN)
-                    .setKeySize(2048)
-                    .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384, KeyProperties.DIGEST_SHA512)
-                    .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1, KeyProperties.SIGNATURE_PADDING_RSA_PSS)
+                    .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+                    .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256)
+                    .setCertificateSubject(X500Principal("CN=Appteka TV"))
                     .build())
                 generateKeyPair()
             }

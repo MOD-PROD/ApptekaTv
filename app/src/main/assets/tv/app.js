@@ -874,10 +874,18 @@ function tvLinkHtml() {
         <div class="set-label set-spacing">Appareils associés</div>
         ${devices.length ? devices.map(device => `
             <div class="set-row">
-                <span data-no-i18n>${escapeHtml(device.name)}</span>
+                <span data-no-i18n>${escapeHtml(device.name)}${pairedSince(device.added)}</span>
                 <button class="btn focusable" type="button" data-k="forget-${escapeHtml(device.id)}"
                         data-act="tvlink-forget" data-device="${escapeHtml(device.id)}">Oublier</button>
-            </div>`).join('') : '—'}`;
+            </div>`).join('') + `
+            <button class="btn focusable" type="button" data-k="tvlink-forget-all" data-act="tvlink-forget-all">Tout oublier</button>` : '—'}`;
+}
+
+// Date d'association affichée à côté du téléphone (ATV-01 durcissement)
+function pairedSince(added) {
+    const ms = Number(added);
+    if (!ms) return '';
+    try { return ' · ' + escapeHtml(new Date(ms).toLocaleDateString()); } catch (e) { return ''; }
 }
 
 // Connecteurs vers l'interface classique (fonctions pas encore refaites en HTML)
@@ -956,6 +964,10 @@ function onSettingsAction(b) {
             return;
         case 'tvlink-forget':
             call('tvLinkForget', b.dataset.device);
+            setTimeout(() => renderSettings('section-tvlink'), 200);
+            return;
+        case 'tvlink-forget-all':
+            call('tvLinkForgetAll');
             setTimeout(() => renderSettings('section-tvlink'), 200);
             return;
         case 'export-config': {
