@@ -27,6 +27,8 @@ import com.tomclaw.appsend.screen.installed.InstalledPreferencesProvider
 import com.tomclaw.appsend.screen.installed.InstalledPreferencesProviderImpl
 import com.tomclaw.appsend.screen.installed.InstalledPresenter
 import com.tomclaw.appsend.screen.installed.InstalledPresenterImpl
+import com.tomclaw.appsend.screen.installed.InstalledTvBridge
+import com.tomclaw.appsend.target.TvAppsClient
 import com.tomclaw.appsend.screen.installed.adapter.app.AppItemBlueprint
 import com.tomclaw.appsend.screen.installed.adapter.app.AppItemPresenter
 import com.tomclaw.appsend.util.PackageObserver
@@ -42,8 +44,18 @@ import java.util.Locale
 class InstalledModule(
     private val context: Context,
     private val picker: Boolean,
-    private val state: Bundle?
+    private val state: Bundle?,
+    private val remote: Boolean = false,
 ) {
+
+    // ATV: the paired TV whose apps are listed (📺 mode), or the TV to send APKs to (📱 mode).
+    @Provides
+    @PerActivity
+    internal fun provideTvBridge(schedulers: SchedulersFactory): InstalledTvBridge {
+        val tv = if (remote) TvAppsClient.current(context) else null
+        val target = if (remote || picker) null else TvAppsClient.last(context)
+        return InstalledTvBridge(context, tv, target, schedulers)
+    }
 
     @Provides
     @PerActivity
@@ -58,7 +70,8 @@ class InstalledModule(
         appInstaller: AppInstaller,
         packageObserver: PackageObserver,
         abiResourceProvider: AbiResourceProvider,
-        schedulers: SchedulersFactory
+        schedulers: SchedulersFactory,
+        tvBridge: InstalledTvBridge,
     ): InstalledPresenter = InstalledPresenterImpl(
         picker,
         preferencesProvider,
@@ -72,7 +85,8 @@ class InstalledModule(
         packageObserver,
         abiResourceProvider,
         schedulers,
-        state
+        state,
+        tvBridge,
     )
 
     @Provides
@@ -83,14 +97,16 @@ class InstalledModule(
         apkStorage: ApkStorage,
         streamsProvider: StreamsProvider,
         infoProvider: InstalledInfoProvider,
-        schedulers: SchedulersFactory
+        schedulers: SchedulersFactory,
+        tvBridge: InstalledTvBridge,
     ): InstalledInteractor = InstalledInteractorImpl(
         api,
         locale,
         apkStorage,
         streamsProvider,
         infoProvider,
-        schedulers
+        schedulers,
+        tvBridge,
     )
 
     @Provides

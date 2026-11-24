@@ -20,6 +20,8 @@ interface InstalledInfoProvider {
 
     fun getPackageUploadInfo(packageName: String): Pair<UploadPackage, UploadApk>
 
+    fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>?
+
 }
 
 class InstalledInfoProviderImpl(
@@ -83,6 +85,29 @@ class InstalledInfoProviderImpl(
         val apk = UploadApk(
             path = file.path,
             version = verName,
+            size = file.length(),
+            packageInfo = packageInfo
+        )
+        return Pair(pkg, apk)
+    }
+
+    override fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>? {
+        val file = File(path)
+        @Suppress("DEPRECATION")
+        val packageInfo = packageManager.getPackageArchiveInfo(path, 0) ?: return null
+        packageInfo.applicationInfo?.let {
+            it.sourceDir = path
+            it.publicSourceDir = path
+        }
+        val pkg = UploadPackage(
+            uniqueId = file.path,
+            sha1 = null,
+            packageName = packageInfo.packageName,
+            size = file.length()
+        )
+        val apk = UploadApk(
+            path = file.path,
+            version = packageInfo.versionName.orEmpty(),
             size = file.length(),
             packageInfo = packageInfo
         )

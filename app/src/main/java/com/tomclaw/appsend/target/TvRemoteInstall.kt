@@ -38,13 +38,16 @@ class TvRemoteInstall(
         data class Refused(val error: String) : Outcome
     }
 
-    fun start(appId: String, label: String, appAbis: List<String>?) {
+    fun start(appId: String, label: String, appAbis: List<String>?, onClosed: (() -> Unit)? = null) {
         this.appId = appId
         dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(activity.getString(R.string.tv_install_title, label.ifBlank { appId }, connection.name))
             .setMessage(R.string.tv_install_checking)
             .setPositiveButton(R.string.tv_install_hide, null)
-            .setOnDismissListener { stopped = true }
+            .setOnDismissListener {
+                stopped = true
+                onClosed?.invoke()
+            }
             .show()
         thread(name = "tv-install") {
             val result = runCatching {
@@ -83,7 +86,7 @@ class TvRemoteInstall(
     private fun refused(error: String) {
         if (error == "unauthorized") {
             // Le jeton a été révoqué sur la TV (« Oublier ») : retour à « Ce téléphone ».
-            TvTarget.select(activity, null)
+            TvTarget.forget(activity)
             finish(activity.getString(R.string.tv_install_unauthorized))
         } else {
             finish(activity.getString(R.string.tv_install_refused, error))

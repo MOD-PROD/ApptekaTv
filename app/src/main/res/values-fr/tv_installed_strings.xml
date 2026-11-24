@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_send_to">Send to %1$s</string>
+    <string name="tv_storage_summary">%1$s libres sur %2$s</string>
+    <string name="tv_apk_received">APK reçu de %2$s : %1$s</string>
+    <string name="tv_transfer_from">Réception de l\'APK depuis %1$s…</string>
+    <string name="tv_transfer_to">Envoi de l\'APK à %1$s…</string>
+    <string name="tv_sent_confirm">Envoyé à %1$s : confirme l\'installation sur la TV</string>
+    <string name="tv_received_install">Reçu de %1$s : installation sur ce téléphone</string>
+    <string name="tv_opened_on">Ouvert sur %1$s</string>
+    <string name="tv_details_opened">Infos de l\'appli ouvertes sur %1$s</string>
+    <string name="tv_remove_confirm">Confirme la suppression sur %1$s</string>
+    <string name="tv_no_market">Pas de Google Play sur %1$s : ouvert sur ce téléphone</string>
+    <string name="tv_not_launchable">Cette appli ne peut pas être ouverte sur %1$s</string>
+    <string name="tv_offline">%1$s injoignable. Garde Appteka TV ouverte sur la TV, sur le même réseau.</string>
+    <string name="tv_needs_update">Mets à jour Appteka TV sur %1$s (canal Test) pour cette action</string>
+    <string name="tv_unauthorized">Ce téléphone n\'est plus associé à la TV. Réassocie-le avec l\'icône 📺.</string>
+    <string name="tv_no_space">Pas assez de place sur %1$s</string>
+    <string name="tv_not_apk">%1$s n\'a pas pu lire cet APK</string>
+    <string name="tv_refused">%1$s a refusé (%2$s)</string>
+</resources>

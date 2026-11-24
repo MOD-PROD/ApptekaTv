@@ -169,6 +169,7 @@ class TvWebActivity : AppCompatActivity() {
     private val isTv by lazy { isTvDevice() }
     private var tvLink: TvLink.Server? = null
     private val remoteInstalls by lazy { TvRemoteInstalls(this, downloadManager, appInstaller) }
+    private val remoteApps by lazy { TvRemoteApps(this) }
     private var pendingPairApp: String? = null
     private var pendingPairLabel: String? = null
     private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
@@ -284,6 +285,24 @@ class TvWebActivity : AppCompatActivity() {
 
             // ATV: the phone in 📺 mode lists the TV's apps and free memory.
             override fun content(): JSONObject = TvContent.build(this@TvWebActivity)
+
+            // ATV (Installées en mode 📺) : le menu natif du téléphone agit sur les applis de la TV.
+            override fun content(system: Boolean): JSONObject = TvContent.build(this@TvWebActivity, system)
+
+            override fun appAction(type: String, packageName: String): JSONObject =
+                remoteApps.action(type, packageName)
+
+            override fun icon(packageName: String): ByteArray? = remoteApps.icon(packageName)
+
+            override fun apkFile(packageName: String): java.io.File? = remoteApps.apkFile(packageName)
+
+            override fun incomingApk(size: Long): java.io.File? = remoteApps.incomingApk(size)
+
+            override fun onApkReceived(file: java.io.File, device: String): JSONObject =
+                remoteApps.received(file) { uri, label ->
+                    toast(getString(R.string.tv_apk_received, label, device))
+                    appInstaller.install(InstallRequest(key = "push:" + file.name, label = label, uri = uri))
+                }
         })
         server.confirmPairing = ::confirmPairing // ATV-01 durcissement : accord explicite sur la TV
         runCatching { server.start() }.onFailure { Log.w(TAG, "TV link unavailable", it) }

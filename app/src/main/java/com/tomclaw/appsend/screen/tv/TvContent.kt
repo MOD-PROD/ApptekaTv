@@ -5,6 +5,8 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Environment
 import android.os.StatFs
+import com.tomclaw.appsend.util.SIGNING_INFO_FLAG
+import com.tomclaw.appsend.util.editionKey
 import com.tomclaw.appsend.util.getInstalledApplicationsCompat
 import com.tomclaw.appsend.util.getPackageInfoCompat
 import com.tomclaw.appsend.util.versionCodeCompat
@@ -14,20 +16,18 @@ import java.io.File
 
 /**
  * ATV (vraie TV, 24/11) : ce que la TV montre au téléphone en mode 📺 — applis installées
- * par l'utilisateur et mémoire libre/totale. Réponse bornée pour tenir dans une trame (256 Ko).
+ * et mémoire libre/totale. Depuis l'écran « Installées » unifié, chaque appli porte aussi
+ * ses dates, sa clé d'édition (mises à jour Appteka) et l'indicateur système.
+ * Réponse bornée pour tenir dans une trame (256 Ko).
  */
 object TvContent {
-    private const val MAX_APPS = 400
+    private const val MAX_APPS = 600
     private const val MAX_LABEL = 60
 
-    fun build(context: Context): JSONObject {
+    fun build(context: Context, system: Boolean = false): JSONObject {
         val pm = context.packageManager
         val apps = pm.getInstalledApplicationsCompat(0)
-            .filter { info ->
-                info.packageName != context.packageName &&
-                    (info.flags and ApplicationInfo.FLAG_SYSTEM == 0 ||
-                        info.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
-            }
+            .filter { info -> info.packageName != context.packageName && (system || isUserApp(info)) }
             .mapNotNull { info -> runCatching { app(pm, info) }.getOrNull() }
             .sortedBy { it.optString("label").lowercase() }
             .take(MAX_APPS)
@@ -38,8 +38,11 @@ object TvContent {
         return JSONObject().put("apps", JSONArray(apps)).apply { if (storage != null) put("storage", storage) }
     }
 
+    private fun isUserApp(info: ApplicationInfo) =
+        info.flags and ApplicationInfo.FLAG_SYSTEM == 0 || info.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0
+
     private fun app(pm: PackageManager, info: ApplicationInfo): JSONObject {
-        val pkg = pm.getPackageInfoCompat(info.packageName, 0)
+        val pkg = pm.getPackageInfoCompat(info.packageName, SIGNING_INFO_FLAG)
         val size = info.sourceDir?.let { File(it).length() } ?: 0L
         return JSONObject()
             .put("label", info.loadLabel(pm).toString().take(MAX_LABEL))
@@ -47,5 +50,10 @@ object TvContent {
             .put("version", pkg.versionName.orEmpty().take(32))
             .put("code", pkg.versionCodeCompat())
             .put("size", size)
+            .put("installed", pkg.firstInstallTime)
+            .put("updated", pkg.lastUpdateTime)
+            .put("user", info.flags and ApplicationInfo.FLAG_SYSTEM == 0 &&
+                info.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0)
+            .apply { runCatching { pkg.editionKey() }.getOrNull()?.let { put("edition", it) } }
     }
 }

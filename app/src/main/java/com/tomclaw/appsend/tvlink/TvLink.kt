@@ -35,6 +35,11 @@ object TvLink {
     private const val CONFIRM_TIMEOUT_MS = 30_000L
     /** Côté téléphone : attente de la réponse finale pendant la confirmation sur la TV. */
     private const val PAIR_RESPONSE_TIMEOUT_MS = 40_000
+    /** ATV : taille maximale d'un APK échangé entre le téléphone et la TV. */
+    const val MAX_APK_BYTES = 1536L * 1024 * 1024
+    /** ATV : durée maximale d'un échange d'APK (connexion entrante sur la TV). */
+    private const val STREAM_DEADLINE_MS = 15 * 60 * 1000L
+    private const val PUSH_CHECK_TIMEOUT_MS = 60_000
 
     /** ATV-01 durcissement : efface les préférences du protocole v1 (jetons en clair). */
     internal fun purgeLegacy(context: Context) {
@@ -48,17 +53,84 @@ object TvLink {
     }
 
     fun request(address: Pairing, message: JSONObject): JSONObject {
-        val factory = TvTls.client(address.pin).socketFactory
-        (factory.createSocket() as SSLSocket).use { socket ->
-            socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
-            socket.connect(InetSocketAddress(connectHost(address.host), address.port), TIMEOUT_MS)
-            socket.soTimeout = TIMEOUT_MS
-            socket.startHandshake()
+        open(address).use { socket ->
             if (message.optString("type") == "pair") socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS
             TvFrames.write(socket.outputStream, message.put("v", 2).toString())
             return JSONObject(TvFrames.read(socket.inputStream)).also { require(it.optInt("v") == 2) }
         }
     }
+
+    private fun open(address: Pairing): SSLSocket {
+        val factory = TvTls.client(address.pin).socketFactory
+        val socket = factory.createSocket() as SSLSocket
+        try {
+            socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
+            socket.connect(InetSocketAddress(connectHost(address.host), address.port), TIMEOUT_MS)
+            socket.soTimeout = TIMEOUT_MS
+            socket.startHandshake()
+        } catch (e: Exception) {
+            socket.close()
+            throw e
+        }
+        return socket
+    }
+
+    /**
+     * ATV (Installées en mode 📺) : reçoit un APK de la TV (ordre `pull_apk`). La TV répond
+     * par une trame JSON avec `size`, puis envoie exactement `size` octets bruts.
+     * Renvoie la réponse JSON ; le fichier n'est complet que si `ok` vaut vrai.
+     */
+    fun pull(address: Pairing, message: JSONObject, sink: java.io.OutputStream, progress: (Long, Long) -> Unit): JSONObject {
+        open(address).use { socket ->
+            TvFrames.write(socket.outputStream, message.put("v", 2).toString())
+            val header = JSONObject(TvFrames.read(socket.inputStream))
+            require(header.optInt("v") == 2)
+            if (!header.optBoolean("ok")) return header
+            val size = header.getLong("size")
+            require(size in 1..MAX_APK_BYTES)
+            copyExactly(socket.inputStream, sink, size, progress)
+            sink.flush()
+            return header
+        }
+    }
+
+    /**
+     * ATV (Installées en mode 📱) : envoie un APK à la TV (ordre `push_apk`). La TV accepte
+     * d'abord la taille annoncée, reçoit les octets bruts, vérifie l'APK puis répond.
+     */
+    fun push(address: Pairing, message: JSONObject, source: java.io.InputStream, size: Long, progress: (Long, Long) -> Unit): JSONObject {
+        require(size in 1..MAX_APK_BYTES)
+        open(address).use { socket ->
+            TvFrames.write(socket.outputStream, message.put("size", size).put("v", 2).toString())
+            val ready = JSONObject(TvFrames.read(socket.inputStream))
+            require(ready.optInt("v") == 2)
+            if (!ready.optBoolean("ok")) return ready
+            copyExactly(source, socket.outputStream, size, progress)
+            socket.outputStream.flush()
+            socket.soTimeout = PUSH_CHECK_TIMEOUT_MS // the TV reads the archive before answering
+            return JSONObject(TvFrames.read(socket.inputStream)).also { require(it.optInt("v") == 2) }
+        }
+    }
+
+    private fun copyExactly(input: java.io.InputStream, output: java.io.OutputStream, size: Long, progress: (Long, Long) -> Unit) {
+        val buffer = ByteArray(64 * 1024)
+        var done = 0L
+        var reported = 0L
+        while (done < size) {
+            val read = input.read(buffer, 0, minOf(buffer.size.toLong(), size - done).toInt())
+            if (read < 0) throw java.io.EOFException("truncated")
+            output.write(buffer, 0, read)
+            done += read
+            if (done - reported >= 256 * 1024 || done == size) {
+                reported = done
+                progress(done, size)
+            }
+        }
+    }
+
+    /** Nom de paquet Android plausible (ordres sur une appli de la TV). */
+    fun validPackage(value: String): Boolean =
+        value.length in 3..255 && value.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+"))
 
     internal fun pairByCode(host: String, port: Int, code: String, install: String = ""): Pair<Pairing, JSONObject> {
         validateLocalEndpoint(host, port)
@@ -154,6 +226,32 @@ object TvLink {
 
         /** ATV : contenu de la TV (applis installées + mémoire) pour le téléphone en mode 📺. */
         fun content(): JSONObject = JSONObject().put("apps", org.json.JSONArray())
+
+        /** ATV (Installées en mode 📺) : idem, avec les applis système si [system]. */
+        fun content(system: Boolean): JSONObject = content()
+
+        /**
+         * ATV (Installées en mode 📺) : action du menu sur une appli de la TV
+         * (`launch`, `uninstall`, `app_details`, `open_market`, `permissions`).
+         * Appelé sur le thread de la liaison ; renvoie `ok` ou `error`.
+         */
+        fun appAction(type: String, packageName: String): JSONObject =
+            JSONObject().put("ok", false).put("error", "not_implemented")
+
+        /** Icône PNG (petite) d'une appli de la TV, ou null. */
+        fun icon(packageName: String): ByteArray? = null
+
+        /** Fichier APK (de base) d'une appli de la TV à envoyer au téléphone, ou null. */
+        fun apkFile(packageName: String): java.io.File? = null
+
+        /** Fichier où recevoir un APK de [size] octets envoyé par le téléphone, ou null (place). */
+        fun incomingApk(size: Long): java.io.File? = null
+
+        /** APK reçu du téléphone [device] : vérifier puis lancer l'installation sur la TV. */
+        fun onApkReceived(file: java.io.File, device: String): JSONObject {
+            file.delete()
+            return JSONObject().put("ok", false).put("error", "not_implemented")
+        }
     }
 
     class Server(private val context: Context, private val host: Host) {
@@ -311,11 +409,7 @@ object TvLink {
                 }
                 return
             }
-            val deadline = try {
-                watchdog.schedule({ try { client.close() } catch (_: Exception) {} }, CONNECTION_DEADLINE_MS, TimeUnit.MILLISECONDS)
-            } catch (_: RejectedExecutionException) {
-                null
-            }
+            var deadline = closeAfter(client, CONNECTION_DEADLINE_MS)
             client.use {
                 try {
                     it.soTimeout = TIMEOUT_MS
@@ -337,14 +431,62 @@ object TvLink {
                     } else if (msg.optInt("v") == 2 && msg.optString("type") == "pair") {
                         val refused = synchronized(this) { checkSecret(msg) }
                         refused ?: confirmedToken(msg)
+                    } else if (msg.optInt("v") == 2 && msg.optString("type") in STREAM_TYPES) {
+                        // ATV : un APK peut être long à transférer ; chaque lecture reste bornée par soTimeout.
+                        deadline?.cancel(false)
+                        deadline = closeAfter(client, STREAM_DEADLINE_MS)
+                        stream(msg, input, output)
                     } else respond(msg)
-                    TvFrames.write(output, response.put("v", 2).toString())
+                    if (response != null) TvFrames.write(output, response.put("v", 2).toString())
                 } catch (_: Exception) {
                     // Malformed or incomplete connections are closed without logging their contents.
                 } finally {
                     deadline?.cancel(false)
                 }
             }
+        }
+
+        private fun closeAfter(client: java.net.Socket, delayMs: Long) = try {
+            watchdog.schedule({ try { client.close() } catch (_: Exception) {} }, delayMs, TimeUnit.MILLISECONDS)
+        } catch (_: RejectedExecutionException) {
+            null
+        }
+
+        /**
+         * ATV : échange d'APK. Renvoie la réponse à écrire, ou null quand la réponse
+         * (en-tête + octets bruts) a déjà été envoyée.
+         */
+        private fun stream(msg: JSONObject, input: java.io.InputStream, output: java.io.OutputStream): JSONObject? {
+            val from = synchronized(this) { tokenDevice(msg.optString("token")) } ?: return error("unauthorized")
+            when (msg.optString("type")) {
+                "pull_apk" -> {
+                    val packageName = msg.optString("package")
+                    if (!validPackage(packageName)) return error("bad_request")
+                    val file = host.apkFile(packageName) ?: return error("not_found")
+                    val size = file.length()
+                    if (size !in 1..MAX_APK_BYTES) return error("too_big")
+                    file.inputStream().use { source ->
+                        TvFrames.write(output, ok().put("size", size).put("v", 2).toString())
+                        copyExactly(source, output, size) { _, _ -> }
+                        output.flush()
+                    }
+                    return null
+                }
+                "push_apk" -> {
+                    val size = msg.optLong("size")
+                    if (size !in 1..MAX_APK_BYTES) return error("bad_request")
+                    val target = host.incomingApk(size) ?: return error("storage")
+                    try {
+                        TvFrames.write(output, ok().put("v", 2).toString())
+                        java.io.FileOutputStream(target).use { sink -> copyExactly(input, sink, size) { _, _ -> } }
+                    } catch (e: Exception) {
+                        target.delete()
+                        throw e
+                    }
+                    return host.onApkReceived(target, from)
+                }
+            }
+            return error("unknown")
         }
 
         private fun randomHex(): String = ByteArray(32).also(random::nextBytes)
@@ -387,8 +529,20 @@ object TvLink {
                     if (!appId.matches(Regex("[a-zA-Z0-9_-]{1,64}"))) return error("bad_request")
                     ok().put("status", host.status(appId))
                 }
-                "list_apps" -> ok().put("content", host.content())
-                "launch", "uninstall", "account_link" -> error("not_implemented")
+                "list_apps" -> ok().put("content", host.content(msg.optBoolean("system")))
+                // ATV (Installées en mode 📺) : le menu natif agit sur l'appli de la TV.
+                "launch", "uninstall", "app_details", "open_market", "permissions" -> {
+                    val packageName = msg.optString("package")
+                    if (!validPackage(packageName)) return error("bad_request")
+                    host.appAction(type, packageName)
+                }
+                "app_icon" -> {
+                    val packageName = msg.optString("package")
+                    if (!validPackage(packageName)) return error("bad_request")
+                    val png = host.icon(packageName) ?: return error("not_found")
+                    ok().put("png", android.util.Base64.encodeToString(png, android.util.Base64.NO_WRAP))
+                }
+                "account_link" -> error("not_implemented")
                 else -> error("unknown")
             }
         }
@@ -446,6 +600,7 @@ object TvLink {
         companion object {
             private const val KEY_LEGACY_TOKENS = "tokens"
             private const val KEY_ENTRIES = "tokens_v2"
+            private val STREAM_TYPES = setOf("pull_apk", "push_apk")
         }
     }
 }

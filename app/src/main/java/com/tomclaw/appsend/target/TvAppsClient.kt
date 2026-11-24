@@ -1,0 +1,71 @@
+package com.tomclaw.appsend.target
+
+import android.content.Context
+import android.util.Base64
+import com.tomclaw.appsend.tvlink.TvLink
+import com.tomclaw.appsend.tvlink.TvLinkSender
+import org.json.JSONObject
+import java.io.File
+import java.io.IOException
+
+/**
+ * ATV (écran « Installées » unifié, côté téléphone) : ordres envoyés à la TV associée pour
+ * lister ses applis et exécuter les actions du menu natif. Appels bloquants (thread d'E/S).
+ * Une réponse refusée lève [TvRemoteException] avec le code d'erreur de la TV.
+ */
+class TvAppsClient(private val context: Context, val connection: TvLinkSender.Connection) {
+
+    val tvName: String get() = connection.name
+    val tvId: String get() = connection.address.tv
+
+    fun list(system: Boolean): JSONObject =
+        checked(TvLink.request(connection.address, order("list_apps").put("system", system)))
+            .optJSONObject("content") ?: JSONObject()
+
+    fun action(type: String, packageName: String): JSONObject =
+        checked(TvLink.request(connection.address, order(type).put("package", packageName)))
+
+    fun icon(packageName: String): ByteArray =
+        Base64.decode(action("app_icon", packageName).getString("png"), Base64.DEFAULT)
+
+    /** Copie l'APK de l'appli de la TV dans [target] (fichier complet ou supprimé). */
+    fun pullApk(packageName: String, target: File, progress: (Long, Long) -> Unit) {
+        try {
+            target.outputStream().use { sink ->
+                checked(TvLink.pull(connection.address, order("pull_apk").put("package", packageName), sink, progress))
+            }
+        } catch (e: Exception) {
+            target.delete()
+            throw e
+        }
+    }
+
+    /** Envoie [file] à la TV, qui l'installe (confirmation sur la TV). Renvoie le libellé lu par la TV. */
+    fun pushApk(file: File, progress: (Long, Long) -> Unit): String {
+        val response = file.inputStream().use { source ->
+            checked(TvLink.push(connection.address, order("push_apk"), source, file.length(), progress))
+        }
+        return response.optString("label")
+    }
+
+    private fun order(type: String) = JSONObject().put("type", type).put("token", connection.token)
+
+    private fun checked(response: JSONObject): JSONObject {
+        if (response.optBoolean("ok")) return response
+        val error = response.optString("error", "refused").take(32)
+        // Le jeton a été révoqué sur la TV (« Oublier ») : retour à « Ce téléphone ».
+        if (error == "unauthorized") TvTarget.forget(context)
+        throw TvRemoteException(error)
+    }
+
+    companion object {
+        fun current(context: Context): TvAppsClient? =
+            TvTarget.current(context)?.let { TvAppsClient(context.applicationContext, it) }
+
+        /** TV associée la plus récente, même en mode 📱 (pour « Send to <TV> »). */
+        fun last(context: Context): TvAppsClient? =
+            TvTarget.last(context)?.let { TvAppsClient(context.applicationContext, it) }
+    }
+}
+
+class TvRemoteException(val code: String) : IOException(code)

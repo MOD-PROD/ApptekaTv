@@ -26,6 +26,9 @@ interface InstalledInteractor {
 
     fun getPackageUploadInfo(packageName: String): Pair<UploadPackage, UploadApk>
 
+    /** ATV : infos d'envoi d'un APK rapatrié de la TV (fichier hors installation). */
+    fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>?
+
     fun copyFile(source: String, target: Uri): Observable<Unit>
 
     fun copyToStorage(source: String, fileName: String): Observable<Uri>
@@ -38,10 +41,18 @@ class InstalledInteractorImpl(
     private val apkStorage: ApkStorage,
     private val streamsProvider: StreamsProvider,
     private val infoProvider: InstalledInfoProvider,
-    private val schedulers: SchedulersFactory
+    private val schedulers: SchedulersFactory,
+    private val tv: InstalledTvBridge? = null,
 ) : InstalledInteractor {
 
     override fun listInstalledApps(systemApps: Boolean): Observable<List<InstalledAppEntity>> {
+        // ATV (mode 📺) : les applis de la TV associée, au lieu de celles du téléphone.
+        val bridge = tv?.takeIf { it.remote != null }
+        if (bridge != null) {
+            return Single.fromCallable { bridge.listRemote(systemApps) }
+                .toObservable()
+                .subscribeOn(schedulers.io())
+        }
         return Single
             .create {
                 it.onSuccess(
@@ -87,6 +98,10 @@ class InstalledInteractorImpl(
 
     override fun getPackageUploadInfo(packageName: String): Pair<UploadPackage, UploadApk> {
         return infoProvider.getPackageUploadInfo(packageName)
+    }
+
+    override fun getArchiveUploadInfo(path: String): Pair<UploadPackage, UploadApk>? {
+        return infoProvider.getArchiveUploadInfo(path)
     }
 
     override fun copyFile(source: String, target: Uri): Observable<Unit> {

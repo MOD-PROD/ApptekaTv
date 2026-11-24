@@ -57,6 +57,9 @@ class InstalledActivity : AppCompatActivity(), InstalledPresenter.InstalledRoute
     @Inject
     lateinit var apkStorage: ApkStorage
 
+    @Inject
+    lateinit var appInstaller: com.tomclaw.appsend.install.AppInstaller
+
     private val invalidateDetailsResultLauncher =
         registerForActivityResult(StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
@@ -104,9 +107,12 @@ class InstalledActivity : AppCompatActivity(), InstalledPresenter.InstalledRoute
         val presenterState = savedInstanceState?.getBundle(KEY_PRESENTER_STATE)
 
         val picker = intent.getBooleanExtra(EXTRA_PICKER, false)
+        // ATV: 📺 mode lists and acts on the paired TV's apps with this same screen.
+        val remote = intent.getBooleanExtra(EXTRA_REMOTE, false) &&
+            com.tomclaw.appsend.target.TvTarget.current(this) != null
 
         appComponent
-            .installedComponent(InstalledModule(this, picker, presenterState))
+            .installedComponent(InstalledModule(this, picker, presenterState, remote))
             .inject(activity = this)
 
         super.onCreate(savedInstanceState)
@@ -358,6 +364,18 @@ class InstalledActivity : AppCompatActivity(), InstalledPresenter.InstalledRoute
         }
     }
 
+    override fun installOnTv(appId: String, label: String, abis: List<String>?, onClosed: () -> Unit) {
+        val connection = com.tomclaw.appsend.target.TvTarget.current(this) ?: return
+        com.tomclaw.appsend.target.TvRemoteInstall(this, connection).start(appId, label, abis, onClosed)
+        analytics.trackEvent("installed-tv-update-app")
+    }
+
+    override fun installApkFile(file: File, label: String) {
+        val uri = FileProvider.getUriForFile(this, "$packageName.provider", file)
+        appInstaller.install(com.tomclaw.appsend.install.InstallRequest(key = "tv:" + file.name, label = label, uri = uri))
+        analytics.trackEvent("installed-tv-receive-apk")
+    }
+
     override fun leaveScreen(path: String?) {
         if (path != null) {
             val data = Intent().apply {
@@ -401,8 +419,11 @@ class InstalledActivity : AppCompatActivity(), InstalledPresenter.InstalledRoute
 fun createInstalledActivityIntent(
     context: Context,
     picker: Boolean = false,
+    remote: Boolean = false,
 ): Intent = Intent(context, InstalledActivity::class.java)
     .putExtra(EXTRA_PICKER, picker)
+    .putExtra(EXTRA_REMOTE, remote)
 
 private const val KEY_PRESENTER_STATE = "presenter_state"
 private const val EXTRA_PICKER = "picker"
+private const val EXTRA_REMOTE = "remote_tv"

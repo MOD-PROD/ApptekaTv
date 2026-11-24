@@ -79,7 +79,9 @@ class Appteka : Application() {
                     FileLoader(assets),
                     ContentLoader(contentResolver),
                     AppIconLoader(this, packageManager),
-                    ApkIconLoader(this, packageManager)
+                    ApkIconLoader(this, packageManager),
+                    // ATV: icons of the TV's apps in the unified Installed screen (📺 mode).
+                    com.tomclaw.appsend.target.TvIconLoader(this),
                 ),
                 memoryCache = MemoryCacheImpl(),
                 mainExecutor = MainExecutorImpl(),

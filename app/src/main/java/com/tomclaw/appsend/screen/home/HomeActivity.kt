@@ -139,12 +139,9 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     }
 
     override fun openInstalledScreen() {
-        // ATV: in 📺 mode the phone shows the TV's apps and memory, as on the TV.
-        if (com.tomclaw.appsend.target.TvTarget.current(this) != null) {
-            startActivity(com.tomclaw.appsend.target.createTvContentActivityIntent(this))
-            return
-        }
-        startActivity(createInstalledActivityIntent(this))
+        // ATV: in 📺 mode the same native Installed screen lists and acts on the TV's apps.
+        val remote = com.tomclaw.appsend.target.TvTarget.current(this) != null
+        startActivity(createInstalledActivityIntent(this, remote = remote))
     }
 
     override fun openDistroScreen() {

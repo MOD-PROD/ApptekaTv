@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATV: the native Installed screen acting on the paired TV (📺 mode) or sending to it (📱 mode). -->
+<resources>
+    <string name="tv_send_to">Send to %1$s</string>
+    <string name="tv_storage_summary">%1$s free of %2$s</string>
+    <string name="tv_apk_received">APK received from %2$s: %1$s</string>
+    <string name="tv_transfer_from">Receiving the APK from %1$s…</string>
+    <string name="tv_transfer_to">Sending the APK to %1$s…</string>
+    <string name="tv_sent_confirm">Sent to %1$s: confirm the install on the TV</string>
+    <string name="tv_received_install">Received from %1$s: installing on this phone</string>
+    <string name="tv_opened_on">Opened on %1$s</string>
+    <string name="tv_details_opened">App info opened on %1$s</string>
+    <string name="tv_remove_confirm">Confirm the removal on %1$s</string>
+    <string name="tv_no_market">No Google Play on %1$s: opened on this phone</string>
+    <string name="tv_not_launchable">This app cannot be opened on %1$s</string>
+    <string name="tv_offline">%1$s is unreachable. Keep Appteka TV open on the TV, on the same network.</string>
+    <string name="tv_needs_update">Update Appteka TV on %1$s (Test channel) to use this action</string>
+    <string name="tv_unauthorized">This phone is no longer paired with the TV. Pair it again with the 📺 icon.</string>
+    <string name="tv_no_space">Not enough free space on %1$s</string>
+    <string name="tv_not_apk">%1$s could not read this APK</string>
+    <string name="tv_refused">%1$s refused (%2$s)</string>
+</resources>

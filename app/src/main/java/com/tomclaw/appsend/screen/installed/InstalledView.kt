@@ -46,6 +46,12 @@ interface InstalledView {
 
     fun showItemDialog(item: AppItem)
 
+    /** ATV : « Send to <appareil> » remplace « Share APK via apps » quand un appareil associé est connu. */
+    fun setSendTarget(name: String?)
+
+    /** ATV (mode 📺) : titre = TV associée, sous-titre = mémoire de la TV. */
+    fun setRemoteTitle(title: String, subtitle: String?)
+
     fun showOtherEditionDialog(item: AppItem, version: String)
 
     fun showSnackbar(text: String)
@@ -86,6 +92,7 @@ class InstalledViewImpl(
     private val searchTextRelay = PublishRelay.create<String>()
     private val retryRelay = PublishRelay.create<Unit>()
     private val refreshRelay = PublishRelay.create<Unit>()
+    private var sendTarget: String? = null
 
     init {
         toolbar.setTitle(R.string.nav_installed)
@@ -168,7 +175,8 @@ class InstalledViewImpl(
         val actions = listOfNotNull(
             otherEdition,
             ActionItem(MENU_RUN, context.getString(R.string.run_app), R.drawable.ic_run),
-            ActionItem(MENU_SHARE, context.getString(R.string.share_apk), R.drawable.ic_share),
+            sendTarget?.let { ActionItem(MENU_SHARE, context.getString(R.string.tv_send_to, it), R.drawable.ic_share) }
+                ?: ActionItem(MENU_SHARE, context.getString(R.string.share_apk), R.drawable.ic_share),
             ActionItem(MENU_EXTRACT, context.getString(R.string.extract_apk), R.drawable.ic_floppy),
             ActionItem(MENU_UPLOAD, context.getString(R.string.upload_apk), R.drawable.ic_cloud_upload),
             ActionItem(MENU_BLUETOOTH, context.getString(R.string.bluetooth_apk), R.drawable.ic_bluetooth),
@@ -189,6 +197,15 @@ class InstalledViewImpl(
 
         bottomSheetDialog.setContentView(sheetView)
         bottomSheetDialog.show()
+    }
+
+    override fun setSendTarget(name: String?) {
+        sendTarget = name
+    }
+
+    override fun setRemoteTitle(title: String, subtitle: String?) {
+        toolbar.title = "📺 $title"
+        toolbar.subtitle = subtitle
     }
 
     override fun showOtherEditionDialog(item: AppItem, version: String) {

@@ -15,6 +15,8 @@ import org.json.JSONObject
 object TvTarget {
     private const val PREFS = "tv_target_v2"
     private const val KEY = "current"
+    /** ATV : dernière TV choisie, gardée en mode 📱 pour « Send to <TV> ». */
+    private const val KEY_LAST = "last"
 
     @Volatile
     private var cached: TvLinkSender.Connection? = null
@@ -39,12 +41,24 @@ object TvTarget {
         runCatching {
             val editor = preferences(context).edit()
             if (connection == null) editor.remove(KEY) else editor.putString(KEY, encode(connection))
+            if (connection != null) editor.putString(KEY_LAST, encode(connection))
             editor.apply()
         }
     }
 
-    private fun read(context: Context): TvLinkSender.Connection? {
-        val raw = preferences(context).getString(KEY, null) ?: return null
+    /** TV associée la plus récente (même revenu sur « Ce téléphone »), ou null. */
+    fun last(context: Context): TvLinkSender.Connection? =
+        current(context) ?: runCatching { read(context, KEY_LAST) }.getOrNull()
+
+    /** La TV a refusé le jeton : on l'oublie aussi pour « Send to <TV> ». */
+    @Synchronized
+    fun forget(context: Context) {
+        select(context, null)
+        runCatching { preferences(context).edit().remove(KEY_LAST).apply() }
+    }
+
+    private fun read(context: Context, key: String = KEY): TvLinkSender.Connection? {
+        val raw = preferences(context).getString(key, null) ?: return null
         val json = JSONObject(raw)
         val address = TvLink.Pairing(
             host = json.getString("host"),
