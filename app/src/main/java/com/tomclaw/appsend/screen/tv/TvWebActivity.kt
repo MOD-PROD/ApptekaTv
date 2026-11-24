@@ -244,8 +244,25 @@ class TvWebActivity : AppCompatActivity() {
 
             override fun status(appId: String): JSONObject = remoteInstalls.status(appId).toJson()
         })
+        server.confirmPairing = ::confirmPairing // ATV-01 durcissement : accord explicite sur la TV
         runCatching { server.start() }.onFailure { Log.w(TAG, "TV link unavailable", it) }
         tvLink = server
+    }
+
+    /** ATV-01 durcissement : un téléphone n'est associé que si l'utilisateur de la TV accepte. */
+    private fun confirmPairing(device: String, answer: (Boolean) -> Unit) {
+        if (isFinishing || isDestroyed) return answer(false)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.tv_pair_confirm_title)
+            .setMessage(getString(R.string.tv_pair_confirm_message, device))
+            .setCancelable(true)
+            .setPositiveButton(R.string.tv_pair_confirm_accept) { _, _ -> answer(true) }
+            .setNegativeButton(R.string.tv_pair_confirm_refuse) { _, _ -> answer(false) }
+            .setOnDismissListener { answer(false) } // answering twice is ignored by the server
+            .show()
+        // Refuse is focused first: the remote's OK key must not accept by accident.
+        dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE)?.requestFocus()
+        handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
     }
 
     private fun tvLinkInfo(): Map<String, Any?> = mapOf(

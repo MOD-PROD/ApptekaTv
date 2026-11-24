@@ -30,7 +30,11 @@ object TvLink {
     private const val TAG = "TvLink"
     private const val TIMEOUT_MS = 6000
     /** ATV-01 durcissement : durée maximale d'une connexion entrante sur la TV. */
-    private const val CONNECTION_DEADLINE_MS = 15_000L
+    private const val CONNECTION_DEADLINE_MS = 50_000L
+    /** ATV-01 durcissement : temps laissé à l'utilisateur pour accepter l'association sur la TV. */
+    private const val CONFIRM_TIMEOUT_MS = 30_000L
+    /** Côté téléphone : attente de la réponse finale pendant la confirmation sur la TV. */
+    private const val PAIR_RESPONSE_TIMEOUT_MS = 40_000
 
     /** ATV-01 durcissement : efface les préférences du protocole v1 (jetons en clair). */
     internal fun purgeLegacy(context: Context) {
@@ -50,6 +54,7 @@ object TvLink {
             socket.connect(InetSocketAddress(address.host, address.port), TIMEOUT_MS)
             socket.soTimeout = TIMEOUT_MS
             socket.startHandshake()
+            if (message.optString("type") == "pair") socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS
             TvFrames.write(socket.outputStream, message.put("v", 2).toString())
             return JSONObject(TvFrames.read(socket.inputStream)).also { require(it.optInt("v") == 2) }
         }
@@ -67,8 +72,10 @@ object TvLink {
             val pin = TvFrames.digest(certificate.encoded).joinToString("") { "%02x".format(it) }
             val proof = TvCodeAgreement(TvCodeAgreement.Side.PHONE, code, pin)
             TvCodeExchange(socket.inputStream, socket.outputStream).phone(proof, deviceName(), install)
+            socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS // the TV asks its user to confirm
             val response = JSONObject(TvFrames.read(socket.inputStream))
-            check(response.optInt("v") == 2 && response.optBoolean("ok"))
+            check(response.optInt("v") == 2)
+            check(response.optBoolean("ok")) { response.optString("error", "refused") }
             val tv = UUID.fromString(response.getString("tv")).toString()
             return Pairing(host, port, tv, "", pin) to response
         }
@@ -151,6 +158,13 @@ object TvLink {
         @Volatile
         var port: Int = 0
             private set
+
+        /**
+         * ATV-01 durcissement : demande à l'utilisateur de la TV d'accepter le téléphone
+         * (appelé sur le thread principal ; répondre une seule fois). Sans confirmateur, refus.
+         */
+        @Volatile
+        var confirmPairing: ((device: String, answer: (Boolean) -> Unit) -> Unit)? = null
 
         data class PairingQr(val sessionId: UUID, val payload: String, val code: String)
 
@@ -292,10 +306,12 @@ object TvLink {
                             exchange.tv(TvCodeAgreement(TvCodeAgreement.Side.TV, attempt.code, pin), first) {
                                 synchronized(this) { pairingWindow.commitCode(attempt) }
                             }
-                            synchronized(this) {
-                                if (pairingWindow.finishCode(attempt)) issueToken(msg) else error("expired")
-                            }
+                            val consumed = synchronized(this) { pairingWindow.finishCode(attempt) }
+                            if (consumed) confirmedToken(msg) else error("expired")
                         }
+                    } else if (msg.optInt("v") == 2 && msg.optString("type") == "pair") {
+                        val refused = synchronized(this) { checkSecret(msg) }
+                        refused ?: confirmedToken(msg)
                     } else respond(msg)
                     TvFrames.write(output, response.put("v", 2).toString())
                 } catch (_: Exception) {
@@ -332,17 +348,6 @@ object TvLink {
             val type = msg.optString("type")
             if (type == "hello") return ok().put("name", deviceName()).put("tv", tvId)
                 .put("abis", org.json.JSONArray(Build.SUPPORTED_ABIS.toList()))
-            if (type == "pair") {
-                // A malformed secret cannot be the invitation: reject it without using up an attempt.
-                if (!msg.optString("secret").matches(Regex("[0-9a-f]{64}"))) return error("bad_secret")
-                when (pairingWindow.verify(msg.optString("secret"))) {
-                    TvPairingWindow.Result.EXPIRED -> return error("expired")
-                    TvPairingWindow.Result.INVALID -> return error("bad_secret")
-                    TvPairingWindow.Result.LOCKED -> return error("too_many_attempts")
-                    TvPairingWindow.Result.ACCEPTED -> Unit
-                }
-                return issueToken(msg)
-            }
             val from = tokenDevice(msg.optString("token")) ?: return error("unauthorized")
             return when (type) {
                 "ping" -> ok()
@@ -360,6 +365,42 @@ object TvLink {
                 "list_apps", "launch", "uninstall", "account_link" -> error("not_implemented")
                 else -> error("unknown")
             }
+        }
+
+        /** Consumes the QR invitation; returns an error response, or null when the secret is accepted. */
+        private fun checkSecret(msg: JSONObject): JSONObject? {
+            // A malformed secret cannot be the invitation: reject it without using up an attempt.
+            if (!msg.optString("secret").matches(Regex("[0-9a-f]{64}"))) return error("bad_secret")
+            return when (pairingWindow.verify(msg.optString("secret"))) {
+                TvPairingWindow.Result.EXPIRED -> error("expired")
+                TvPairingWindow.Result.INVALID -> error("bad_secret")
+                TvPairingWindow.Result.LOCKED -> error("too_many_attempts")
+                TvPairingWindow.Result.ACCEPTED -> null
+            }
+        }
+
+        /**
+         * The phone proved it knows the invitation; the TV user must still accept it before a
+         * token exists. Runs outside the server lock so other requests are not blocked meanwhile.
+         */
+        private fun confirmedToken(msg: JSONObject): JSONObject {
+            val device = TvTokens.cleanDevice(msg.optString("device"))
+            val confirm = confirmPairing ?: return error("refused")
+            val latch = java.util.concurrent.CountDownLatch(1)
+            val accepted = java.util.concurrent.atomic.AtomicBoolean(false)
+            val answered = java.util.concurrent.atomic.AtomicBoolean(false)
+            main.post {
+                confirm(device) { yes ->
+                    if (answered.compareAndSet(false, true)) {
+                        accepted.set(yes)
+                        latch.countDown()
+                    }
+                }
+            }
+            val inTime = latch.await(CONFIRM_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            answered.set(true) // a late answer is ignored
+            if (!inTime || !accepted.get()) return error("refused")
+            return synchronized(this) { issueToken(msg) }
         }
 
         private fun issueToken(msg: JSONObject): JSONObject {
