@@ -8,4 +8,10 @@
     <string name="tv_pair_code_failed">Code incorrect or expired. Reopen pairing on the TV.</string>
     <string name="tv_pair_display_code">Pairing code: %1$s</string>
     <string name="tv_pair_display_address">TV address: %1$s</string>
+    <string name="tv_link_paired_notice">Phone paired: %1$s. Forget it in Settings → Phone link if this was not you.</string>
+    <string name="tv_pair_confirm_on_tv">Accept the pairing on the TV…</string>
+    <string name="tv_pair_confirm_title">Pair this phone?</string>
+    <string name="tv_pair_confirm_message">%1$s wants to control Appteka TV. Accept only if it is your phone.</string>
+    <string name="tv_pair_confirm_accept">Accept</string>
+    <string name="tv_pair_confirm_refuse">Refuse</string>
 </resources>

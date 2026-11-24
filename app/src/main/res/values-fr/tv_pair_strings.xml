@@ -8,4 +8,10 @@
     <string name="tv_pair_code_failed">Code incorrect ou expiré. Rouvre l’association sur la TV.</string>
     <string name="tv_pair_display_code">Code d’association : %1$s</string>
     <string name="tv_pair_display_address">Adresse de la TV : %1$s</string>
+    <string name="tv_link_paired_notice">Téléphone associé : %1$s. Si ce n’est pas toi, oublie-le dans Réglages → Liaison portable.</string>
+    <string name="tv_pair_confirm_on_tv">Accepte l’association sur la TV…</string>
+    <string name="tv_pair_confirm_title">Associer ce téléphone ?</string>
+    <string name="tv_pair_confirm_message">%1$s veut piloter Appteka TV. N’accepte que si c’est ton téléphone.</string>
+    <string name="tv_pair_confirm_accept">Accepter</string>
+    <string name="tv_pair_confirm_refuse">Refuser</string>
 </resources>

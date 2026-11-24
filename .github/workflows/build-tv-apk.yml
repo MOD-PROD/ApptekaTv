@@ -2,7 +2,7 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/03-installer-sur-tv ]
+    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/01-durcissement, atv/03-installer-sur-tv ]
   workflow_dispatch:
     inputs:
       publish:
