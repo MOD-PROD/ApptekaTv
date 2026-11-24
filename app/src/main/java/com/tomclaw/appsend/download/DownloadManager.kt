@@ -240,15 +240,15 @@ class DownloadManagerImpl(
                 // Parse Content-Range: "bytes 1000-9999/10000"
                 connection.getHeaderField("Content-Range")
                     ?.substringAfter("/")?.toLongOrNull()
-                    ?: (startByte + contentLength)
+                    ?: (if (contentLength > 0) startByte + contentLength else -1L)
             } else {
                 contentLength
             }
             
-            if (total <= 0) {
-                errorCallback(IOException("ContentLength is not defined"))
-                return DownloadResult.ERROR
-            }
+            // ATV (vraie TV, 24/11) : sur la MIBOX4 (Android 9) le serveur répondait sans
+            // Content-Length (« no_length ») : on télécharge quand même, sans pourcentage ;
+            // la somme SHA-1 vérifie ensuite le fichier.
+            val knownTotal = total > 0
 
             // Open for writing or appending
             output = if (isResumable && startByte > 0) {
@@ -259,7 +259,7 @@ class DownloadManagerImpl(
 
             var cache: Int
             var read = startByte
-            var percent = (100 * read / total).toInt()
+            var percent = if (knownTotal) (100 * read / total).toInt() else 0
             var progressUpdateTime = 0L
             val buffer = ByteArray(BUFFER_SIZE)
             
@@ -272,8 +272,8 @@ class DownloadManagerImpl(
                 output.write(buffer, 0, cache)
                 output.flush()
                 read += cache.toLong()
-                val p = (100 * read / total).toInt()
-                if (p > percent) {
+                val p = if (knownTotal) (100 * read / total).toInt() else 0
+                if (knownTotal && p > percent) {
                     if (System.currentTimeMillis() > progressUpdateTime + 300) {
                         progressCallback(p)
                         progressUpdateTime = System.currentTimeMillis()
@@ -284,7 +284,7 @@ class DownloadManagerImpl(
             // A stream can end early without raising anything, and committing
             // then would rename a truncated file to .apk — from that point the
             // app skips the download and the installer fails to parse it
-            if (read < total) {
+            if (knownTotal && read < total) {
                 errorCallback(IOException("Incomplete download: $read of $total bytes"))
                 return DownloadResult.ERROR
             }
@@ -345,6 +345,8 @@ class DownloadManagerImpl(
                 // client versions apart (e.g. redirect-capable ones) instead
                 // of the platform default Dalvik/... string
                 setRequestProperty("User-Agent", userAgentProvider.getUserAgent())
+                // ATV: no transparent gzip, which hides the length and breaks Range resume.
+                setRequestProperty("Accept-Encoding", "identity")
                 connectTimeout = TimeUnit.SECONDS.toMillis(30).toInt()
                 // Without it a stalled socket blocks in read() forever and burns
                 // the foreground service time budget until Android kills the app
