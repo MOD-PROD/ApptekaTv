@@ -1312,6 +1312,9 @@ window.onPaired = function (json) {
     const o = typeof json === 'string' ? JSON.parse(json) : json;
     PAIR_MODAL.classList.add('hidden');
     STATUS.textContent = `Portable associé : ${o.device}`;
+    // ATV (vraie TV, 24/11) : la liste « Appareils associés » restait sur « — » tant que les
+    // réglages n'étaient pas rouverts ; on la redessine dès que l'association est acceptée.
+    if (!SETTINGS.classList.contains('hidden')) renderSettings();
 };
 // Un portable associé envoie une app : la fiche s'ouvre (et l'installation démarre si demandé)
 window.onRemoteOpen = function (json) {

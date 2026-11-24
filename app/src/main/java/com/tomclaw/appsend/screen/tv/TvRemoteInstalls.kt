@@ -83,7 +83,11 @@ class TvRemoteInstalls(
         val installed = packageName != null && installedVersion(packageName) >= entry.versionCode &&
             (entry.initialVersion < entry.versionCode ||
                 entry.sawInstall && entry.install == InstallStatus.Idle)
-        return TvRemoteState.from(entry.download, entry.install, installed, entry.sawInstall, entry.failure)
+        // ATV: the phone is told why the TV could not download (storage, cleartext, http_403...).
+        val failure = entry.failure ?: if (entry.download == com.tomclaw.appsend.download.ERROR && !entry.sawInstall) {
+            downloadManager.failure(appId)?.let { "${TvRemoteState.REASON_DOWNLOAD}_$it" }
+        } else null
+        return TvRemoteState.from(entry.download, entry.install, installed, entry.sawInstall, failure)
     }
 
     @Synchronized

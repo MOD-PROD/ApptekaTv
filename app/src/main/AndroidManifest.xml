@@ -216,6 +216,7 @@
         <activity android:name=".screen.agreement.AgreementActivity" />
         <activity android:name=".screen.about.AboutActivity" />
         <activity android:name=".screen.installed.InstalledActivity" />
+        <activity android:name=".target.TvContentActivity" />
         <activity android:name=".screen.distro.DistroActivity" />
         <activity android:name=".screen.subscriptions.SubscriptionsActivity" />
         <activity android:name=".screen.feed.FeedActivity" />

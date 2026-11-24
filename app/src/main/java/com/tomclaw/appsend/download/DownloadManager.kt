@@ -42,6 +42,9 @@ interface DownloadManager {
 
     fun cancel(appId: String)
 
+    /** ATV: short code of the last download failure (storage, cleartext, http_403...), or null. */
+    fun failure(appId: String): String? = null
+
 }
 
 
@@ -58,6 +61,9 @@ class DownloadManagerImpl(
     private val relays = ConcurrentHashMap<String, BehaviorRelay<Int>>()
     private val downloads = ConcurrentHashMap<String, Future<*>>()
     private val fileNames = ConcurrentHashMap<String, String>()
+    private val failures = ConcurrentHashMap<String, String>()
+
+    override fun failure(appId: String): String? = failures[appId]
 
     /**
      * Resolved through putIfAbsent so a status subscriber and a starting download
@@ -109,6 +115,7 @@ class DownloadManagerImpl(
             return fileName
         }
 
+        failures.remove(appId)
         relay.accept(AWAIT)
         fileNames[appId] = fileName
         downloads[appId] = executor.submit {
@@ -121,7 +128,8 @@ class DownloadManagerImpl(
                     progressCallback = { percent ->
                         relay.accept(percent)
                     },
-                    errorCallback = {
+                    errorCallback = { error ->
+                        failures[appId] = failureCode(error)
                         relay.accept(ERROR)
                     },
                 )
@@ -132,6 +140,7 @@ class DownloadManagerImpl(
                             fileNames.remove(appId)
                             relay.accept(COMPLETED)
                         } else {
+                            failures[appId] = "commit"
                             relay.accept(ERROR)
                         }
                     }
@@ -148,6 +157,7 @@ class DownloadManagerImpl(
                 // Escaping here would leave the relay without a terminal state,
                 // and the foreground service would keep running until Android kills it
                 logDebug("[download] Unexpected failure while downloading\n$ex")
+                failures[appId] = failureCode(ex)
                 relay.accept(ERROR)
             } finally {
                 downloads.remove(appId)
@@ -313,7 +323,7 @@ class DownloadManagerImpl(
         downloadedBytes: Long,
         proxy: Proxy?,
     ): HttpURLConnection {
-        var currentUrl = url
+        var currentUrl = upgradeCleartext(url)
         var redirects = 0
         while (true) {
             val httpUrl = currentUrl.toHttpUrlOrNull()
@@ -361,8 +371,8 @@ class DownloadManagerImpl(
             if (location == null) {
                 throw IOException("Redirect $code without Location header")
             }
-            currentUrl = httpUrl.resolve(location)?.toString()
-                ?: throw IOException("Invalid redirect location: $location")
+            currentUrl = upgradeCleartext(httpUrl.resolve(location)?.toString()
+                ?: throw IOException("Invalid redirect location: $location"))
         }
     }
 
@@ -387,6 +397,43 @@ class DownloadManagerImpl(
         return true
     }
 
+}
+
+/**
+ * ATV: Android 9+ refuses plain HTTP for this app (no cleartext allowed), which made every
+ * download fail on the Xiaomi MIBOX4 when a link was http://. Ask for the same file over HTTPS.
+ */
+internal fun upgradeCleartext(url: String): String {
+    if (!url.startsWith("http://", ignoreCase = true)) return url
+    val host = url.toHttpUrlOrNull()?.host ?: return url
+    val permitted = try {
+        android.security.NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted(host)
+    } catch (_: Throwable) {
+        false
+    }
+    return if (permitted) url else "https://" + url.substring("http://".length)
+}
+
+/** ATV: short failure code shown on the TV and sent to the phone, so a real-TV test tells why. */
+internal fun failureCode(error: Throwable): String {
+    val message = error.message.orEmpty()
+    return when {
+        message.startsWith("HTTP error: ") -> "http_" + message.removePrefix("HTTP error: ").take(3)
+        message.startsWith("Incomplete download") -> "incomplete"
+        message.startsWith("Checksum mismatch") -> "checksum"
+        message.startsWith("ContentLength") -> "no_length"
+        message.contains("CLEARTEXT", ignoreCase = true) -> "cleartext"
+        message.contains("EACCES") || message.contains("EROFS") || error is SecurityException -> "storage"
+        message.contains("ENOSPC") -> "no_space"
+        error is java.io.FileNotFoundException -> "storage"
+        error is javax.net.ssl.SSLException -> "tls"
+        error is java.net.UnknownHostException -> "dns"
+        error is java.net.SocketTimeoutException -> "timeout"
+        error is java.net.ConnectException -> "connect"
+        error is IllegalArgumentException -> "bad_url"
+        error is IOException -> "network"
+        else -> "error"
+    }
 }
 
 const val GET = "GET"

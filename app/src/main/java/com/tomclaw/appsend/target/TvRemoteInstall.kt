@@ -147,7 +147,11 @@ class TvRemoteInstall(
         TvRemoteState.FAILED -> when (state.reason) {
             TvRemoteState.REASON_INFO -> activity.getString(R.string.tv_install_failed_info)
             TvRemoteState.REASON_DOWNLOAD -> activity.getString(R.string.tv_install_failed_download)
-            else -> activity.getString(R.string.tv_install_failed_install)
+            else -> if (state.reason.startsWith(TvRemoteState.REASON_DOWNLOAD + "_")) {
+                // ATV: the TV says why (storage, cleartext, http_403...), shown for the real-TV tests.
+                activity.getString(R.string.tv_install_failed_download) + " (" +
+                    state.reason.removePrefix(TvRemoteState.REASON_DOWNLOAD + "_") + ")"
+            } else activity.getString(R.string.tv_install_failed_install)
         }
         else -> activity.getString(R.string.tv_install_lost)
     }

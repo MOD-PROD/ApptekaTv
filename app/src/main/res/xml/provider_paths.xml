@@ -6,6 +6,13 @@
     <external-path
         name="downloads_appteka"
         path="Download/Appteka/" />
+    <!-- ATV: APKs downloaded on a TV stay in the app's own folders (no storage permission). -->
+    <external-files-path
+        name="tv_downloads"
+        path="Download/Appteka/" />
+    <files-path
+        name="tv_downloads_internal"
+        path="Download/Appteka/" />
     <cache-path
         name="apk_cache"
         path="apk_cache/" />

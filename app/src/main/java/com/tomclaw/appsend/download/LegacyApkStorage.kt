@@ -6,6 +6,7 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
+import com.tomclaw.appsend.util.isTvDevice
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -21,11 +22,21 @@ class LegacyApkStorage(
     private val context: Context
 ) : ApkStorage {
 
+    /**
+     * ATV: on an Android 9 TV box (Xiaomi MIBOX4) the public Download folder needs the storage
+     * permission, which a remote install from the phone never got: every download failed.
+     * A TV keeps its APKs in the app's own external folder, which needs no permission.
+     */
+    private val privateStorage: Boolean by lazy { context.isTvDevice() }
+
     private val appsDir: File by lazy {
-        File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            APPTEKA_DIR
-        ).apply { mkdirs() }
+        val base = if (privateStorage) {
+            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                ?: File(context.filesDir, Environment.DIRECTORY_DOWNLOADS)
+        } else {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        }
+        File(base, APPTEKA_DIR).apply { mkdirs() }
     }
 
     override fun openWrite(fileName: String): OutputStream {
@@ -172,7 +183,7 @@ class LegacyApkStorage(
         return if (file.exists()) file.absolutePath else null
     }
 
-    override fun isPermissionRequired(): Boolean = true
+    override fun isPermissionRequired(): Boolean = !privateStorage
 
     private fun getApkFile(fileName: String): File {
         return File(appsDir, "$fileName.$APK_EXTENSION")

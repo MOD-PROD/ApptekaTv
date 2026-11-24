@@ -151,6 +151,9 @@ object TvLink {
 
         /** ATV-03 : progression d'une installation demandée (appelé sur le thread de la liaison). */
         fun status(appId: String): JSONObject
+
+        /** ATV : contenu de la TV (applis installées + mémoire) pour le téléphone en mode 📺. */
+        fun content(): JSONObject = JSONObject().put("apps", org.json.JSONArray())
     }
 
     class Server(private val context: Context, private val host: Host) {
@@ -384,7 +387,8 @@ object TvLink {
                     if (!appId.matches(Regex("[a-zA-Z0-9_-]{1,64}"))) return error("bad_request")
                     ok().put("status", host.status(appId))
                 }
-                "list_apps", "launch", "uninstall", "account_link" -> error("not_implemented")
+                "list_apps" -> ok().put("content", host.content())
+                "launch", "uninstall", "account_link" -> error("not_implemented")
                 else -> error("unknown")
             }
         }

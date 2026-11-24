@@ -274,6 +274,9 @@ class TvWebActivity : AppCompatActivity() {
             }
 
             override fun status(appId: String): JSONObject = remoteInstalls.status(appId).toJson()
+
+            // ATV: the phone in 📺 mode lists the TV's apps and free memory.
+            override fun content(): JSONObject = TvContent.build(this@TvWebActivity)
         })
         server.confirmPairing = ::confirmPairing // ATV-01 durcissement : accord explicite sur la TV
         runCatching { server.start() }.onFailure { Log.w(TAG, "TV link unavailable", it) }
@@ -645,6 +648,7 @@ class TvWebActivity : AppCompatActivity() {
                         "installedVersionCode" to installedVersionCode,
                         "installedVersionName" to installedVersionName(packageName),
                         "download" to download,
+                        "downloadError" to downloadManager.failure(appId), // ATV: why it failed
                         "install" to installStateName(install),
                         "installPercent" to (install as? InstallStatus.Writing)?.percent,
                         "launchable" to (packageManager.getLaunchIntentForPackage(packageName) != null),

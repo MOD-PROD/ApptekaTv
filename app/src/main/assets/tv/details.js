@@ -403,7 +403,7 @@
             if (installed && s.installedVersionCode === d.versionCode) {
                 noteText = noteText || `Installée (v${esc(s.installedVersionName || d.version)})`;
             }
-            if (dl === DL_ERROR) noteText = 'Le téléchargement a échoué.';
+            if (dl === DL_ERROR) noteText = 'Le téléchargement a échoué.' + (s.downloadError ? ` (${esc(s.downloadError)})` : '');
         }
         if (risky && confirmRisk && !downloading && !installing) {
             noteText = d.security.verdict === 'malware'
