@@ -19,7 +19,7 @@ class UserAgentProviderImpl(
             Locale.ENGLISH,
             "Appteka/%s.%d (%s; %s; sdk:%d; %s; %s-%s)",
             appInfoProvider.getVersionName(),
-            appInfoProvider.getVersionCode(),
+            STORE_CLIENT_VERSION_CODE, // ATV: see Config
             Build.MANUFACTURER,
             Build.MODEL,
             Build.VERSION.SDK_INT,
