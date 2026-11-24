@@ -734,5 +734,14 @@
         onError(key) { if (author && author.key === key && author.apps === undefined) { author.apps = null; renderAuthor(); } },
     };
 
-    window.TvDetails = { open, close, isOpen, back, handleKey };
+    // Retour (Gonzo 24/11) : tout fermer d'un coup pour revenir à l'accueil
+    function closeAll() {
+        let any = false;
+        if (!viewer.classList.contains('hidden')) { closeViewer(); any = true; }
+        if (authorOpen()) { closeAuthor(false); any = true; }
+        if (isOpen()) { close(); any = true; }
+        return any;
+    }
+
+    window.TvDetails = { open, close, isOpen, back, handleKey, closeAll };
 })();

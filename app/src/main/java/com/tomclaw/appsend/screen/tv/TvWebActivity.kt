@@ -1085,6 +1085,8 @@ class TvWebActivity : AppCompatActivity() {
         return true
     }
 
+    private var lastBackAt = 0L
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         // La page gère d'abord Retour (fermer la fiche, sortir de la saisie…)
@@ -1092,8 +1094,14 @@ class TvWebActivity : AppCompatActivity() {
             "(window.onTvBack && window.onTvBack()) ? 'yes' : 'no'"
         ) { result ->
             if (result?.contains("yes") != true) {
-                @Suppress("DEPRECATION")
-                super.onBackPressed()
+                // Gonzo 24/11 : sur l'accueil, il faut appuyer deux fois sur Retour pour quitter.
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - lastBackAt < EXIT_WINDOW_MS) {
+                    finish()
+                } else {
+                    lastBackAt = now
+                    toast(getString(R.string.tv_press_back_again))
+                }
             }
         }
     }
@@ -1123,6 +1131,7 @@ class TvWebActivity : AppCompatActivity() {
         private const val AI_POLL_INTERVAL_MS = 4000L
         private const val AI_POLL_TIMEOUT_MS = 3 * 60 * 1000L
         private const val INSTALL_RETRY_COUNT = 5
+        private const val EXIT_WINDOW_MS = 2000L
         private const val INSTALL_RETRY_DELAY_MS = 700L
 
         fun createIntent(context: Context): Intent {

@@ -23,4 +23,5 @@
     <string name="tv_reconnect_forgotten">%1$s no longer knows this phone: pair it again</string>
     <string name="tv_reconnect_retry">Retry %1$s</string>
     <string name="tv_reconnect_unreachable">%1$s is unreachable. Keep Appteka TV open on the TV, on the same Wi-Fi.</string>
+    <string name="tv_press_back_again">Press Back again to exit</string>
 </resources>

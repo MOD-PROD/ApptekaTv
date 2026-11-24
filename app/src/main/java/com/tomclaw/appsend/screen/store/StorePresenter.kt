@@ -38,6 +38,9 @@ interface StorePresenter : ItemListener {
 
     fun scrollToTop()
 
+    /** ATV : en mode 📺 la catégorie « TV » est choisie par défaut, « All categories » en 📱. */
+    fun setTvMode(tv: Boolean)
+
     interface StoreRouter {
 
         fun openAppScreen(appId: String, title: String)
@@ -77,6 +80,11 @@ class StorePresenterImpl(
     private var contentFilter: List<ContentFlag> =
         state?.getParcelableArrayListCompat(KEY_CONTENT_FILTER, ContentFlag::class.java)
             .orEmpty()
+
+    /** ATV : dernier mode appliqué (null = jamais) et catégorie TV choisie automatiquement. */
+    private var tvMode: Boolean? = state?.takeIf { it.containsKey(KEY_TV_MODE) }?.getBoolean(KEY_TV_MODE)
+    private var tvModePending: Boolean = state?.getBoolean(KEY_TV_PENDING) == true
+    private var autoTvCategory: Boolean = state?.getBoolean(KEY_AUTO_TV) == true
 
     private var dropdownItems: List<CategoryDropdownItem> =
         state?.getParcelableArrayListCompat(KEY_DROPDOWN_ITEMS, CategoryDropdownItem::class.java)
@@ -142,6 +150,9 @@ class StorePresenterImpl(
         putParcelableArrayList(KEY_APPS, items?.let { ArrayList(items.orEmpty()) })
         putBoolean(KEY_ERROR, isError)
         putParcelable(KEY_CATEGORY_ID, category)
+        tvMode?.let { putBoolean(KEY_TV_MODE, it) }
+        putBoolean(KEY_TV_PENDING, tvModePending)
+        putBoolean(KEY_AUTO_TV, autoTvCategory)
         putParcelableArrayList(KEY_DROPDOWN_ITEMS, ArrayList(dropdownItems))
         putBoolean(KEY_OPEN_SOURCE, openSource)
         putBoolean(KEY_EXCLUSIVE, exclusive)
@@ -254,6 +265,7 @@ class StorePresenterImpl(
         dropdownItems = dropdownItemConverter.convert(categoryItems)
 
         view?.showCategories(dropdownItems)
+        if (tvModePending) applyTvMode()
         selectedCategoryItem()?.let { view?.setSelectedCategory(it) }
 
         if (isError) {
@@ -267,8 +279,40 @@ class StorePresenterImpl(
     private fun selectedCategoryItem(): CategoryDropdownItem? =
         dropdownItems.find { it.id == (category?.id ?: 0) } ?: dropdownItems.firstOrNull()
 
+    override fun setTvMode(tv: Boolean) {
+        if (tvMode == tv) return
+        tvMode = tv
+        tvModePending = true
+        if (dropdownItems.isEmpty()) return // applied once the categories are loaded
+        val before = category?.id ?: 0
+        applyTvMode()
+        if ((category?.id ?: 0) != before) {
+            selectedCategoryItem()?.let { view?.setSelectedCategory(it) }
+            view?.scrollToTop()
+            invalidateApps()
+        }
+    }
+
+    private fun applyTvMode() {
+        tvModePending = false
+        if (tvMode == true) {
+            val tvItem = dropdownItems.firstOrNull { it.id != 0 && it.title.trim().equals("TV", ignoreCase = true) }
+                ?: dropdownItems.firstOrNull { it.id != 0 && Regex("\\bTV\\b", RegexOption.IGNORE_CASE).containsMatchIn(it.title) }
+                ?: return
+            if (category == null || autoTvCategory) {
+                category = CategoryItem(id = tvItem.id, title = tvItem.title, icon = tvItem.iconSvg ?: "")
+                autoTvCategory = true
+            }
+        } else if (autoTvCategory) {
+            // Back on the phone: the TV category was ours, not the user's choice.
+            category = null
+            autoTvCategory = false
+        }
+    }
+
     private fun onCategorySelected(categoryId: Int) {
         if (categoryId == (category?.id ?: 0)) return
+        autoTvCategory = false
         val item = dropdownItems.find { it.id == categoryId } ?: return
 
         category = if (categoryId == 0) {
@@ -306,6 +350,9 @@ private const val KEY_APPS = "apps"
 private const val KEY_CONTENT_FILTER = "content_filter"
 private const val KEY_ERROR = "error"
 private const val KEY_CATEGORY_ID = "category"
+private const val KEY_TV_MODE = "tv_mode"
+private const val KEY_TV_PENDING = "tv_mode_pending"
+private const val KEY_AUTO_TV = "auto_tv_category"
 private const val KEY_DROPDOWN_ITEMS = "dropdown_items"
 private const val KEY_OPEN_SOURCE = "open_source"
 private const val KEY_EXCLUSIVE = "exclusive"

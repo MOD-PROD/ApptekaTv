@@ -97,6 +97,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     }
 
     private fun renderTarget() {
+        presenter.setTvMode(connection != null) // ATV: TV category by default in 📺 mode
         targetButton?.apply {
             setImageResource(if (connection == null) R.drawable.ic_target_mobile else R.drawable.ic_target_tv)
             contentDescription = connection?.let { "TV connectée : ${it.name}. Revenir au téléphone." }

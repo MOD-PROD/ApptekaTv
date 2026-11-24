@@ -62,6 +62,9 @@ interface DetailsPresenter : ItemListener {
 
     fun invalidateDetails()
 
+    /** ATV (mode 📺) : relit la version installée sur la TV et met à jour les boutons. */
+    fun refreshTvState()
+
     interface DetailsRouter {
 
         fun leaveScreen()
@@ -134,6 +137,15 @@ interface DetailsPresenter : ItemListener {
         // ATV-03: true when the order was sent to the TV selected with the 📱/📺 icon.
         fun installOnTv(appId: String, label: String, abi: List<String>?): Boolean = false
 
+        /** ATV : demande la version installée sur la TV ([callback] : version ou NOT_INSTALLED). false hors mode 📺. */
+        fun tvAppState(packageName: String, callback: (Int) -> Unit): Boolean = false
+
+        /** ATV : « Ouvrir » sur la TV. false hors mode 📺. */
+        fun launchOnTv(packageName: String): Boolean = false
+
+        /** ATV : « Désinstaller » sur la TV (confirmation sur la TV). false hors mode 📺. */
+        fun removeOnTv(packageName: String): Boolean = false
+
     }
 
 }
@@ -172,6 +184,10 @@ class DetailsPresenterImpl(
     private var translationState: Int = state?.getInt(KEY_TRANSLATION_STATE) ?: TRANSLATION_ORIGINAL
 
     private var aiReview: AIReview? = null
+
+    /** ATV : vrai en mode 📺 ; les boutons reflètent alors la version installée sur la TV. */
+    private var tvMode = false
+    private var tvVersionCode: Int = NOT_INSTALLED
 
     private var installRetryDisposable: Disposable? = null
     private var installRetryAttempts: Int = 0
@@ -320,6 +336,16 @@ class DetailsPresenterImpl(
 
     override fun attachRouter(router: DetailsPresenter.DetailsRouter) {
         this.router = router
+        refreshTvState()
+    }
+
+    override fun refreshTvState() {
+        val packageName = details?.info?.packageName ?: return
+        tvMode = router?.tvAppState(packageName) { code ->
+            if (details?.info?.packageName != packageName) return@tvAppState
+            tvVersionCode = code
+            bindDetails()
+        } == true
     }
 
     override fun detachRouter() {
@@ -368,6 +394,7 @@ class DetailsPresenterImpl(
             }
         }
         dispatchPackageStatus()
+        refreshTvState()
         ensureAIPolling()
     }
 
@@ -411,8 +438,9 @@ class DetailsPresenterImpl(
         items.clear()
         items += detailsConverter.convert(
             details,
-            installStatus.asDownloadState(downloadState),
-            installedVersionCode,
+            // ATV (mode 📺) : état de l'appli sur la TV, pas sur le téléphone.
+            if (tvMode) IDLE else installStatus.asDownloadState(downloadState),
+            if (tvMode) tvVersionCode else installedVersionCode,
             moderation,
             translationData,
             translationState
@@ -832,11 +860,13 @@ class DetailsPresenterImpl(
 
     override fun onLaunchClick(packageName: String) {
         bananalytics.leaveBreadcrumb("Launch app: $packageName", BreadcrumbCategory.USER_ACTION)
+        if (tvMode && router?.launchOnTv(packageName) == true) return // ATV
         router?.launchApp(packageName)
     }
 
     override fun onRemoveClick(packageName: String) {
         bananalytics.leaveBreadcrumb("Remove app: $packageName", BreadcrumbCategory.USER_ACTION)
+        if (tvMode && router?.removeOnTv(packageName) == true) return // ATV
         router?.removeApp(packageName)
     }
 

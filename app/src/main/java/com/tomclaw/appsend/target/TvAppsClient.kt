@@ -25,6 +25,10 @@ class TvAppsClient(private val context: Context, val connection: TvLinkSender.Co
     fun action(type: String, packageName: String): JSONObject =
         checked(TvLink.request(connection.address, order(type).put("package", packageName)))
 
+    /** Version installée sur la TV, ou -1 si l'appli n'y est pas. */
+    fun installedVersion(packageName: String): Long =
+        action("app_state", packageName).optLong("code", -1L)
+
     fun icon(packageName: String): ByteArray =
         Base64.decode(action("app_icon", packageName).getString("png"), Base64.DEFAULT)
 

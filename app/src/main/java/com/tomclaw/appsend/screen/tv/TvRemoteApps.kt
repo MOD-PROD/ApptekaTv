@@ -10,6 +10,7 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.core.graphics.createBitmap
 import com.tomclaw.appsend.util.getPackageInfoCompat
+import com.tomclaw.appsend.util.versionCodeCompat
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -26,6 +27,11 @@ class TvRemoteApps(private val activity: Activity) {
     private val pm = activity.packageManager
 
     fun action(type: String, packageName: String): JSONObject {
+        // ATV (fiche en mode 📺) : version installée sur la TV, -1 si absente.
+        if (type == "app_state") {
+            val code = runCatching { pm.getPackageInfoCompat(packageName, 0).versionCodeCompat() }.getOrDefault(-1L)
+            return ok().put("code", code)
+        }
         if (!installed(packageName)) return error("not_found")
         return when (type) {
             "launch" -> {

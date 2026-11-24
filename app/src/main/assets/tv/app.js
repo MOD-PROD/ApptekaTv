@@ -1350,30 +1350,25 @@ window.onRemoteOpen = function (json) {
     STATUS.textContent = o.install ? `Installation demandée par ${o.device}` : `Envoyé par ${o.device}`;
 };
 
+// Retour (Gonzo 24/11) : depuis n'importe quel écran, retour direct à l'accueil.
+// Déjà sur l'accueil : renvoie false et Android gère le double appui pour quitter.
 window.onTvBack = function () {
-    if (!PAIR_MODAL.classList.contains('hidden')) { PAIR_MODAL.classList.add('hidden'); return true; }
-    if (window.TvDetails && window.TvDetails.back()) return true;
-    if (endMove()) return true;
-    if (!SETTINGS.classList.contains('hidden')) {
-        const a = document.activeElement;
-        if (a && a.tagName === 'INPUT') { a.blur(); const b = SETTINGS_PANEL.querySelector('.btn'); if (b) b.focus(); return true; }
-        closeSettings();
-        return true;
-    }
-    if (!STORE_EDITOR.classList.contains('hidden')) { closeStoreEditor(); return true; }
-    if (!PICKER.classList.contains('hidden')) { closePicker(); return true; }
+    let moved = false;
+    if (!PAIR_MODAL.classList.contains('hidden')) { PAIR_MODAL.classList.add('hidden'); moved = true; }
+    if (window.TvDetails && window.TvDetails.closeAll && window.TvDetails.closeAll()) moved = true;
+    if (endMove()) moved = true;
+    if (!SETTINGS.classList.contains('hidden')) { closeSettings(); moved = true; }
+    if (!STORE_EDITOR.classList.contains('hidden')) { closeStoreEditor(); moved = true; }
+    if (!PICKER.classList.contains('hidden')) { closePicker(); moved = true; }
+    if (closeSearch()) moved = true;
     const focused = document.activeElement;
-    if (focused === SEARCH_INPUT) { focusSearchBox(); return true; }
-    if (closeSearch()) {
-        const c = firstCard();
-        c ? focusCard(c) : focusSearchBox();
-        return true;
-    }
-    if (HEADER_ITEMS.includes(focused)) {
-        const c = firstCard();
-        if (c) { focusCard(c); return true; }
-    }
-    return false;
+    if (focused === SEARCH_INPUT) { SEARCH_INPUT.blur(); moved = true; }
+    const c = firstCard();
+    const atHome = !focused || focused === document.body || focused === c || HEADER_ITEMS.includes(focused);
+    if (!moved && atHome) return false;
+    ROWS.scrollTop = 0;
+    c ? focusCard(c) : focusSearchBox();
+    return true;
 };
 
 // ------------------------------------------------------------ appels Android

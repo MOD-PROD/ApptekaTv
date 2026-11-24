@@ -218,6 +218,7 @@ class DetailsActivity : AppCompatActivity(), DetailsPresenter.DetailsRouter {
     }
 
     override fun onDestroy() {
+        tvHandler.removeCallbacksAndMessages(null)
         if (::presenter.isInitialized) {
             presenter.detachView()
         }
@@ -454,7 +455,57 @@ class DetailsActivity : AppCompatActivity(), DetailsPresenter.DetailsRouter {
     // ATV-03: Installer sur la TV
     override fun installOnTv(appId: String, label: String, abi: List<String>?): Boolean {
         val tv = com.tomclaw.appsend.target.TvTarget.current(this) ?: return false
-        com.tomclaw.appsend.target.TvRemoteInstall(this, tv).start(appId, label, abi)
+        com.tomclaw.appsend.target.TvRemoteInstall(this, tv).start(appId, label, abi) {
+            presenter.refreshTvState()
+        }
+        return true
+    }
+
+    // ATV: in 📺 mode the Open / Remove buttons follow and act on the TV.
+    override fun tvAppState(packageName: String, callback: (Int) -> Unit): Boolean {
+        val tv = com.tomclaw.appsend.target.TvAppsClient.current(this) ?: return false
+        Thread {
+            val code = runCatching { tv.installedVersion(packageName) }.getOrDefault(-1L)
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    callback(if (code < 0) com.tomclaw.appsend.util.NOT_INSTALLED else code.toInt())
+                }
+            }
+        }.start()
+        return true
+    }
+
+    override fun launchOnTv(packageName: String): Boolean =
+        tvOrder("launch", packageName, R.string.tv_opened_on)
+
+    override fun removeOnTv(packageName: String): Boolean =
+        tvOrder("uninstall", packageName, R.string.tv_remove_confirm) {
+            // The removal is confirmed on the TV: the buttons follow a little later.
+            tvHandler.postDelayed({ presenter.refreshTvState() }, 12_000L)
+            tvHandler.postDelayed({ presenter.refreshTvState() }, 30_000L)
+        }
+
+    private val tvHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private fun tvOrder(type: String, packageName: String, success: Int, then: () -> Unit = {}): Boolean {
+        val tv = com.tomclaw.appsend.target.TvAppsClient.current(this) ?: return false
+        Thread {
+            val error = runCatching { tv.action(type, packageName) }.exceptionOrNull()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val code = (error as? com.tomclaw.appsend.target.TvRemoteException)?.code
+                val text = when {
+                    error == null -> getString(success, tv.tvName)
+                    code == null -> getString(R.string.tv_offline, tv.tvName)
+                    code == "unknown" || code == "not_implemented" -> getString(R.string.tv_needs_update, tv.tvName)
+                    code == "unauthorized" -> getString(R.string.tv_unauthorized)
+                    code == "not_launchable" || code == "no_activity" -> getString(R.string.tv_not_launchable, tv.tvName)
+                    else -> getString(R.string.tv_refused, tv.tvName, code)
+                }
+                presenter.showSnackbar(text)
+                if (error == null) then()
+            }
+        }.start()
         return true
     }
 

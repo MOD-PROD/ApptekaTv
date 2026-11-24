@@ -531,7 +531,7 @@ object TvLink {
                 }
                 "list_apps" -> ok().put("content", host.content(msg.optBoolean("system")))
                 // ATV (Installées en mode 📺) : le menu natif agit sur l'appli de la TV.
-                "launch", "uninstall", "app_details", "open_market", "permissions" -> {
+                "launch", "uninstall", "app_details", "open_market", "permissions", "app_state" -> {
                     val packageName = msg.optString("package")
                     if (!validPackage(packageName)) return error("bad_request")
                     host.appAction(type, packageName)

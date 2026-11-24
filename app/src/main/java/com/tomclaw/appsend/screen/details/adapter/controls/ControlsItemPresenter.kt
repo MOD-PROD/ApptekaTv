@@ -16,8 +16,9 @@ class ControlsItemPresenter(
     override fun bindView(view: ControlsItemView, item: ControlsItem, position: Int) {
         view.hideButtons()
         view.enableButtons()
-        // ATV-03: TV target → a single « Installer sur la TV » button (local state is the phone's).
-        if (view.showTvInstallButton()) {
+        // ATV-03: TV target and app missing on the TV → a single « Installer sur la TV » button.
+        // Installed on the TV: the usual Open / Remove (/ Update) buttons, acting on the TV.
+        if (view.showTvInstallButton(installedOnTarget = item.installedVersionCode != NOT_INSTALLED)) {
             view.setOnInstallClickListener { listener.onInstallClick() }
             return
         }
