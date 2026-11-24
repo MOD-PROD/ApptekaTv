@@ -198,13 +198,49 @@ class TvWebActivity : AppCompatActivity() {
                 minOf(size, (resources.displayMetrics.heightPixels * 0.4f).toInt())
             } else size
         }
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
-            .setMessage(getString(R.string.tv_pair_display_address,
-                TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }))
-            .setView(image)
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
+        val hostPort = TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }
+        val dialog = if (BuildConfig.FORCE_TV_SIMULATOR) {
+            // ATV: ATKsimulTv, same phone as Appteka TV: long press on the code or the address
+            // copies it, to paste into "Taper le code" (the QR secret itself is never copied).
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            fun copyable(label: String, value: String, textSize: Float) = android.widget.TextView(this).apply {
+                text = "$label : $value"
+                this.textSize = textSize
+                setPadding(pad, pad / 2, pad, pad / 2)
+                setOnLongClickListener {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    if (clipboard == null) {
+                        toast("Presse-papiers indisponible")
+                    } else {
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+                        toast("$label copié")
+                    }
+                    true
+                }
+            }
+            val content = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding(pad, pad, pad, 0)
+                addView(copyable("Code", pairing.code, 22f))
+                addView(copyable("Adresse", hostPort, 18f))
+                addView(android.widget.TextView(this@TvWebActivity).apply {
+                    text = "Appui long sur le code ou l'adresse pour les copier."
+                    setPadding(pad, 0, pad, pad / 2)
+                })
+                addView(image)
+            }
+            MaterialAlertDialogBuilder(this)
+                .setView(android.widget.ScrollView(this).apply { addView(content) })
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        } else {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
+                .setMessage(getString(R.string.tv_pair_display_address, hostPort))
+                .setView(image)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        }
         val expireDialog = Runnable { dialog.dismiss() }
         dialog.setOnDismissListener {
             handler.removeCallbacks(expireDialog)
