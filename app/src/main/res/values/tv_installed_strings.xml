@@ -19,4 +19,8 @@
     <string name="tv_no_space">Not enough free space on %1$s</string>
     <string name="tv_not_apk">%1$s could not read this APK</string>
     <string name="tv_refused">%1$s refused (%2$s)</string>
+    <string name="tv_reconnecting">Connecting to %1$s…</string>
+    <string name="tv_reconnect_forgotten">%1$s no longer knows this phone: pair it again</string>
+    <string name="tv_reconnect_retry">Retry %1$s</string>
+    <string name="tv_reconnect_unreachable">%1$s is unreachable. Keep Appteka TV open on the TV, on the same Wi-Fi.</string>
 </resources>

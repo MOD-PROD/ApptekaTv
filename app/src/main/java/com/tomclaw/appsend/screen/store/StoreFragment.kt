@@ -11,6 +11,7 @@ import com.tomclaw.appsend.BuildConfig
 import com.tomclaw.appsend.util.isTvDevice
 import com.tomclaw.appsend.tvlink.TvLinkSender
 import com.tomclaw.appsend.target.TvTarget
+import com.tomclaw.appsend.target.TvReconnect
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -112,19 +113,57 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                 TvTarget.select(requireContext(), null)
                 renderTarget()
             } else {
-                MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.tv_pair_title)
-                    .setItems(arrayOf(getString(R.string.tv_pair_scan), getString(R.string.tv_pair_enter))) { _, which ->
-                        if (which == 0) {
-                            pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                                .setOrientationLocked(true).setPrompt(getString(R.string.tv_pair_scan)))
-                        } else if (which == 1) pairingSender().showCodeEntry()
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
+                // ATV: back to the last TV without pairing again, when it still knows this phone.
+                val last = TvTarget.last(requireContext())
+                if (last != null) reconnect(last) else showPairDialog()
             }
         }
         renderTarget()
+    }
+
+    private fun reconnect(last: TvLinkSender.Connection) {
+        val appContext = requireContext().applicationContext
+        android.widget.Toast.makeText(appContext, getString(R.string.tv_reconnecting, last.name), android.widget.Toast.LENGTH_SHORT).show()
+        kotlin.concurrent.thread(name = "tv-reconnect") {
+            val result = TvReconnect.reconnect(appContext, last)
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                when (result) {
+                    is TvReconnect.Result.Connected -> {
+                        TvTarget.select(requireContext(), result.connection)
+                        renderTarget()
+                        android.widget.Toast.makeText(appContext, "Connecté à ${result.connection.name}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    TvReconnect.Result.Forgotten -> {
+                        TvTarget.forget(requireContext())
+                        android.widget.Toast.makeText(appContext, getString(R.string.tv_reconnect_forgotten, last.name), android.widget.Toast.LENGTH_LONG).show()
+                        showPairDialog()
+                    }
+                    TvReconnect.Result.Unreachable -> showPairDialog(retry = last)
+                }
+            }
+        }
+    }
+
+    private fun showPairDialog(retry: TvLinkSender.Connection? = null) {
+        val items = listOfNotNull(
+            retry?.let { getString(R.string.tv_reconnect_retry, it.name) },
+            getString(R.string.tv_pair_scan),
+            getString(R.string.tv_pair_enter),
+        )
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.tv_pair_title)
+            .apply { if (retry != null) setMessage(getString(R.string.tv_reconnect_unreachable, retry.name)) }
+            .setItems(items.toTypedArray()) { _, position ->
+                val which = if (retry != null) position - 1 else position
+                if (which == -1 && retry != null) reconnect(retry)
+                else if (which == 0) {
+                    pairingScanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                        .setOrientationLocked(true).setPrompt(getString(R.string.tv_pair_scan)))
+                } else if (which == 1) pairingSender().showCodeEntry()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     override fun onStart() {
