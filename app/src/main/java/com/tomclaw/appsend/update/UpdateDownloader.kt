@@ -42,8 +42,8 @@ class UpdateDownloader(private val context: Context) {
             val digest = MessageDigest.getInstance("SHA-256")
             var total = 0L
             client.newCall(Request.Builder().url(update.url).build()).execute().use { response ->
-                check(response.isSuccessful)
-                require(response.request.url.isHttps)
+                if (!response.isSuccessful) throw UpdateFailure("http_${response.code}")
+                if (!response.request.url.isHttps) throw UpdateFailure("https")
                 requireNotNull(response.body).byteStream().use { input ->
                     file.outputStream().use { output ->
                         val buffer = ByteArray(65536)
@@ -52,7 +52,7 @@ class UpdateDownloader(private val context: Context) {
                             val n = input.read(buffer)
                             if (n < 0) break
                             total += n
-                            require(total <= update.size)
+                            if (total > update.size) throw UpdateFailure("taille")
                             digest.update(buffer, 0, n)
                             output.write(buffer, 0, n)
                             progress((total * 100 / update.size).toInt())
@@ -60,8 +60,10 @@ class UpdateDownloader(private val context: Context) {
                     }
                 }
             }
-            require(total == update.size)
-            require(digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) } == update.sha256)
+            if (total != update.size) throw UpdateFailure("taille")
+            if (digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) } != update.sha256) {
+                throw UpdateFailure("sha256")
+            }
             verifyPackage(file, update)
             return file
         } catch (e: Exception) {
@@ -73,16 +75,33 @@ class UpdateDownloader(private val context: Context) {
     @Suppress("DEPRECATION")
     private fun verifyPackage(file: File, update: ReleaseUpdate) {
         val pm = context.packageManager
-        val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+        val flags = if (Build.VERSION.SDK_INT >= 28) {
+            PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_SIGNATURES
+        } else PackageManager.GET_SIGNATURES
         val installed = pm.getPackageInfo(context.packageName, flags)
-        val candidate = requireNotNull(pm.getPackageArchiveInfo(file.absolutePath, flags))
-        require(candidate.packageName == context.packageName)
+        val candidate = pm.getPackageArchiveInfo(file.absolutePath, flags)
+            ?: throw UpdateFailure("apk_illisible")
+        if (candidate.packageName != context.packageName) throw UpdateFailure("paquet")
         val oldCode = if (Build.VERSION.SDK_INT >= 28) installed.longVersionCode else installed.versionCode.toLong()
         val newCode = if (Build.VERSION.SDK_INT >= 28) candidate.longVersionCode else candidate.versionCode.toLong()
-        require(newCode == update.versionCode && newCode > oldCode)
-        val oldSignatures = if (Build.VERSION.SDK_INT >= 28) installed.signingInfo?.apkContentsSigners else installed.signatures
-        val newSignatures = if (Build.VERSION.SDK_INT >= 28) candidate.signingInfo?.apkContentsSigners else candidate.signatures
-        require(!oldSignatures.isNullOrEmpty() && !newSignatures.isNullOrEmpty())
-        require(oldSignatures.toSet() == newSignatures.toSet())
+        if (newCode != update.versionCode || newCode <= oldCode) throw UpdateFailure("version")
+        val oldSignatures = signers(installed)
+        val newSignatures = signers(candidate)
+        if (oldSignatures.isEmpty() || newSignatures.isEmpty()) throw UpdateFailure("signature_absente")
+        if (oldSignatures != newSignatures) throw UpdateFailure("signature")
+    }
+
+    /**
+     * ATV (vraie TV, 24/11) : sur Android 9 (Xiaomi MIBOX4), getPackageArchiveInfo ne remplit pas
+     * signingInfo pour un APK non installé : l'OTA échouait toujours à la vérification. On prend
+     * signingInfo quand il existe, sinon les signatures classiques.
+     */
+    @Suppress("DEPRECATION")
+    private fun signers(info: android.content.pm.PackageInfo): Set<android.content.pm.Signature> {
+        val modern = if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else null
+        return (modern?.takeIf { it.isNotEmpty() } ?: info.signatures).orEmpty().toSet()
     }
 }
+
+/** ATV : étape où la mise à jour a échoué, affichée à l'utilisateur pour le diagnostic. */
+class UpdateFailure(val code: String) : Exception(code)

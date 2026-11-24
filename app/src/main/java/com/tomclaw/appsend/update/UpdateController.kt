@@ -76,7 +76,18 @@ class UpdateController(private val activity: Activity) {
                 if (active()) dialog.dismiss()
                 val file = result.getOrNull()
                 if (!active() || cancelled.get()) { file?.delete(); return@runOnUiThread }
-                if (file == null) { message("Téléchargement ou vérification impossible"); return@runOnUiThread }
+                if (file == null) {
+                    // ATV: say at which step it failed (sha256, signature, http_404, réseau…).
+                    val error = result.exceptionOrNull()
+                    val code = (error as? UpdateFailure)?.code ?: when (error) {
+                        is javax.net.ssl.SSLException -> "tls"
+                        is java.net.UnknownHostException -> "dns"
+                        is java.io.IOException -> "réseau"
+                        else -> error?.javaClass?.simpleName ?: "inconnu"
+                    }
+                    message("Téléchargement ou vérification impossible ($code)")
+                    return@runOnUiThread
+                }
                 val uri = runCatching {
                     FileProvider.getUriForFile(activity, activity.packageName + ".provider", file)
                 }.getOrElse { error ->
