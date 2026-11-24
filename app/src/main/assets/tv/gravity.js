@@ -1,6 +1,13 @@
 // Intro visuelle. Les éléments interactifs restent dans leur état d'origine.
-window.playGravitySplash = function () {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !Element.prototype.animate) return;
+// force = true : lancé à la main (gélule du logo).
+// ATV (vraie TV, 24/11) : sur la box le splash ne se lançait pas. Le réglage Android
+// « Supprimer les animations » (ou une échelle d'animation à 0, courante sur les box)
+// donne prefers-reduced-motion: reduce dans la WebView, et l'intro était sautée.
+// Sur la TV, l'intro joue quand même (3 s, n'importe quelle touche la coupe).
+window.playGravitySplash = function (force) {
+    if (!Element.prototype.animate) { console.log('[gravity] Web Animations indisponible'); return; }
+    const tv = !document.documentElement.classList.contains('mobile');
+    if (!force && !tv && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (document.querySelector('.gravity-splash')) return;
 
     const screen = document.querySelector('.safe-area');
@@ -12,7 +19,8 @@ window.playGravitySplash = function () {
                 rect.bottom <= innerHeight && rect.left >= (bounds?.left ?? 0) - 1 &&
                 rect.right <= Math.min(bounds?.right ?? innerWidth, innerWidth) + 1;
         });
-    if (!items.length) return;
+    if (!items.length) { console.log('[gravity] aucun élément visible'); return; }
+    console.log('[gravity] ' + items.length + ' éléments');
 
     const layer = document.createElement('div');
     layer.className = 'gravity-splash';
