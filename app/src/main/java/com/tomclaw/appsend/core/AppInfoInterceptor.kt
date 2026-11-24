@@ -18,7 +18,7 @@ class AppInfoInterceptor(
         val request = chain.request().newBuilder()
             .header(HEADER_APP_PACKAGE, appInfoProvider.getPackageName())
             .header(HEADER_APP_VERSION_NAME, appInfoProvider.getVersionName())
-            .header(HEADER_APP_VERSION_CODE, STORE_CLIENT_VERSION_CODE.toString()) // ATV: see Config
+            .header(HEADER_APP_VERSION_CODE, appInfoProvider.getVersionCode().toString())
             .header(HEADER_APP_SIGNATURE, appInfoProvider.getSignature())
             .header(HEADER_ANDROID_VERSION, appInfoProvider.getAndroidVersion().toString())
             .header(HEADER_ANDROID_RELEASE, appInfoProvider.getAndroidRelease())

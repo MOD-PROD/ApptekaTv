@@ -38,7 +38,7 @@ class HomeInteractorImpl(
 
     override fun loadStatus(): Observable<StatusResponse> {
         return standByApi
-            .getStatus(locale.language, com.tomclaw.appsend.core.STORE_CLIENT_VERSION_CODE.toLong())
+            .getStatus(locale.language, appInfoProvider.getVersionCode())
             .map { it.result }
             .toObservable()
             .subscribeOn(schedulers.io())
