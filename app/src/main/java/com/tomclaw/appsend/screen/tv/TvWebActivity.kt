@@ -192,7 +192,11 @@ class TvWebActivity : AppCompatActivity() {
         val image = ImageView(this).apply {
             setImageBitmap(Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888))
             adjustViewBounds = true
-            maxHeight = size
+            // ATV: on a phone in landscape (ATKsimulTv) a full-size QR pushed the OK /
+            // "Copier l'invitation" buttons off screen; keep it within ~40 % of the height.
+            maxHeight = if (BuildConfig.FORCE_TV_SIMULATOR) {
+                minOf(size, (resources.displayMetrics.heightPixels * 0.4f).toInt())
+            } else size
         }
         val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
