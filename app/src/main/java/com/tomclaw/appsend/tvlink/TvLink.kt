@@ -85,7 +85,10 @@ object TvLink {
         require(host.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}")))
         val octets = host.split('.').map(String::toInt)
         require(octets.all { it in 0..255 })
-        require(octets[0] == 10 || octets[0] == 172 && octets[1] in 16..31 || octets[0] == 192 && octets[1] == 168)
+        // ATV: 127.0.0.1 only reaches this same device (ATKsimulTv beside Appteka TV on one phone
+        // without Wi-Fi); the TLS pin and the code still authenticate the TV.
+        require(octets[0] == 10 || octets[0] == 172 && octets[1] in 16..31 || octets[0] == 192 && octets[1] == 168 ||
+            host == "127.0.0.1")
         require(port in 1..65535)
     }
 
@@ -230,7 +233,10 @@ object TvLink {
 
         @Synchronized
         fun pairingQr(): PairingQr? {
-            val address = localIpv4() ?: return null
+            // ATV: ATKsimulTv falls back to loopback so a phone on mobile data can still pair
+            // with Appteka TV installed on the same phone.
+            val address = localIpv4()
+                ?: (if (com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR) "127.0.0.1" else return null)
             if (port == 0) return null
             val secret = randomHex()
             val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -279,7 +285,8 @@ object TvLink {
         private fun handle(client: java.net.Socket) {
             // ATV-01 durcissement : clients du réseau local IPv4 uniquement, et durée bornée.
             val remote = client.inetAddress
-            if (remote !is Inet4Address || !(remote.isSiteLocalAddress || remote.isLinkLocalAddress)) {
+            val simulatorLoopback = com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR && remote.isLoopbackAddress
+            if (remote !is Inet4Address || !(remote.isSiteLocalAddress || remote.isLinkLocalAddress || simulatorLoopback)) {
                 try {
                     client.close()
                 } catch (_: Exception) {

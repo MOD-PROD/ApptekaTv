@@ -815,7 +815,11 @@ class TvWebActivity : AppCompatActivity() {
 
     inner class TvJsBridge {
         @JavascriptInterface
-        fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test") } ?: "stable") }
+        fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test", "simultv") } ?: "stable") }
+
+        /** ATV: ATKsimulTv (single update channel "simultv"). */
+        @JavascriptInterface
+        fun isSimulator(): Boolean = com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR
 
         @JavascriptInterface
         fun installedUpdateVersion(): String = com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
