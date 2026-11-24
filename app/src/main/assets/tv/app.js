@@ -12,8 +12,10 @@ const BTN_ADD = document.getElementById('btn-add');
 const BTN_SETTINGS = document.getElementById('btn-settings');
 const BTN_EXIT = document.getElementById('btn-exit');
 const BTN_PAIR = document.getElementById('btn-pair');
+// La gélule du logo : bouton « fun » qui relance le splash gravité
+const BTN_FUN = document.getElementById('btn-fun');
 // Le bouton d'association n'existe que sur la TV (le portable n'affiche pas de QR)
-const HEADER_ITEMS = (document.documentElement.classList.contains('mobile') ? [] : [BTN_PAIR])
+const HEADER_ITEMS = [BTN_FUN].concat(document.documentElement.classList.contains('mobile') ? [] : [BTN_PAIR])
     .concat([BTN_SCOPE, SEARCH_BOX, BTN_ADD, BTN_SETTINGS, BTN_EXIT]);
 const PICKER = document.getElementById('picker');
 const PICKER_GRID = document.getElementById('picker-grid');
@@ -1117,6 +1119,7 @@ function updatePairButton() {
 
 function onHeaderEnter(el) {
     if (el === SEARCH_BOX) startEditing();
+    else if (el === BTN_FUN) { if (window.playGravitySplash) window.playGravitySplash(true); }
     else if (el === BTN_PAIR) call('tvLinkShowQr');
     else if (el === BTN_SCOPE) openPicker('search');
     else if (el === BTN_ADD) openPicker('rows');

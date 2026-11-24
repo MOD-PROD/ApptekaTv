@@ -121,3 +121,12 @@ html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
 
 /* Un portable est déjà associé : le bouton QR de l'accueil disparaît */
 .hbtn.hidden-paired { display: none !important; }
+
+/* Gélule du logo : bouton « fun » (relance le splash gravité) */
+.logo-fun {
+    display: flex; align-items: center; justify-content: center;
+    padding: 2px; margin: 0; border: 2px solid transparent; border-radius: 50%;
+    background: transparent; cursor: pointer; transition: transform .15s ease;
+}
+.logo-fun:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-glow); transform: scale(1.12) rotate(-12deg); }
+.logo-fun:active { transform: scale(.92); }
