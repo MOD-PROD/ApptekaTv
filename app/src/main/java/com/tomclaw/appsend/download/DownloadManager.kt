@@ -45,6 +45,9 @@ interface DownloadManager {
     /** ATV: short code of the last download failure (storage, cleartext, http_403...), or null. */
     fun failure(appId: String): String? = null
 
+    /** ATV: what was received instead of the APK (address, page title), or null. */
+    fun failureDetail(appId: String): String? = null
+
 }
 
 
@@ -64,6 +67,11 @@ class DownloadManagerImpl(
     private val failures = ConcurrentHashMap<String, String>()
 
     override fun failure(appId: String): String? = failures[appId]
+
+    // ATV: what a failed download actually received (final address, page title).
+    private val details = ConcurrentHashMap<String, String>()
+
+    override fun failureDetail(appId: String): String? = details[appId]
 
     /**
      * Resolved through putIfAbsent so a status subscriber and a starting download
@@ -116,6 +124,7 @@ class DownloadManagerImpl(
         }
 
         failures.remove(appId)
+        details.remove(appId)
         relay.accept(AWAIT)
         fileNames[appId] = fileName
         downloads[appId] = executor.submit {
@@ -130,6 +139,7 @@ class DownloadManagerImpl(
                     },
                     errorCallback = { error ->
                         failures[appId] = failureCode(error)
+                        (error as? ReceivedPage)?.let { details[appId] = it.detail }
                         relay.accept(ERROR)
                     },
                 )
@@ -301,8 +311,11 @@ class DownloadManagerImpl(
             if (!matchesChecksum(fileName, sha1)) {
                 // ATV: say what arrived instead (zip/html/gzip/json + size in KB) for the real-TV test.
                 val received = describeTmp(fileName)
+                val page = if (received.startsWith("html")) pageTitle(fileName) else null
                 apkStorage.deleteTmp(fileName)
-                errorCallback(IOException("Checksum mismatch $received"))
+                val where = connection.url.let { "${it.host}${it.path}".take(120) }
+                val detail = listOfNotNull(where, page?.let { "« $it »" }).joinToString(" · ")
+                errorCallback(ReceivedPage("Checksum mismatch $received", detail))
                 return DownloadResult.ERROR
             }
             progressCallback(100)
@@ -388,6 +401,20 @@ class DownloadManagerImpl(
      * nothing to compare against, and failing them would block those downloads
      * outright.
      */
+    /** ATV: title (or first text) of an HTML page saved instead of the APK. */
+    private fun pageTitle(fileName: String): String? = try {
+        val text = apkStorage.openReadTmp(fileName)?.use { input ->
+            val buffer = ByteArray(65536)
+            val n = input.read(buffer)
+            if (n > 0) String(buffer, 0, n, Charsets.UTF_8) else null
+        } ?: ""
+        val title = Regex("<title[^>]*>([^<]{1,200})</title>", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1)
+        val h1 = Regex("<h1[^>]*>([^<]{1,200})</h1>", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1)
+        listOfNotNull(title, h1).joinToString(" / ") { it.trim().replace(Regex("\\s+"), " ") }.take(140).ifBlank { null }
+    } catch (_: Throwable) {
+        null
+    }
+
     private fun describeTmp(fileName: String): String {
         val size = apkStorage.getTmpSize(fileName)
         val head = ByteArray(4)
@@ -434,6 +461,9 @@ internal fun upgradeCleartext(url: String): String {
     }
     return if (permitted) url else "https://" + url.substring("http://".length)
 }
+
+/** ATV: a download that received something else than the APK (an HTML page...). */
+internal class ReceivedPage(message: String, val detail: String) : IOException(message)
 
 /** ATV: short failure code shown on the TV and sent to the phone, so a real-TV test tells why. */
 internal fun failureCode(error: Throwable): String {

@@ -649,6 +649,7 @@ class TvWebActivity : AppCompatActivity() {
                         "installedVersionName" to installedVersionName(packageName),
                         "download" to download,
                         "downloadError" to downloadManager.failure(appId), // ATV: why it failed
+                        "downloadErrorDetail" to downloadManager.failureDetail(appId),
                         "install" to installStateName(install),
                         "installPercent" to (install as? InstallStatus.Writing)?.percent,
                         "launchable" to (packageManager.getLaunchIntentForPackage(packageName) != null),
