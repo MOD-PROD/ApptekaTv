@@ -377,7 +377,7 @@ class DistroPresenterImpl(
         val name = bridge.tvName()
         when (action) {
             MENU_INSTALL -> remoteAction("download_install", app) {
-                view?.showSnackbar(bridge.string(R.string.tv_install_confirm, name))
+                view?.showSnackbar(bridge.string(R.string.tv_install_confirm_on, name))
             }
 
             // « Send to <ce téléphone> » : l'APK de la TV est installé sur le téléphone.
