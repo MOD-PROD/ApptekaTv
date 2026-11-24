@@ -6,25 +6,34 @@
         android:icon="@drawable/ic_search"
         android:title="@string/menu_search"
         app:iconTint="?android:textColorPrimary"
-        app:showAsAction="ifRoom|collapseActionView" />
+        app:showAsAction="always|collapseActionView" />
     <item
         android:id="@+id/menu_settings"
         android:title="@string/nav_settings" />
     <item
         android:id="@+id/menu_installed"
         android:enabled="true"
-        android:icon="@drawable/ic_apps"
-        android:title="@string/nav_installed" />
+        android:icon="@drawable/ic_bar_installed"
+        android:title="@string/nav_installed"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="always" />
     <item
         android:id="@+id/menu_distro"
         android:enabled="true"
-        android:icon="@drawable/ic_install"
-        android:title="@string/nav_downloaded" />
+        android:icon="@drawable/ic_bar_downloaded"
+        android:title="@string/nav_downloaded"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="always" />
     <item
         android:id="@+id/menu_tv_files"
-        android:icon="@drawable/ic_tv_folder"
-        android:title="@string/nav_tv_files" />
+        android:icon="@drawable/ic_bar_tv_files"
+        android:title="@string/nav_tv_files"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="always" />
     <item
         android:id="@+id/menu_about"
-        android:title="@string/nav_info" />
+        android:icon="@drawable/ic_bar_info"
+        android:title="@string/nav_info"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="always" />
 </menu>
