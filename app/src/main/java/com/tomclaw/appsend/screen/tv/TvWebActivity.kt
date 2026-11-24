@@ -193,7 +193,7 @@ class TvWebActivity : AppCompatActivity() {
             setImageBitmap(Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888))
             adjustViewBounds = true
             // ATV: on a phone in landscape (ATKsimulTv) a full-size QR pushed the OK /
-            // "Copier l'invitation" buttons off screen; keep it within ~40 % of the height.
+            // code buttons off screen; keep it within ~40 % of the height.
             maxHeight = if (BuildConfig.FORCE_TV_SIMULATOR) {
                 minOf(size, (resources.displayMetrics.heightPixels * 0.4f).toInt())
             } else size
@@ -204,22 +204,7 @@ class TvWebActivity : AppCompatActivity() {
                 TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }))
             .setView(image)
             .setPositiveButton(android.R.string.ok, null)
-            .apply { if (BuildConfig.FORCE_TV_SIMULATOR) setNeutralButton(R.string.tv_simultv_copy_invitation, null) }
             .show()
-        if (BuildConfig.FORCE_TV_SIMULATOR) {
-            // ATV: ATKsimulTv runs on the same phone as Appteka TV, which cannot scan its own
-            // screen: copy the invitation so the phone app can paste it ("Coller l'invitation").
-            // The dialog stays open so the invitation is not shortened by the dismiss grace.
-            dialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL)?.setOnClickListener {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                if (clipboard == null) {
-                    toast(getString(R.string.tv_simultv_copy_failed))
-                } else {
-                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Appteka TV", pairing.payload))
-                    toast(getString(R.string.tv_simultv_copied))
-                }
-            }
-        }
         val expireDialog = Runnable { dialog.dismiss() }
         dialog.setOnDismissListener {
             handler.removeCallbacks(expireDialog)

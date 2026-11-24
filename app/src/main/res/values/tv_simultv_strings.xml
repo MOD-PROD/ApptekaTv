@@ -1,6 +1,0 @@
-<resources>
-    <!-- ATV: ATKsimulTv (TV simulator flavor) only. -->
-    <string name="tv_simultv_copy_invitation">Copy invitation</string>
-    <string name="tv_simultv_copied">Invitation copied. Open Appteka TV → 📺 → Paste invitation.</string>
-    <string name="tv_simultv_copy_failed">Clipboard unavailable</string>
-</resources>
