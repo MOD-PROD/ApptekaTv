@@ -189,10 +189,8 @@ class TvAccountFragment : Fragment(), HomeFragment {
             showMessage(getString(R.string.tv_account_need_code), error = true)
             return
         }
-        if (!registered && nick.isEmpty()) {
-            showMessage(getString(R.string.tv_account_need_name), error = true)
-            return
-        }
+        // Gonzo 25/11 : le serveur peut annoncer « nouveau compte » pour un compte qui existe déjà.
+        // Le pseudo reste facultatif : le serveur le refusera s'il est vraiment nécessaire.
         run({ tv.accountVerify(id, value, nick) }) { response ->
             requestId = null
             val profile = response.optJSONObject("profile")

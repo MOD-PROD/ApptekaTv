@@ -13,7 +13,7 @@
     <string name="tv_account_switch">Connecter la TV à un autre compte</string>
     <string name="tv_account_code_sent">Code envoyé à %1$s. Saisis-le ci-dessous : il connecte la TV, pas ce téléphone.</string>
     <string name="tv_account_code_hint">Code reçu par e-mail</string>
-    <string name="tv_account_name_hint">Ton pseudo (nouveau compte)</string>
+    <string name="tv_account_name_hint">Pseudo (seulement pour un nouveau compte, facultatif)</string>
     <string name="tv_account_verify">Connecter la TV</string>
     <string name="tv_account_cancel">Annuler</string>
     <string name="tv_account_done">%1$s est maintenant connectée ✔</string>
