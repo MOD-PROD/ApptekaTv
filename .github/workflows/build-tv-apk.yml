@@ -92,9 +92,17 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           VERSION_CODE: ${{ inputs.version_code || '' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -z "$VERSION_CODE" ]; then VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER)); fi
+          if [ -z "$VERSION_CODE" ]; then
+            # Numéro automatique : 2000 + numéro du run, mais toujours au-dessus de la
+            # dernière version Test publiée (une publication manuelle peut être en avance).
+            VERSION_CODE=$((2000 + GITHUB_RUN_NUMBER))
+            LAST_TEST=$(gh release download test-latest --pattern update.json --output - 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])' 2>/dev/null || echo 0)
+            if [ "$LAST_TEST" -ge "$VERSION_CODE" ]; then VERSION_CODE=$((LAST_TEST + 1)); fi
+          fi
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
           if [ -z "${ANDROID_KEYSTORE_B64:-}" ]; then
             echo "::warning::Secrets de signature absents : release non construite (ajoute ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS au dépôt)."
@@ -144,7 +152,7 @@ jobs:
         if: (inputs.publish == true || github.event_name == 'push' && github.ref == 'refs/heads/main') && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_CODE: ${{ inputs.version_code || '' }}
+          VERSION_CODE: ${{ inputs.version_code || steps.release.outputs.version_code }}
           BUILT: ${{ steps.release.outputs.built }}
           CHANNEL: ${{ inputs.channel || 'test' }}
         run: |
