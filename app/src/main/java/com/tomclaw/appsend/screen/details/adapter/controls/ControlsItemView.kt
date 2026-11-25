@@ -76,9 +76,11 @@ class ControlsItemViewHolder(view: View) : BaseItemViewHolder(view), ControlsIte
     override fun showTvInstallButton(installedOnTarget: Boolean): Boolean {
         val tv = com.tomclaw.appsend.target.TvTarget.current(installButton.context) != null &&
             !installedOnTarget
-        (installButton as? android.widget.TextView)?.setText(
-            if (tv) R.string.tv_install_on_tv else R.string.install
-        )
+        // Gonzo 25/11 : « Installer sur la tablette / le smartphone » selon l'appareil piloté.
+        (installButton as? android.widget.TextView)?.text = if (tv) {
+            com.tomclaw.appsend.target.DeviceWords.adapt(installButton.context,
+                installButton.context.getString(R.string.tv_install_on_tv))
+        } else installButton.context.getString(R.string.install)
         if (tv) installButton.show()
         return tv
     }

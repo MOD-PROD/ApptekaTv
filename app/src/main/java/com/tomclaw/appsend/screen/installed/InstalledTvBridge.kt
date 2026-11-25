@@ -138,7 +138,9 @@ class InstalledTvBridge(
         }
     }
 
-    fun string(res: Int, vararg args: Any): String = context.getString(res, *args)
+    // Gonzo 25/11 : « la TV » devient « la tablette » / « le smartphone » selon l'appareil piloté.
+    fun string(res: Int, vararg args: Any): String =
+        com.tomclaw.appsend.target.DeviceWords.adapt(context, context.getString(res, *args))
 
     private companion object {
         const val PULLED = "from-tv-"
