@@ -50,7 +50,13 @@ object TvLinkKeeper {
                 runCatching { it.stop() }
                 return null
             }
+            // ATV proximité : un appareil du Wi-Fi demande à s'associer → écran du code sur la TV.
+            it.onPairInvite = { device ->
+                com.tomclaw.appsend.screen.linktarget.PairInvites.show(app, device, TvWebActivity::class.java)
+            }
             server = it
+            // ATV arrière-plan (Gonzo « 1 et 2 ») : la TV reste joignable écran fermé.
+            com.tomclaw.appsend.tvlink.LinkTargetService.start(app)
         }
         current.confirmFiles = confirmFiles
         current
@@ -65,6 +71,16 @@ object TvLinkKeeper {
     }
 
     fun takePendingOpen(): Triple<String, Boolean, String>? = pendingOpen.also { pendingOpen = null }
+
+    /**
+     * ATV arrière-plan : démarre le serveur s'il n'existe pas, avec l'hôte de repli
+     * (écran fermé). Idempotent.
+     */
+    fun ensureStarted(context: Context): TvLink.Server? = synchronized(this) {
+        val app = context.applicationContext as Application
+        if (!::fallback.isInitialized) fallback = ClosedScreenHost(app)
+        server ?: attach(app, fallback) { _, answer -> answer(false) }
+    }
 
     private fun proxy(): TvLink.Host = Proxy.newProxyInstance(
         TvLink.Host::class.java.classLoader,

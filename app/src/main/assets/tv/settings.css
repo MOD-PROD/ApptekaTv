@@ -137,3 +137,8 @@ html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
 .logo-fun-wide { border-radius: 12px; }
 .logo-fun-wide:focus { transform: scale(1.06); }
 .mobile .logo-store { height: clamp(30px, 9vw, 42px); max-width: 100%; }
+
+/* Gonzo 25/11 : filtres Open source / Exclusive de la recherche, couleur d'accent distincte
+   (bleu clair) pour les distinguer des catégories, quel que soit le thème. */
+.cell.flag { --accent: #4fc3f7; --accent-rgb: 79, 195, 247; --accent-light: #8fdcff; --accent-dark: #0288d1; }
+.cell.flag .cell-name { color: #8fdcff; }

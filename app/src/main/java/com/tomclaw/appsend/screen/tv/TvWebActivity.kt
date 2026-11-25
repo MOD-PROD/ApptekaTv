@@ -161,6 +161,19 @@ class TvWebActivity : AppCompatActivity() {
         webView.loadUrl("file:///android_asset/tv/index.html")
         if (isTv) startTvLink()
         if (savedInstanceState == null) updateController.check()
+        handleInvite(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleInvite(intent)
+    }
+
+    /** ATV proximité : un appareil du Wi-Fi a demandé l'association → afficher le QR et le code. */
+    private fun handleInvite(intent: Intent?) {
+        if (intent?.getBooleanExtra(com.tomclaw.appsend.screen.linktarget.PairInvites.EXTRA_SHOW_PAIRING, false) != true) return
+        intent.removeExtra(com.tomclaw.appsend.screen.linktarget.PairInvites.EXTRA_SHOW_PAIRING)
+        if (isTv) webView.postDelayed({ if (!isFinishing && !isDestroyed) showPairingQr() }, PENDING_OPEN_DELAY_MS)
     }
 
     // ------------------------------------------- Liaison portable -> TV

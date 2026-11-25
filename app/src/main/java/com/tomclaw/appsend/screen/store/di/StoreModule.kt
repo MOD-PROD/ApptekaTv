@@ -71,7 +71,9 @@ class StoreModule(
         api: StoreApi,
         locale: Locale,
         schedulers: SchedulersFactory
-    ): StoreInteractor = StoreInteractorImpl(api, locale, schedulers)
+    ): StoreInteractor = StoreInteractorImpl(api, locale, schedulers) {
+        com.tomclaw.appsend.target.DeviceAbis.isAllowed(context, it)
+    }
 
     @Provides
     @PerFragment

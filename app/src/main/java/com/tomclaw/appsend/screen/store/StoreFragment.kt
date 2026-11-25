@@ -123,6 +123,17 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             shown?.let { DeviceKinds.displayName(context, it) } ?: com.tomclaw.appsend.tvlink.TvLink.deviceName(),
         )
         if (shown != null) refreshRemoteKind(shown)
+        reloadIfAbisChanged()
+    }
+
+    /** Gonzo 25/11 : autre appareil actif (ou réglage modifié) → la liste filtrée change. */
+    private var abiState: String? = null
+
+    private fun reloadIfAbisChanged() {
+        val state = com.tomclaw.appsend.target.DeviceAbis.stateKey(context ?: return)
+        val before = abiState
+        abiState = state
+        if (before != null && before != state) presenter.invalidateApps()
     }
 
     /** ATV : la TV annonce son type (TV ou box) dans « hello » ; mis en cache par TV. */
@@ -131,9 +142,12 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val appContext = requireContext().applicationContext
         kotlin.concurrent.thread(name = "tv-kind") {
             val announced = runCatching {
-                TvLink.request(shown.address, org.json.JSONObject().put("type", "hello")).optString("kind")
+                TvLink.request(shown.address, org.json.JSONObject().put("type", "hello"))
             }.getOrNull()
-            if (DeviceKinds.remember(appContext, shown, announced)) {
+            val kindChanged = DeviceKinds.remember(appContext, shown, announced?.optString("kind"))
+            val abisChanged = com.tomclaw.appsend.target.DeviceAbis.remember(appContext, shown.address.tv,
+                announced?.optJSONArray("abis"))
+            if (kindChanged || abisChanged) {
                 activity?.runOnUiThread { if (isAdded) renderTarget() }
             }
         }
@@ -146,16 +160,27 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
      * - Cet appareil (téléphone par défaut) ;
      * - les appareils connectés, icône verte et leur nom : clic = devient la source,
      *   appui long = réglages (icône parmi les 4, Renommer, Supprimer) ;
-     * - tant qu'il y a moins de 4 appareils connectés, les 4 types en blanc : clic = connexion.
+     * - « À proximité » (appareils vus sur le Wi-Fi) ;
+     * - tant qu'il y a moins de 4 appareils connectés, « Ajouter un appareil » : 2e liste des 4 types.
      */
-    private fun showDeviceMenu(anchor: View) {
+    private fun showDeviceMenu(anchor: View, addMode: Boolean = false) {
         val context = requireContext()
         val shown = connection
         data class Row(val label: String, val icon: Int, val green: Boolean, val checked: Boolean, val plus: Boolean,
-                       val divider: Boolean, val action: () -> Unit, val longAction: (() -> Unit)? = null)
+                       val divider: Boolean, val action: () -> Unit, val longAction: (() -> Unit)? = null,
+                       val header: Boolean = false)
         val local = DeviceKinds.current(context, null)
         val known = TvTarget.known(context)
         val rows = mutableListOf<Row>()
+        // Place de la section « À proximité » : après « Cet appareil » et les appareils associés.
+        val nearbyAt = if (!addMode && known.size < MAX_DEVICES) 1 + known.size else -1
+        // Gonzo 25/11 : « Ajouter » ouvre une 2e liste avec les 4 types à associer.
+        if (addMode) {
+            DeviceKind.values().forEach { kind ->
+                rows += Row(getString(kind.label), kind.icon, false, false, true, false,
+                    action = { pendingKind = kind; showPairDialog() })
+            }
+        } else {
         rows += Row(getString(R.string.local_target_this_device, getString(local.label)), local.icon, false, shown == null,
             false, false, action = { if (connection != null) { TvTarget.select(context, null); renderTarget() } },
             longAction = { showIconChooser(null) })
@@ -164,11 +189,15 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             rows += Row(DeviceKinds.displayName(context, device), DeviceKinds.current(context, device).icon, true, current,
                 false, false, action = { if (!current) reconnect(device) }, longAction = { showDeviceSettings(device) })
         }
+        // ATV proximité (Gonzo 25/11, « 1 et 2 ») : appareils Appteka vus sur le Wi-Fi, sans QR.
+        if (nearbyAt >= 0) {
+            rows += Row(getString(R.string.tv_nearby_searching), android.R.drawable.ic_menu_search, false, false,
+                false, true, action = {}, header = true)
+        }
         if (known.size < MAX_DEVICES) {
-            DeviceKind.values().forEachIndexed { index, kind ->
-                rows += Row(getString(kind.label), kind.icon, false, false, true, index == 0,
-                    action = { pendingKind = kind; showPairDialog() })
-            }
+            rows += Row(getString(R.string.device_add), android.R.drawable.ic_input_add, false, false, true, true,
+                action = { anchor.post { showDeviceMenu(anchor, addMode = true) } })
+        }
         }
         val density = resources.displayMetrics.density
         val tint = com.google.android.material.color.MaterialColors.getColor(anchor, com.google.android.material.R.attr.colorOnSurface)
@@ -176,7 +205,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         popup.anchorView = anchor
         popup.width = (280 * density).toInt()
         popup.isModal = true
-        popup.setAdapter(object : android.widget.BaseAdapter() {
+        val adapter = object : android.widget.BaseAdapter() {
             override fun getCount() = rows.size
             override fun getItem(position: Int) = rows[position]
             override fun getItemId(position: Int) = position.toLong()
@@ -220,8 +249,34 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                     addView(line)
                 }
             }
-        })
+        }
+        popup.setAdapter(adapter)
+        if (nearbyAt >= 0) {
+            val app = context.applicationContext
+            val self = TvLink.localIpv4()
+            val taken = known.map { it.address.host to it.address.port }.toSet()
+            kotlin.concurrent.thread(name = "nearby", isDaemon = true) {
+                val found = runCatching { com.tomclaw.appsend.target.TvReconnect.discoverNearby(app) }
+                    .getOrDefault(emptyList())
+                    .filter { it.host != self && (it.host to it.port) !in taken }
+                activity?.runOnUiThread {
+                    if (!popup.isShowing || !isAdded) return@runOnUiThread
+                    val nearby = found.map { device ->
+                        Row(device.name, android.R.drawable.ic_menu_share, false, false, true, false,
+                            action = { inviteNearby(device.host, device.port) })
+                    }
+                    rows.removeAt(nearbyAt)
+                    if (nearby.isNotEmpty()) {
+                        rows.add(nearbyAt, Row(getString(R.string.tv_nearby_section), android.R.drawable.ic_menu_search,
+                            false, false, false, true, action = {}, header = true))
+                        rows.addAll(nearbyAt + 1, nearby)
+                    }
+                    adapter.notifyDataSetChanged()
+                }
+            }
+        }
         popup.setOnItemClickListener { _, _, position, _ ->
+            if (rows[position].header) return@setOnItemClickListener
             popup.dismiss()
             rows[position].action()
         }
@@ -231,6 +286,26 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             popup.dismiss()
             longAction()
             true
+        }
+    }
+
+    /**
+     * ATV proximité : l'autre appareil ouvre son écran de code, on saisit ce code ici.
+     * « busy » = une invitation vient déjà d'ouvrir l'écran : la saisie reste utile.
+     */
+    private fun inviteNearby(host: String, port: Int) {
+        pendingKind = null
+        kotlin.concurrent.thread(name = "pair-invite", isDaemon = true) {
+            val result = runCatching { TvLink.pairInvite(host, port) }
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                if (result.isSuccess || result.exceptionOrNull()?.message == "busy") {
+                    pairingSender().showCodeEntry(host, port)
+                } else {
+                    android.widget.Toast.makeText(requireContext(), R.string.pair_invite_failed,
+                        android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 

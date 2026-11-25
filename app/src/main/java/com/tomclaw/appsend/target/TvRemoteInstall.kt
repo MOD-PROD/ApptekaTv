@@ -42,7 +42,7 @@ class TvRemoteInstall(
         this.appId = appId
         dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(activity.getString(R.string.tv_install_title, label.ifBlank { appId }, connection.name))
-            .setMessage(R.string.tv_install_checking)
+            .setMessage(DeviceWords.adapt(activity, activity.getString(R.string.tv_install_checking), connection))
             .setPositiveButton(R.string.tv_install_hide, null)
             .setOnDismissListener {
                 stopped = true
@@ -160,7 +160,7 @@ class TvRemoteInstall(
     }
 
     private fun show(text: String) {
-        dialog?.setMessage(text)
+        dialog?.setMessage(DeviceWords.adapt(activity, text, connection))
     }
 
     private fun finish(text: String) {

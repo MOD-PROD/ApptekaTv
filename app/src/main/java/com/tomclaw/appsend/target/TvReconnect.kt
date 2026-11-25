@@ -91,12 +91,21 @@ object TvReconnect {
             }
         }
     } catch (_: Exception) {
-        // Wrong certificate (another device at that address), timeout, refused...
         null
     }
 
-    /** Appareils Appteka TV annoncés sur le réseau local (au plus 6, ~5 s). */
-    private fun discover(context: Context): List<Pair<String, Int>> {
+    /** Appareil Appteka annoncé en NSD (nom de service, hôte, port) — sans TLS. */
+    data class NearbyDevice(val name: String, val host: String, val port: Int)
+
+    /** Appareils Appteka TV annoncés sur le réseau local (au plus 6, ~3 s). */
+    fun discover(context: Context): List<Pair<String, Int>> =
+        discoverNearby(context).map { it.host to it.port }
+
+    /**
+     * Découverte NSD publique pour la liste « À proximité ».
+     * Ne fait pas de requête TLS (pas d'empreinte) : le nom vient du service NSD.
+     */
+    fun discoverNearby(context: Context, waitMs: Long = DISCOVERY_MS): List<NearbyDevice> {
         val manager = context.applicationContext.getSystemService(Context.NSD_SERVICE) as? NsdManager
             ?: return emptyList()
         val found = mutableListOf<NsdServiceInfo>()
@@ -112,7 +121,7 @@ object TvReconnect {
         }
         try {
             manager.discoverServices(TvLink.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
-            Thread.sleep(DISCOVERY_MS)
+            Thread.sleep(waitMs)
         } catch (_: Exception) {
         } finally {
             try {
@@ -121,20 +130,25 @@ object TvReconnect {
             }
         }
         val services = synchronized(found) { found.toList() }
-        return services.mapNotNull { resolve(manager, it) }.distinct()
+        return services.mapNotNull { resolveNearby(manager, it) }.distinctBy { "${it.host}:${it.port}" }
     }
 
     @Suppress("DEPRECATION")
-    private fun resolve(manager: NsdManager, service: NsdServiceInfo): Pair<String, Int>? {
+    private fun resolveNearby(manager: NsdManager, service: NsdServiceInfo): NearbyDevice? {
         val latch = CountDownLatch(1)
-        var result: Pair<String, Int>? = null
+        var result: NearbyDevice? = null
         try {
             manager.resolveService(service, object : NsdManager.ResolveListener {
                 override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) = latch.countDown()
                 override fun onServiceResolved(info: NsdServiceInfo) {
                     val address = info.host
                     if (address is Inet4Address && address.isSiteLocalAddress && info.port in 1..65535) {
-                        result = address.hostAddress.orEmpty() to info.port
+                        val host = address.hostAddress.orEmpty()
+                        if (host.isNotEmpty()) {
+                            val raw = info.serviceName.orEmpty().ifBlank { "Appteka TV" }
+                            val name = raw.substringAfter("·", raw).trim().ifBlank { raw }
+                            result = NearbyDevice(name = name, host = host, port = info.port)
+                        }
                     }
                     latch.countDown()
                 }
@@ -142,10 +156,10 @@ object TvReconnect {
             latch.await(RESOLVE_MS, TimeUnit.MILLISECONDS)
         } catch (_: Exception) {
         }
-        return result?.takeIf { it.first.isNotEmpty() }
+        return result
     }
 
-    private const val DISCOVERY_MS = 2500L
+    private const val DISCOVERY_MS = 3000L
     private const val RESOLVE_MS = 2000L
     private const val MAX_SERVICES = 6
 }

@@ -154,6 +154,8 @@ function iconFor(source) {
     if (source === 'all') return { html: ICONS.all, cls: 'line', name: 'Toutes les catégories' };
     if (source === 'fav') return { html: ICONS.fav, cls: 'line', name: 'Favoris' };
     if (source === 'store') return { html: ICONS.store, cls: 'line', name: 'Store · profil ' + settings.profile };
+    if (source === 'flag:os') return { html: ICONS.cat, cls: 'line', name: 'Open source' };
+    if (source === 'flag:excl') return { html: ICONS.fav, cls: 'line', name: 'Exclusive' };
     if (source === 'search') return { html: ICONS.search, cls: 'line', name: 'Résultats : ' + searchQuery };
     const c = categoryById(source.slice(4));
     const svg = c && safeSvg(c.icon);
@@ -460,13 +462,24 @@ function startEditing() {
     const v = SEARCH_INPUT.value; SEARCH_INPUT.value = ''; SEARCH_INPUT.value = v;
 }
 
-function searchScopeAll() { return !settings.searchCats.length || settings.searchCats.includes('all'); }
+// Gonzo 25/11 : « Open source » et « Exclusive » (comme l'appli d'origine) sont des filtres
+// rangés avec les catégories de recherche (clés flag:*) ; ils s'appliquent aux catégories cochées.
+const SEARCH_FLAGS = [
+    { source: 'flag:os', name: 'Open source', test: a => !!a.openSource },
+    { source: 'flag:excl', name: 'Exclusive', test: a => !!a.exclusive },
+];
+function searchCatKeys() { return settings.searchCats.filter(s => s.indexOf('flag:') !== 0); }
+function searchFlagsOn() { return SEARCH_FLAGS.filter(f => settings.searchCats.includes(f.source)); }
+
+function searchScopeAll() { const cats = searchCatKeys(); return !cats.length || cats.includes('all'); }
 
 function applySearchFilter() {
     if (searchRaw === undefined || searchRaw === null) { rowData.search = searchRaw; return; }
-    rowData.search = searchScopeAll()
+    const flags = searchFlagsOn();
+    rowData.search = (searchScopeAll()
         ? searchRaw.slice()
-        : searchRaw.filter(a => a.category != null && settings.searchCats.includes('cat:' + a.category));
+        : searchRaw.filter(a => a.category != null && settings.searchCats.includes('cat:' + a.category)))
+        .filter(a => flags.every(f => f.test(a)));
 }
 
 function submitSearch() {
@@ -495,9 +508,11 @@ function closeSearch() {
 
 function updateScopeBadge() {
     const badge = document.getElementById('scope-count');
-    badge.textContent = searchScopeAll() ? '∞' : String(settings.searchCats.length);
-    BTN_SCOPE.title = searchScopeAll() ? 'Recherche dans toutes les catégories'
-        : 'Recherche dans : ' + settings.searchCats.map(s => (categoryById(s.slice(4)) || {}).name || s).join(', ');
+    const flags = searchFlagsOn().map(f => f.name);
+    badge.textContent = (searchScopeAll() ? '∞' : String(searchCatKeys().length)) + (flags.length ? '+' : '');
+    BTN_SCOPE.title = (searchScopeAll() ? 'Recherche dans toutes les catégories'
+        : 'Recherche dans : ' + searchCatKeys().map(s => (categoryById(s.slice(4)) || {}).name || s).join(', '))
+        + (flags.length ? ' · ' + flags.join(' + ') : '');
 }
 
 // ------------------------------------------------------------ damier des catégories
@@ -505,11 +520,21 @@ function updateScopeBadge() {
 let pickerItems = [];
 let pickerCells = [];
 
+// Gonzo 25/11 : catégories utiles sur une TV en premier (TV, divertissement, lecteurs vidéo, famille…).
+const CATEGORY_FIRST = [/\btv\b|télé/i, /entertain|divertis/i, /vid[eé]o/i, /famil/i];
+function categoryRank(c) {
+    const i = CATEGORY_FIRST.findIndex(re => re.test(c.name || ''));
+    return i < 0 ? CATEGORY_FIRST.length : i;
+}
+
 function pickerSourceList() {
-    const cats = categories.slice().sort((a, b) => a.id - b.id)
+    const cats = categories.slice().sort((a, b) => categoryRank(a) - categoryRank(b) || a.id - b.id)
         .map(c => ({ source: 'cat:' + c.id, name: c.name, icon: iconFor('cat:' + c.id) }));
     if (pickerMode === 'search') {
-        return cats.concat([{ source: 'all', name: 'Toutes les catégories', icon: iconFor('all'), special: true }]);
+        // En haut à gauche : les deux filtres (autre couleur), puis « Toutes les catégories ».
+        return SEARCH_FLAGS.map(f => ({ source: f.source, name: f.name, icon: iconFor(f.source), special: true, flag: true }))
+            .concat([{ source: 'all', name: 'Toutes les catégories', icon: iconFor('all'), special: true }])
+            .concat(cats);
     }
     return cats.concat([
         { source: 'all', name: 'Toutes les catégories', icon: iconFor('all'), special: true },
@@ -535,7 +560,8 @@ function renderPicker(focusIndex) {
     }
     pickerCells = pickerItems.map((item, i) => {
         const cell = document.createElement('div');
-        cell.className = 'cell glass' + (isChecked(item) ? ' checked' : '') + (item.special ? ' special' : '');
+        cell.className = 'cell glass' + (isChecked(item) ? ' checked' : '') + (item.special ? ' special' : '')
+            + (item.flag ? ' flag' : '');
         cell.tabIndex = 0;
         cell.dataset.index = i;
         cell.title = item.name;

@@ -43,6 +43,15 @@
             app:useMaterialThemeColors="true"
             android:icon="@drawable/ic_show_system" />
             
+        <!-- Gonzo 25/11 : comme la TV, le Store ne montre que les applis compatibles avec le processeur de l'appareil actif. -->
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="atv_arch_filter"
+            android:summary="@string/pref_summary_arch_filter"
+            android:title="@string/pref_title_arch_filter"
+            app:useMaterialThemeColors="true"
+            android:icon="@drawable/ic_show_system" />
+
         <Preference
             android:key="@string/pref_sort_order"
             android:summary="@string/pref_summary_sort_order"

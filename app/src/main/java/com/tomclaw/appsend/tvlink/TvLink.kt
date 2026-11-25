@@ -29,6 +29,7 @@ object TvLink {
     const val DEFAULT_PORT = 8336
     private const val TAG = "TvLink"
     private const val TIMEOUT_MS = 6000
+    private const val INVITE_INTERVAL_MS = 10_000L
     /** ATV-01 durcissement : durée maximale d'une connexion entrante sur la TV. */
     private const val CONNECTION_DEADLINE_MS = 50_000L
     /** ATV-01 durcissement : temps laissé à l'utilisateur pour accepter l'association sur la TV. */
@@ -217,6 +218,27 @@ object TvLink {
             check(response.optBoolean("ok")) { response.optString("error", "refused") }
             val tv = UUID.fromString(response.getString("tv")).toString()
             return Pairing(host, port, tv, "", pin) to response
+        }
+    }
+
+    /**
+     * ATV proximité (Gonzo 25/11) : demande à un appareil vu sur le Wi-Fi d'afficher son code
+     * d'association. Avant toute association : TLS sans empreinte connue, mais l'ordre ne donne
+     * aucun droit ; seul le code (J-PAKE) associe ensuite. Renvoie le nom de l'appareil.
+     */
+    fun pairInvite(host: String, port: Int): String {
+        validateLocalEndpoint(host, port)
+        val factory = TvTls.codeHandshakeContext().socketFactory
+        (factory.createSocket() as SSLSocket).use { socket ->
+            socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
+            socket.connect(InetSocketAddress(connectHost(host), port), TIMEOUT_MS)
+            socket.soTimeout = TIMEOUT_MS
+            socket.startHandshake()
+            TvFrames.write(socket.outputStream,
+                JSONObject().put("v", 2).put("type", "pair_invite").put("device", deviceName()).toString())
+            val response = JSONObject(TvFrames.read(socket.inputStream))
+            check(response.optBoolean("ok")) { response.optString("error", "refused") }
+            return response.optString("name", host)
         }
     }
 
@@ -410,6 +432,14 @@ object TvLink {
         /** ATV-09 : demande à l'utilisateur de la TV d'autoriser un téléphone à gérer les fichiers. */
         @Volatile
         var confirmFiles: ((device: String, answer: (Boolean) -> Unit) -> Unit)? = null
+
+        /**
+         * ATV proximité : un appareil du Wi-Fi demande à s'associer ; l'écran du code doit
+         * s'ouvrir ici (appelé sur le fil principal). Sans gestionnaire : refus.
+         */
+        @Volatile
+        var onPairInvite: ((device: String) -> Unit)? = null
+        private var lastInviteAt = 0L
 
         /** Dernière erreur d'une connexion entrante (type seulement), pour le diagnostic. */
         @Volatile
@@ -850,12 +880,27 @@ object TvLink {
             TvTokens.find(entries(), TvFrames.tokenHash(token))?.device
 
         @Synchronized
+        /** Au plus une invitation toutes les 10 s : un voisin du Wi-Fi ne peut pas inonder l'écran. */
+        private fun pairInvite(msg: JSONObject): JSONObject {
+            val handler = onPairInvite ?: return error("unavailable")
+            val device = msg.optString("device").filter { !it.isISOControl() }.trim().take(40)
+                .ifEmpty { "?" }
+            synchronized(this) {
+                val now = SystemClock.elapsedRealtime()
+                if (lastInviteAt != 0L && now - lastInviteAt < INVITE_INTERVAL_MS) return error("busy")
+                lastInviteAt = now
+            }
+            main.post { handler(device) }
+            return ok().put("name", deviceName())
+        }
+
         private fun respond(msg: JSONObject): JSONObject {
             if (msg.optInt("v") != 2) return error("version")
             val type = msg.optString("type")
             if (type == "hello") return ok().put("name", deviceName()).put("tv", tvId)
                 .put("kind", com.tomclaw.appsend.target.DeviceKinds.current(context, null).id)
                 .put("abis", org.json.JSONArray(Build.SUPPORTED_ABIS.toList()))
+            if (type == "pair_invite") return pairInvite(msg)
             val from = tokenDevice(msg.optString("token")) ?: return error("unauthorized")
             return when (type) {
                 "ping" -> ok()

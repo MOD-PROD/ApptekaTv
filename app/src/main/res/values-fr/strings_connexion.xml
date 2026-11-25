@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_nearby_searching">Recherche à proximité…</string>
+    <string name="tv_nearby_section">À proximité</string>
+    <string name="tv_pair_nearby_hint">Saisissez le code affiché sur l’appareil à proximité</string>
+    <string name="link_target_channel">Lien appareils</string>
+    <string name="link_target_channel_desc">Garde cet appareil joignable par les téléphones associés</string>
+    <string name="link_target_notif_title">Appteka</string>
+    <string name="link_target_notif_text">Vos appareils associés peuvent se connecter</string>
+    <string name="tv_background_reachable">Rester joignable en arrière-plan</string>
+    <string name="pair_invite_channel">Demandes d’association</string>
+    <string name="pair_invite_title">%1$s veut s’associer</string>
+    <string name="pair_invite_text">Touchez pour afficher le code d’association, puis saisissez-le sur cet appareil.</string>
+    <string name="pair_invite_toast">%1$s veut s’associer : saisissez sur cet appareil le code affiché ici.</string>
+    <string name="pair_invite_failed">Cet appareil n’a pas répondu. Appteka est-il ouvert dessus ?</string>
+    <string name="pref_title_arch_filter">Applis compatibles seulement</string>
+    <string name="pref_summary_arch_filter">Le Store cache les applis qui ne tournent pas sur le processeur de l’appareil actif (celui-ci, ou l’appareil piloté).</string>
+    <string name="device_add">Ajouter un appareil</string>
+</resources>

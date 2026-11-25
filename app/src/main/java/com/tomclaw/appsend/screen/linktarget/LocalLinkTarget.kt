@@ -56,7 +56,11 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
     fun init(application: Application) {
         app = application
         application.registerActivityLifecycleCallbacks(this)
-        if (isAvailable(application) && isEnabled(application)) start()
+        if (isAvailable(application) && isEnabled(application)) {
+            start()
+            // ATV arrière-plan : reste joignable appli fermée (refusé par Android si lancé hors premier plan).
+            com.tomclaw.appsend.tvlink.LinkTargetService.start(application)
+        }
     }
 
     /** Pas sur une TV/box (ni ATKsimulTv) : leur serveur est celui de l'interface TV. */
@@ -67,8 +71,19 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
 
     fun setEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, enabled).apply()
-        if (enabled && isAvailable(context)) start() else stop()
+        if (enabled && isAvailable(context)) {
+            start()
+            com.tomclaw.appsend.tvlink.LinkTargetService.start(context)
+        } else {
+            stop()
+            com.tomclaw.appsend.tvlink.LinkTargetService.stop(context)
+        }
         notifyChanged()
+    }
+
+    /** ATV arrière-plan : redémarre le serveur local s'il est activé. */
+    fun ensureRunning(context: Context) {
+        if (isEnabled(context) && isAvailable(context)) start()
     }
 
     /** Écran « Piloter cet appareil » : redessiner après une association. */
@@ -83,6 +98,8 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
         val s = TvLink.Server(app, NativeHost(app))
         s.confirmFiles = { device, answer -> confirm(R.string.tv_files_confirm_title,
             app.getString(R.string.local_target_files_confirm_message, device), answer) }
+        // ATV proximité : un appareil du Wi-Fi demande à s'associer → écran du code.
+        s.onPairInvite = { device -> PairInvites.show(app, device, LocalTargetActivity::class.java) }
         try {
             s.start()
             server = s

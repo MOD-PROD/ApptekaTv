@@ -20,7 +20,9 @@ interface StoreInteractor {
 class StoreInteractorImpl(
     private val api: StoreApi,
     private val locale: Locale,
-    private val schedulers: SchedulersFactory
+    private val schedulers: SchedulersFactory,
+    // Gonzo 25/11 : applis compatibles avec le processeur de l'appareil actif seulement.
+    private val abiFilter: (List<String>?) -> Boolean = { true },
 ) : StoreInteractor {
 
     override fun listApps(
@@ -38,7 +40,7 @@ class StoreInteractorImpl(
         )
             .map { list ->
                 AppsPage(
-                    entries = list.result.files,
+                    entries = list.result.files.filter { abiFilter(it.abi) },
                     contentFilter = list.result.contentFilter.orEmpty(),
                 )
             }
