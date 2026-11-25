@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="atv_update_check">Güncellemeleri kontrol et</string>
+    <string name="atv_update_summary">%1$s — %2$s (%3$d) · %4$s kanalı</string>
+    <string name="atv_update_channel_title">Güncelleme kanalı</string>
+    <string name="atv_channel_stable">Kararlı</string>
+    <string name="atv_channel_beta">Beta</string>
+    <string name="atv_channel_test">Test</string>
+    <string name="atv_update_none">Güncelleme yok (%1$s)</string>
+    <string name="atv_update_title">%1$s — Güncelleme</string>
+    <string name="atv_update_versions">Yüklü sürüm: %1$s\nMevcut sürüm: %2$s</string>
+    <string name="atv_update_later">Sonra</string>
+    <string name="atv_update_download">İndir</string>
+    <string name="atv_update_check_failed">Güncelleme kontrol edilemedi (%1$s)</string>
+    <string name="atv_update_allow_install">%1$s uygulamasının uygulama yüklemesine izin verin, ardından güncellemeyi yeniden başlatın.</string>
+    <string name="atv_update_allow">İzin ver</string>
+    <string name="atv_update_setting_unavailable">Ayar kullanılamıyor</string>
+    <string name="atv_update_downloading">İndiriliyor</string>
+    <string name="atv_update_failed">İndirme veya doğrulama başarısız (%1$s)</string>
+    <string name="atv_update_install_failed">Yükleme başarısız: %1$s</string>
+    <string name="atv_update_confirm">Açılan Android ekranında kurulumu onaylayın</string>
+    <string name="tv_connected_to">%1$s cihazına bağlanıldı</string>
+    <string name="tv_connected_back">TV bağlandı: %1$s. Telefona dön.</string>
+    <string name="atv_internal_storage">Dahili depolama</string>
+    <string name="atv_force_tv_title">TV görünümünü zorla</string>
+    <string name="atv_force_tv_summary">TV arayüzünü bu telefonda veya tablette yatay olarak gösterir. Geri dönmek için: TV ayarları, Telefon görünümüne dön.</string>
+</resources>

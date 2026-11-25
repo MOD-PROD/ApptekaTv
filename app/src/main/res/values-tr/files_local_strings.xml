@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_open">Aç</string>
+    <string name="files_install_here">Yükle</string>
+    <string name="files_import">Buraya ekle</string>
+    <string name="files_imported">%1$d dosya eklendi</string>
+    <string name="files_cannot_open">%1$s dosyasını açabilecek uygulama yok</string>
+    <string name="files_local_storage_needed">Bu cihaza göz atmak için tüm dosyalara erişime izin verin.</string>
+    <string name="files_local_storage_return">Appteka TV için erişimi etkinleştirin, sonra buraya dönün.</string>
+</resources>

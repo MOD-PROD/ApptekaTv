@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_pair_title">Cihaz eşleştir</string>
+    <string name="tv_pair_scan">QR kodu tara</string>
+    <string name="tv_pair_enter">Kod gir</string>
+    <string name="tv_pair_confirm">Eşleştir</string>
+    <string name="tv_pair_address_hint">Cihaz adresi (IP:bağlantı noktası)</string>
+    <string name="tv_pair_code_hint">8 karakterli kod</string>
+    <string name="tv_pair_code_failed">Kod yanlış veya süresi dolmuş. Diğer cihazda eşleştirmeyi yeniden açın.</string>
+    <string name="tv_pair_display_code">Eşleştirme kodu: %1$s</string>
+    <string name="tv_pair_display_address">TV adresi: %1$s</string>
+    <string name="tv_link_paired_notice">Telefon eşleştirildi: %1$s. Siz değilseniz Ayarlar → Telefon bağlantısı\'ndan unutun.</string>
+    <string name="tv_pair_confirm_on_tv">TV\'de eşleştirmeyi kabul edin…</string>
+    <string name="tv_pair_confirm_title">Bu telefon eşleştirilsin mi?</string>
+    <string name="tv_pair_confirm_message">%1$s Appteka TV\'yi kontrol etmek istiyor. Yalnızca sizin telefonunuzsa kabul edin.</string>
+    <string name="tv_pair_confirm_accept">Kabul et</string>
+    <string name="tv_pair_confirm_refuse">Reddet</string>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_account_title">TV\'nin Appteka hesabı</string>
+    <string name="tv_account_profile_title">Profil · %1$s</string>
+    <string name="tv_account_status_unknown">%1$s cihazının hesap durumu bilinmiyor (%2$s). Yine de aşağıdan TV\'de oturum açabilirsiniz.</string>
+    <string name="tv_account_pref_title">TV\'nin Appteka hesabı</string>
+    <string name="tv_account_pref_summary">Bu telefondan %1$s cihazında Appteka hesabıyla oturum açın</string>
+    <string name="tv_account_loading">%1$s cihazının hesap durumu sorgulanıyor…</string>
+    <string name="tv_account_signed_in">%1$s, %2$s olarak giriş yaptı</string>
+    <string name="tv_account_guest">%1$s giriş yapmadı (misafir hesabı #%2$s)</string>
+    <string name="tv_account_email_hint">E-posta adresi</string>
+    <string name="tv_account_send_code">Kodu al</string>
+    <string name="tv_account_switch">TV\'de başka bir hesapla oturum aç</string>
+    <string name="tv_account_code_sent">Kod %1$s adresine gönderildi. Kodu aşağıya girin. Bu işlem telefonda değil, TV\'de oturum açar.</string>
+    <string name="tv_account_code_hint">E-posta ile alınan kod</string>
+    <string name="tv_account_name_hint">Takma ad (yalnızca yeni hesap için, isteğe bağlı)</string>
+    <string name="tv_account_verify">TV\'de oturum aç</string>
+    <string name="tv_account_cancel">İptal</string>
+</resources>
