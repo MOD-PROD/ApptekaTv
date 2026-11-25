@@ -1495,3 +1495,73 @@ function start() {
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
 else start();
+
+// ------------------------------------------------------------ clavier à l'écran
+// ATV (Gonzo 25/11) : un clavier personnalisé occupe la moitié basse de l'écran sans
+// redimensionner la page. Dès qu'un champ de saisie prend le focus, le champ ET son bouton
+// (son formulaire / sa ligne) sont amenés dans la moitié haute : défilement du panneau
+// (avec une marge basse ajoutée pour pouvoir défiler assez), sinon translation de la boîte.
+(function keyboardLift() {
+    const TOP = 0.08;     // haut visé : 8 % de la hauteur de l'écran
+    const LIMIT = 0.48;   // le bas du bloc doit rester au-dessus de 48 %
+    let lifted = null;    // {scroller, box}
+    let dropTimer = null;
+
+    function isField(el) {
+        return el && (el.tagName === 'TEXTAREA' ||
+            (el.tagName === 'INPUT' && !['button', 'submit', 'checkbox', 'radio', 'range'].includes(el.type)));
+    }
+    function scrollerOf(el) {
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const oy = getComputedStyle(p).overflowY;
+            if (oy === 'auto' || oy === 'scroll') return p;
+        }
+        return null;
+    }
+    function boxOf(el) {
+        return el.closest('.settings-panel, .modal-box') || null;
+    }
+    function drop() {
+        if (!lifted) return;
+        if (lifted.scroller) lifted.scroller.classList.remove('kb-lift');
+        if (lifted.box) lifted.box.style.transform = '';
+        lifted = null;
+    }
+    function lift(el) {
+        clearTimeout(dropTimer);
+        const block = el.closest('form, .set-row, .modal-row') || el;
+        const h = window.innerHeight || document.documentElement.clientHeight;
+        const scroller = scrollerOf(el);
+        const box = boxOf(el);
+        if (lifted && (lifted.scroller !== scroller || lifted.box !== box)) drop();
+        lifted = { scroller, box };
+        if (scroller) {
+            scroller.classList.add('kb-lift');
+            const r = block.getBoundingClientRect();
+            scroller.scrollTop += r.top - h * TOP;
+        }
+        // Panneau trop court ou sans défilement : on remonte la boîte elle-même.
+        const r2 = block.getBoundingClientRect();
+        if (box && r2.bottom > h * LIMIT) {
+            const cur = new DOMMatrixReadOnly(getComputedStyle(box).transform).m42 || 0;
+            box.style.transform = `translateY(${Math.round(cur - (r2.top - h * TOP))}px)`;
+        }
+    }
+    document.addEventListener('focusin', e => {
+        const el = e.target;
+        if (!isField(el)) {
+            // Focus sur le bouton du même bloc (« Recevoir le code ») : garder la position.
+            if (lifted && el && el.closest && el.closest('form, .set-row, .modal-row') &&
+                el.closest('form, .set-row, .modal-row').querySelector('input, textarea')) return;
+            dropTimer = setTimeout(drop, 150);
+            return;
+        }
+        if (el.id === 'search-input') return; // déjà tout en haut
+        lift(el);
+        // Le clavier et le re-rendu des Paramètres arrivent après le focus : on recale.
+        setTimeout(() => { if (document.activeElement === el) lift(el); }, 350);
+    });
+    document.addEventListener('focusout', () => {
+        dropTimer = setTimeout(() => { if (!isField(document.activeElement)) drop(); }, 250);
+    });
+})();
