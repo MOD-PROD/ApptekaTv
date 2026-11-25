@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_nearby_searching">Searching nearby…</string>
+    <string name="tv_nearby_section">Nearby</string>
+    <string name="tv_pair_nearby_hint">Enter the code shown on the nearby device</string>
+    <string name="link_target_channel">Device link</string>
+    <string name="link_target_channel_desc">Keeps this device reachable by paired phones</string>
+    <string name="link_target_notif_title">Appteka</string>
+    <string name="link_target_notif_text">Paired devices can connect</string>
+    <string name="tv_background_reachable">Stay reachable in the background</string>
+</resources>

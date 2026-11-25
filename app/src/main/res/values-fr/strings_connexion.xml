@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_nearby_searching">Recherche à proximité…</string>
+    <string name="tv_nearby_section">À proximité</string>
+    <string name="tv_pair_nearby_hint">Saisissez le code affiché sur l’appareil à proximité</string>
+    <string name="link_target_channel">Lien appareils</string>
+    <string name="link_target_channel_desc">Garde cet appareil joignable par les téléphones associés</string>
+    <string name="link_target_notif_title">Appteka</string>
+    <string name="link_target_notif_text">Vos appareils associés peuvent se connecter</string>
+    <string name="tv_background_reachable">Rester joignable en arrière-plan</string>
+</resources>
