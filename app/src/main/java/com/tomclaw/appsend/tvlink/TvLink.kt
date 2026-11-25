@@ -411,11 +411,18 @@ object TvLink {
         @Volatile
         var confirmFiles: ((device: String, answer: (Boolean) -> Unit) -> Unit)? = null
 
+        /** Dernière erreur d'une connexion entrante (type seulement), pour le diagnostic. */
+        @Volatile
+        var lastError: String? = null
+
+        /** Clé TLS du serveur : « keystore » ou « software ». */
+        val tlsMode: String get() = TvTls.mode
+
         data class PairingQr(val sessionId: UUID, val payload: String, val code: String)
 
         fun start() {
             if (socket != null) return
-            val (tls, fingerprint) = TvTls.server()
+            val (tls, fingerprint) = TvTls.server(context)
             pin = fingerprint
             val server = try {
                 tls.serverSocketFactory.createServerSocket(DEFAULT_PORT)
@@ -595,8 +602,10 @@ object TvLink {
                         downloads(msg)
                     } else respond(msg)
                     if (response != null) TvFrames.write(output, response.put("v", 2).toString())
-                } catch (_: Exception) {
+                } catch (e: Exception) {
                     // Malformed or incomplete connections are closed without logging their contents.
+                    // Only the error type is kept, for « Tester la connexion ».
+                    lastError = e.javaClass.simpleName + (e.cause?.let { " / " + it.javaClass.simpleName } ?: "")
                 } finally {
                     deadline?.cancel(false)
                 }

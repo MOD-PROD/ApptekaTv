@@ -175,8 +175,9 @@ class LocalTargetActivity : AppCompatActivity() {
         val server = LocalLinkTarget.server ?: return
         test.isEnabled = false
         Thread {
+            server.lastError = null
             val invitation = server.pairingQr()
-            val message = if (invitation == null) getString(R.string.local_target_no_wifi) else try {
+            val result = if (invitation == null) getString(R.string.local_target_no_wifi) else try {
                 val address = TvLink.Pairing.parse(invitation.payload)
                 val hello = TvLink.request(address.copy(secret = ""), org.json.JSONObject().put("type", "hello"))
                 if (hello.optBoolean("ok")) getString(R.string.local_target_test_ok, "${address.host}:${address.port}")
@@ -186,6 +187,8 @@ class LocalTargetActivity : AppCompatActivity() {
             } finally {
                 invitation?.let { server.dismissPairing(it.sessionId) }
             }
+            // Diagnostic : type de clé TLS et erreur vue côté serveur (sans contenu).
+            val message = result + "\n\nTLS : " + server.tlsMode + (server.lastError?.let { " · $it" } ?: "")
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 test.isEnabled = LocalLinkTarget.server != null
