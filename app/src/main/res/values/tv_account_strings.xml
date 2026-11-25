@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_account_title">Appteka account of the TV</string>
+    <string name="tv_account_pref_title">Appteka account of the TV</string>
+    <string name="tv_account_pref_summary">Sign %1$s in to an Appteka account from this phone</string>
+    <string name="tv_account_loading">Asking %1$s…</string>
+    <string name="tv_account_signed_in">%1$s is signed in as %2$s</string>
+    <string name="tv_account_guest">%1$s is not signed in (guest account #%2$s)</string>
+    <string name="tv_account_email_hint">Email address</string>
+    <string name="tv_account_send_code">Get the code</string>
+    <string name="tv_account_switch">Sign the TV in to another account</string>
+    <string name="tv_account_code_sent">Code sent to %1$s. Type it below: it signs in the TV, not this phone.</string>
+    <string name="tv_account_code_hint">Code received by email</string>
+    <string name="tv_account_name_hint">Your nickname (new account)</string>
+    <string name="tv_account_verify">Sign in the TV</string>
+    <string name="tv_account_cancel">Cancel</string>
+    <string name="tv_account_done">%1$s is now signed in ✔</string>
+    <string name="tv_account_bad_email">Invalid email address</string>
+    <string name="tv_account_need_code">Type the code you received</string>
+    <string name="tv_account_need_name">Choose a nickname</string>
+    <string name="tv_account_error_unreachable">The TV cannot be reached (same Wi‑Fi? Appteka TV open?)</string>
+    <string name="tv_account_error_old_tv">The TV runs an older Appteka TV: update it first (TV Settings → Update)</string>
+    <string name="tv_account_error_unauthorized">This phone is no longer paired with the TV: pair it again</string>
+    <string name="tv_account_error_rate_limit">Too many attempts, try again later</string>
+    <string name="tv_account_error_refused">Code or address refused</string>
+    <string name="tv_account_error_network">The TV cannot reach the Appteka server</string>
+    <string name="tv_account_error_other">Error (%1$s)</string>
+    <string name="tv_account_no_tv">Switch to 📺 mode (device icon) to choose the TV first</string>
+    <string name="tv_account_linked_notice">Appteka account of this TV changed from the phone %1$s.</string>
+</resources>

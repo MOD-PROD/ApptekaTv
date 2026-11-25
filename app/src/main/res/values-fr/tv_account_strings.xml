@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_account_title">Compte Appteka de la TV</string>
+    <string name="tv_account_pref_title">Compte Appteka de la TV</string>
+    <string name="tv_account_pref_summary">Connecter %1$s à un compte Appteka depuis ce téléphone</string>
+    <string name="tv_account_loading">Interrogation de %1$s…</string>
+    <string name="tv_account_signed_in">%1$s est connectée au compte %2$s</string>
+    <string name="tv_account_guest">%1$s n’est pas connectée (compte invité n° %2$s)</string>
+    <string name="tv_account_email_hint">Adresse e-mail</string>
+    <string name="tv_account_send_code">Recevoir le code</string>
+    <string name="tv_account_switch">Connecter la TV à un autre compte</string>
+    <string name="tv_account_code_sent">Code envoyé à %1$s. Saisis-le ci-dessous : il connecte la TV, pas ce téléphone.</string>
+    <string name="tv_account_code_hint">Code reçu par e-mail</string>
+    <string name="tv_account_name_hint">Ton pseudo (nouveau compte)</string>
+    <string name="tv_account_verify">Connecter la TV</string>
+    <string name="tv_account_cancel">Annuler</string>
+    <string name="tv_account_done">%1$s est maintenant connectée ✔</string>
+    <string name="tv_account_bad_email">Adresse e-mail invalide</string>
+    <string name="tv_account_need_code">Saisis le code reçu</string>
+    <string name="tv_account_need_name">Choisis un pseudo</string>
+    <string name="tv_account_error_unreachable">TV injoignable (même Wi-Fi ? Appteka TV ouverte ?)</string>
+    <string name="tv_account_error_old_tv">La TV a une ancienne version d’Appteka TV : mets-la d’abord à jour (Paramètres TV → Mise à jour)</string>
+    <string name="tv_account_error_unauthorized">Ce téléphone n’est plus associé à la TV : associe-le de nouveau</string>
+    <string name="tv_account_error_rate_limit">Trop de tentatives, réessaie plus tard</string>
+    <string name="tv_account_error_refused">Code ou adresse refusé</string>
+    <string name="tv_account_error_network">La TV n’arrive pas à joindre le serveur Appteka</string>
+    <string name="tv_account_error_other">Erreur (%1$s)</string>
+    <string name="tv_account_no_tv">Passe d’abord en mode 📺 (icône d’appareil) pour choisir la TV</string>
+    <string name="tv_account_linked_notice">Compte Appteka de cette TV modifié depuis le téléphone %1$s.</string>
+</resources>

@@ -110,6 +110,24 @@ class TvAppsClient(private val context: Context, val connection: TvLinkSender.Co
             )
         ).optString("name", name)
 
+    // ------------------------------------------------ Compte Appteka de la TV (mode 📺)
+
+    /** Profil Appteka de la TV (`profile` : userId, name, email, registered). */
+    fun accountStatus(): JSONObject = checked(TvLink.request(connection.address, order("account_status")))
+
+    /** La TV demande un code de connexion pour [email] ; renvoie `requestId` et `registered`. */
+    fun accountRequestCode(email: String): JSONObject =
+        checked(TvLink.request(connection.address, order("account_request_code").put("email", email)))
+
+    /** La TV vérifie le code et se connecte au compte ; renvoie le nouveau `profile`. */
+    fun accountVerify(requestId: String, code: String, name: String): JSONObject =
+        checked(
+            TvLink.request(
+                connection.address,
+                order("account_verify").put("requestId", requestId).put("code", code).put("name", name),
+            )
+        )
+
     private fun order(type: String) = JSONObject().put("type", type).put("token", connection.token)
 
     private fun checked(response: JSONObject): JSONObject {

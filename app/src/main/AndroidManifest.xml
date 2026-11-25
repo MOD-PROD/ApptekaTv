@@ -229,6 +229,9 @@
         <activity android:name=".screen.installed.InstalledActivity" />
         <activity android:name=".screen.distro.DistroActivity" />
         <activity android:name=".screen.tvfiles.TvFilesActivity" />
+        <activity
+            android:name=".screen.tvaccount.TvAccountActivity"
+            android:windowSoftInputMode="adjustResize" />
         <activity android:name=".screen.subscriptions.SubscriptionsActivity" />
         <activity android:name=".screen.feed.FeedActivity" />
         <activity android:name=".screen.post.PostActivity" />

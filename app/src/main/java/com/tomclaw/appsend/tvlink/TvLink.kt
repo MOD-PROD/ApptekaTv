@@ -63,6 +63,7 @@ object TvLink {
             // ATV (Downloaded en mode 📺) : la TV lit chaque archive avant de répondre.
             if (message.optString("type") in DOWNLOAD_TYPES) socket.soTimeout = DOWNLOAD_RESPONSE_TIMEOUT_MS
             // ATV-09 : accord sur la TV, gros dossiers, suppressions récursives.
+            if (message.optString("type") in ACCOUNT_TYPES) socket.soTimeout = ACCOUNT_RESPONSE_TIMEOUT_MS
             if (message.optString("type") == "fs_access") socket.soTimeout = FS_ACCESS_RESPONSE_TIMEOUT_MS
             else if (message.optString("type") in FS_TYPES) socket.soTimeout = DOWNLOAD_RESPONSE_TIMEOUT_MS
             TvFrames.write(socket.outputStream, message.put("v", 2).toString())
@@ -159,6 +160,10 @@ object TvLink {
     internal val FS_TYPES = setOf("fs_access", "fs_list", "fs_mkdir", "fs_rename", "fs_delete", "fs_install")
 
     /** Ordres « Downloaded » : traités hors du verrou de la liaison (lecture des archives). */
+    /** ATV (compte Appteka de la TV depuis le téléphone) : la TV appelle le serveur Appteka avant de répondre. */
+    internal val ACCOUNT_TYPES = setOf("account_status", "account_request_code", "account_verify")
+    private const val ACCOUNT_RESPONSE_TIMEOUT_MS = 40_000
+
     internal val DOWNLOAD_TYPES = setOf("list_downloads", "download_install", "download_delete", "download_permissions", "download_icon")
 
     /** Nom de paquet Android plausible (ordres sur une appli de la TV). */
@@ -310,6 +315,19 @@ object TvLink {
 
         /** ATV-09 : installe l'APK [file] présent sur la TV (thread de la liaison). */
         fun fsInstall(file: java.io.File, device: String): JSONObject =
+            JSONObject().put("ok", false).put("error", "not_implemented")
+
+        /**
+         * ATV (compte Appteka de la TV depuis le téléphone, thread de la liaison, appels bloquants) :
+         * `account_status` → profil de la TV ; `account_request_code` → code envoyé par e-mail ;
+         * `account_verify` → la TV (son propre identifiant d'appareil) est connectée au compte.
+         * Le téléphone ne reçoit ni ne transmet aucune session : seul le code e-mail passe.
+         */
+        fun accountStatus(): JSONObject = JSONObject().put("ok", false).put("error", "not_implemented")
+
+        fun accountRequestCode(email: String): JSONObject = JSONObject().put("ok", false).put("error", "not_implemented")
+
+        fun accountVerify(requestId: String, code: String, name: String, device: String): JSONObject =
             JSONObject().put("ok", false).put("error", "not_implemented")
 
         /** APK reçu du téléphone [device] : vérifier puis lancer l'installation sur la TV. */
@@ -820,7 +838,22 @@ object TvLink {
                     val png = host.icon(packageName) ?: return error("not_found")
                     ok().put("png", android.util.Base64.encodeToString(png, android.util.Base64.NO_WRAP))
                 }
-                "account_link" -> error("not_implemented")
+                // ATV : le téléphone en mode 📺 connecte la TV au compte Appteka (code par e-mail).
+                "account_status" -> host.accountStatus()
+                "account_request_code" -> {
+                    val email = msg.optString("email").trim()
+                    if (email.length > 254 || !email.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))) return error("bad_email")
+                    host.accountRequestCode(email)
+                }
+                "account_verify" -> {
+                    val requestId = msg.optString("requestId")
+                    val code = msg.optString("code").trim()
+                    val name = msg.optString("name").trim()
+                    if (requestId.isEmpty() || requestId.length > 128 || code.isEmpty() || code.length > 32 || name.length > 64) {
+                        return error("bad_request")
+                    }
+                    host.accountVerify(requestId, code, name, from)
+                }
                 else -> error("unknown")
             }
         }

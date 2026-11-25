@@ -309,6 +309,14 @@ class TvWebActivity : AppCompatActivity() {
 
             override fun downloadIcon(fileName: String): ByteArray? = remoteDownloads.icon(fileName)
 
+            // ATV : compte Appteka de la TV connecté depuis le téléphone en mode 📺.
+            override fun accountStatus(): JSONObject = remoteAccountStatus()
+
+            override fun accountRequestCode(email: String): JSONObject = remoteAccountRequestCode(email)
+
+            override fun accountVerify(requestId: String, code: String, name: String, device: String): JSONObject =
+                remoteAccountVerify(requestId, code, name, device)
+
             override fun downloadFile(fileName: String): java.io.File? = remoteDownloads.file(fileName)
 
             // ATV-09 : fichiers à distance.
@@ -710,6 +718,56 @@ class TvWebActivity : AppCompatActivity() {
                     js("onAuthError", mapOf("message" to authError(error)))
                 })
         )
+    }
+
+    // ATV : mêmes appels que le formulaire des Paramètres TV, demandés par le téléphone en mode 📺
+    // (thread de la liaison, bloquants et bornés). La session reste celle de la TV.
+    private fun remoteAccountStatus(): JSONObject = try {
+        val p = api.getProfile(userId = null).timeout(ACCOUNT_CALL_TIMEOUT_S, TimeUnit.SECONDS).blockingGet().result.profile
+        JSONObject().put("ok", true).put("profile", JSONObject()
+            .put("userId", p.userId)
+            .put("name", p.name ?: "")
+            .put("email", p.email ?: "")
+            .put("registered", p.isRegistered)
+            .put("verified", p.isVerified))
+    } catch (e: Exception) {
+        Log.e(TAG, "remote account status failed", e)
+        accountFailure(e)
+    }
+
+    private fun remoteAccountRequestCode(email: String): JSONObject = try {
+        val r = api.requestCode(email = email).timeout(ACCOUNT_CALL_TIMEOUT_S, TimeUnit.SECONDS).blockingGet().result
+        JSONObject().put("ok", true)
+            .put("requestId", r.requestId)
+            .put("registered", r.registered)
+    } catch (e: Exception) {
+        Log.e(TAG, "remote request code failed", e)
+        accountFailure(e)
+    }
+
+    private fun remoteAccountVerify(requestId: String, code: String, name: String, device: String): JSONObject = try {
+        api.verifyCode(requestId = requestId, code = code, name = name.ifBlank { null })
+            .timeout(ACCOUNT_CALL_TIMEOUT_S, TimeUnit.SECONDS).blockingGet()
+        runOnUiThread {
+            js("onAuthDone", mapOf("ok" to true))
+            loadAccount()
+            // Comme pour l'association : un changement de compte ne doit pas passer inaperçu sur la TV.
+            Toast.makeText(this, getString(R.string.tv_account_linked_notice, device), Toast.LENGTH_LONG).show()
+        }
+        remoteAccountStatus()
+    } catch (e: Exception) {
+        Log.e(TAG, "remote verify code failed", e)
+        accountFailure(e)
+    }
+
+    private fun accountFailure(error: Throwable): JSONObject {
+        val cause = (error as? RuntimeException)?.cause ?: error
+        val code = when {
+            cause is retrofit2.HttpException && cause.code() == 429 -> "rate_limit"
+            cause is retrofit2.HttpException -> "refused"
+            else -> "network"
+        }
+        return JSONObject().put("ok", false).put("error", code)
     }
 
     private fun authError(error: Throwable): String =
@@ -1205,6 +1263,7 @@ class TvWebActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "TvWebActivity"
+        private const val ACCOUNT_CALL_TIMEOUT_S = 30L
         private const val LONG_PRESS_MS = 600L
         private const val PREFS_NAME = "tv_web"
         private const val KEY_CATEGORIES_CACHE = "categories_cache"
