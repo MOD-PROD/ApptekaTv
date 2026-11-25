@@ -110,6 +110,13 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
     }
 
     override fun showProfileFragment() {
+        // ATV (Gonzo 25/11) : en mode 📺, l'onglet Profil montre et connecte le compte Appteka de la TV.
+        if (com.tomclaw.appsend.target.TvTarget.current(this) != null) {
+            val fragment = supportFragmentManager.findFragmentByTag(TAG_TV_PROFILE)
+                ?: com.tomclaw.appsend.screen.tvaccount.createTvAccountFragment()
+            replaceFragment(fragment, TAG_TV_PROFILE)
+            return
+        }
         val fragment = getOrCreateFragment(INDEX_PROFILE) { createProfileFragment() }
         replaceFragment(fragment, INDEX_PROFILE)
     }
@@ -166,8 +173,9 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
         }
     }
 
-    private fun replaceFragment(fragment: Fragment, index: Int) {
-        val tag = "fragment$index"
+    private fun replaceFragment(fragment: Fragment, index: Int) = replaceFragment(fragment, "fragment$index")
+
+    private fun replaceFragment(fragment: Fragment, tag: String) {
         // Returning from another screen re-binds the current tab, and so
         // does every status load. Replacing the fragment with itself
         // would throw away its list position and blink the app bar
@@ -275,3 +283,4 @@ private const val INDEX_STORE = 0
 private const val INDEX_FEED = 1
 private const val INDEX_DISCUSS = 2
 private const val INDEX_PROFILE = 3
+private const val TAG_TV_PROFILE = "fragment_tv_profile"

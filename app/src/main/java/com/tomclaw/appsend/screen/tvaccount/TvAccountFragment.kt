@@ -1,12 +1,13 @@
 package com.tomclaw.appsend.screen.tvaccount
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.isVisible
 import com.google.android.material.button.MaterialButton
@@ -14,6 +15,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.tomclaw.appsend.R
+import com.tomclaw.appsend.screen.home.HomeFragment
 import com.tomclaw.appsend.target.TvAppsClient
 import com.tomclaw.appsend.target.TvRemoteException
 import org.json.JSONObject
@@ -21,13 +23,13 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * ATV (bug Gonzo 25/11) : en mode 📺, le téléphone connecte la TV associée à un compte Appteka,
- * comme « Paramètres → Connexion au compte Appteka » sur la TV.
+ * ATV (Gonzo 25/11) : en mode 📺, l'onglet Profil du téléphone montre et connecte le compte
+ * Appteka de la TV associée, comme « Paramètres → Profil / Connexion au compte Appteka » sur la TV.
  *
  * Le téléphone ne transmet aucune session : il relaie l'adresse e-mail puis le code reçu ;
  * c'est la TV, avec son propre identifiant d'appareil, qui appelle le serveur Appteka.
  */
-class TvAccountActivity : AppCompatActivity() {
+class TvAccountFragment : Fragment(), HomeFragment {
 
     private var client: TvAppsClient? = null
     private val io: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "tv-account").apply { isDaemon = true } }
@@ -49,25 +51,28 @@ class TvAccountActivity : AppCompatActivity() {
     private var registered = true
     private var sentTo = ""
     private var busy = false
+    private var destroyed = false
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.tv_account_activity)
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        toolbar.setTitle(R.string.tv_account_title)
-        toolbar.setNavigationOnClickListener { finish() }
-        status = findViewById(R.id.tv_account_status)
-        progress = findViewById(R.id.tv_account_progress)
-        message = findViewById(R.id.tv_account_message)
-        switchButton = findViewById(R.id.tv_account_switch)
-        emailBox = findViewById(R.id.tv_account_email_box)
-        email = findViewById(R.id.tv_account_email)
-        send = findViewById(R.id.tv_account_send)
-        codeBox = findViewById(R.id.tv_account_code_box)
-        code = findViewById(R.id.tv_account_code)
-        nameLayout = findViewById(R.id.tv_account_name_layout)
-        name = findViewById(R.id.tv_account_name)
-        verify = findViewById(R.id.tv_account_verify)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
+        inflater.inflate(R.layout.tv_account_activity, container, false)
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        destroyed = false
+        val toolbar = view.findViewById<Toolbar>(R.id.toolbar)
+        toolbar.navigationIcon = null
+        status = view.findViewById(R.id.tv_account_status)
+        progress = view.findViewById(R.id.tv_account_progress)
+        message = view.findViewById(R.id.tv_account_message)
+        switchButton = view.findViewById(R.id.tv_account_switch)
+        emailBox = view.findViewById(R.id.tv_account_email_box)
+        email = view.findViewById(R.id.tv_account_email)
+        send = view.findViewById(R.id.tv_account_send)
+        codeBox = view.findViewById(R.id.tv_account_code_box)
+        code = view.findViewById(R.id.tv_account_code)
+        nameLayout = view.findViewById(R.id.tv_account_name_layout)
+        name = view.findViewById(R.id.tv_account_name)
+        verify = view.findViewById(R.id.tv_account_verify)
 
         switchButton.setOnClickListener { showEmail() }
         send.setOnClickListener { requestCode() }
@@ -75,14 +80,15 @@ class TvAccountActivity : AppCompatActivity() {
         verify.setOnClickListener { verifyCode() }
         code.setOnEditorActionListener { _, action, _ -> (action == EditorInfo.IME_ACTION_DONE && !nameLayout.isVisible).also { if (it) verifyCode() } }
         name.setOnEditorActionListener { _, action, _ -> (action == EditorInfo.IME_ACTION_DONE).also { if (it) verifyCode() } }
-        findViewById<MaterialButton>(R.id.tv_account_cancel).setOnClickListener {
+        view.findViewById<MaterialButton>(R.id.tv_account_cancel).setOnClickListener {
             requestId = null
             showMessage(null)
             showEmail()
         }
 
-        val tv = TvAppsClient.current(this)
+        val tv = TvAppsClient.current(requireContext())
         client = tv
+        toolbar.title = if (tv != null) getString(R.string.tv_account_profile_title, tv.tvName) else getString(R.string.tv_account_title)
         if (tv == null) {
             status.setText(R.string.tv_account_no_tv)
             return
@@ -90,9 +96,20 @@ class TvAccountActivity : AppCompatActivity() {
         loadStatus()
     }
 
+    override fun onDestroyView() {
+        destroyed = true
+        super.onDestroyView()
+    }
+
     override fun onDestroy() {
         io.shutdownNow()
         super.onDestroy()
+    }
+
+    override fun handleEvent(data: android.content.Intent?) {}
+
+    override fun onReselect() {
+        if (!busy && requestId == null) loadStatus()
     }
 
     private val tvName: String get() = client?.tvName.orEmpty()
@@ -100,8 +117,18 @@ class TvAccountActivity : AppCompatActivity() {
     private fun loadStatus(done: String? = null) {
         val tv = client ?: return
         status.text = getString(R.string.tv_account_loading, tvName)
-        run({ tv.accountStatus() }) { response ->
-            showProfile(response.optJSONObject("profile") ?: JSONObject())
+        run({ tv.accountStatus() }, onError = { error ->
+            // L'état du compte est une information : son échec ne bloque pas la connexion.
+            status.text = getString(R.string.tv_account_status_unknown, tvName, codeOf(error))
+            switchButton.isVisible = false
+            showEmail()
+        }) { response ->
+            val profile = response.optJSONObject("profile")
+            if (profile != null) showProfile(profile) else {
+                status.text = getString(R.string.tv_account_status_unknown, tvName, response.optString("statusError", "?"))
+                switchButton.isVisible = false
+                showEmail()
+            }
             if (done != null) showMessage(done)
         }
     }
@@ -173,7 +200,7 @@ class TvAccountActivity : AppCompatActivity() {
     }
 
     /** Ordre bloquant sur le fil d'E/S, puis résultat (ou erreur lisible) sur le fil principal. */
-    private fun run(call: () -> JSONObject, onOk: (JSONObject) -> Unit) {
+    private fun run(call: () -> JSONObject, onError: ((Throwable) -> Unit)? = null, onOk: (JSONObject) -> Unit) {
         if (busy) return
         setBusy(true)
         io.execute {
@@ -182,10 +209,10 @@ class TvAccountActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Result.failure(e)
             }
-            runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+            activity?.runOnUiThread {
+                if (destroyed || !isAdded) return@runOnUiThread
                 setBusy(false)
-                result.onSuccess(onOk).onFailure { showMessage(errorText(it), error = true) }
+                result.onSuccess(onOk).onFailure { onError?.invoke(it) ?: showMessage(errorText(it), error = true) }
             }
         }
     }
@@ -207,6 +234,8 @@ class TvAccountActivity : AppCompatActivity() {
         )
     }
 
+    private fun codeOf(error: Throwable): String = (error as? TvRemoteException)?.code ?: "unreachable"
+
     private fun errorText(error: Throwable): String = when ((error as? TvRemoteException)?.code) {
         null -> getString(R.string.tv_account_error_unreachable)
         "not_implemented", "unknown" -> getString(R.string.tv_account_error_old_tv)
@@ -214,8 +243,13 @@ class TvAccountActivity : AppCompatActivity() {
         "bad_email" -> getString(R.string.tv_account_bad_email)
         "rate_limit" -> getString(R.string.tv_account_error_rate_limit)
         "refused" -> getString(R.string.tv_account_error_refused)
+        "http_429" -> getString(R.string.tv_account_error_rate_limit)
         "network" -> getString(R.string.tv_account_error_network)
-        else -> getString(R.string.tv_account_error_other, (error as TvRemoteException).code)
+        else -> {
+            val code = (error as TvRemoteException).code
+            if (code.startsWith("http_")) getString(R.string.tv_account_error_refused) + " (" + code + ")"
+            else getString(R.string.tv_account_error_other, code)
+        }
     }
 
     private companion object {
@@ -223,4 +257,4 @@ class TvAccountActivity : AppCompatActivity() {
     }
 }
 
-fun createTvAccountActivityIntent(context: Context): Intent = Intent(context, TvAccountActivity::class.java)
+fun createTvAccountFragment(): Fragment = TvAccountFragment()
