@@ -29,4 +29,5 @@
     <string name="tv_account_error_other">Erreur (%1$s)</string>
     <string name="tv_account_no_tv">Passe d’abord en mode 📺 (icône d’appareil) pour choisir la TV</string>
     <string name="tv_account_linked_notice">Compte Appteka de cette TV modifié depuis le téléphone %1$s.</string>
+    <string name="tv_account_not_signed_in">%1$s n’est connectée à aucun compte Appteka</string>
 </resources>

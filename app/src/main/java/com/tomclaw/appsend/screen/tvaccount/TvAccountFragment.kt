@@ -144,7 +144,9 @@ class TvAccountFragment : Fragment(), HomeFragment {
             emailBox.isVisible = false
             switchButton.isVisible = true
         } else {
-            status.text = getString(R.string.tv_account_guest, tvName, profile.optString("userId"))
+            status.text = profile.optString("userId").takeIf { it.isNotBlank() }
+                ?.let { getString(R.string.tv_account_guest, tvName, it) }
+                ?: getString(R.string.tv_account_not_signed_in, tvName)
             switchButton.isVisible = false
             showEmail()
         }
