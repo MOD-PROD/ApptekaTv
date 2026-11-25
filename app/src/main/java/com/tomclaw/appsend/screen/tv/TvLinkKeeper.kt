@@ -66,6 +66,16 @@ object TvLinkKeeper {
 
     fun takePendingOpen(): Triple<String, Boolean, String>? = pendingOpen.also { pendingOpen = null }
 
+    /**
+     * ATV arrière-plan : démarre le serveur s'il n'existe pas, avec l'hôte de repli
+     * (écran fermé). Idempotent.
+     */
+    fun ensureStarted(context: Context): TvLink.Server? = synchronized(this) {
+        val app = context.applicationContext as Application
+        if (!::fallback.isInitialized) fallback = ClosedScreenHost(app)
+        server ?: attach(app, fallback) { _, answer -> answer(false) }
+    }
+
     private fun proxy(): TvLink.Host = Proxy.newProxyInstance(
         TvLink.Host::class.java.classLoader,
         arrayOf(TvLink.Host::class.java),
