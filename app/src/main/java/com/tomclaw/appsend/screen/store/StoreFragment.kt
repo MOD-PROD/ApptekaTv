@@ -261,9 +261,14 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             getString(R.string.tv_pair_scan),
             getString(R.string.tv_pair_enter),
         )
+        // Gonzo 25/11 : une fenêtre avec message n'affiche pas la liste (limite d'AlertDialog) ;
+        // l'appareil injoignable est signalé par un toast et l'invitation de connexion s'ouvre directement.
+        if (retry != null) {
+            android.widget.Toast.makeText(requireContext(), getString(R.string.tv_reconnect_unreachable, retry.name),
+                android.widget.Toast.LENGTH_LONG).show()
+        }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.tv_pair_title)
-            .apply { if (retry != null) setMessage(getString(R.string.tv_reconnect_unreachable, retry.name)) }
             .setItems(items.toTypedArray()) { _, position ->
                 val which = if (retry != null) position - 1 else position
                 if (which == -1 && retry != null) reconnect(retry)
