@@ -34,6 +34,7 @@ class TvAccountFragment : Fragment(), HomeFragment {
     private var client: TvAppsClient? = null
     private val io: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "tv-account").apply { isDaemon = true } }
 
+    private lateinit var scroll: View
     private lateinit var status: TextView
     private lateinit var progress: LinearProgressIndicator
     private lateinit var message: TextView
@@ -46,6 +47,10 @@ class TvAccountFragment : Fragment(), HomeFragment {
     private lateinit var nameLayout: TextInputLayout
     private lateinit var name: TextInputEditText
     private lateinit var verify: MaterialButton
+    private lateinit var profileHost: View
+    private lateinit var toolbar: Toolbar
+    /** Compte de la TV déjà affiché en entier (ProfileFragment) : évite de le recharger. */
+    private var shownProfileUser = 0
 
     private var requestId: String? = null
     private var registered = true
@@ -59,8 +64,10 @@ class TvAccountFragment : Fragment(), HomeFragment {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         destroyed = false
-        val toolbar = view.findViewById<Toolbar>(R.id.toolbar)
+        toolbar = view.findViewById(R.id.toolbar)
+        profileHost = view.findViewById(R.id.tv_account_profile)
         toolbar.navigationIcon = null
+        scroll = view.findViewById(R.id.tv_account_scroll)
         status = view.findViewById(R.id.tv_account_status)
         progress = view.findViewById(R.id.tv_account_progress)
         message = view.findViewById(R.id.tv_account_message)
@@ -135,7 +142,11 @@ class TvAccountFragment : Fragment(), HomeFragment {
 
     private fun showProfile(profile: JSONObject) {
         val registeredTv = profile.optBoolean("registered")
-        if (registeredTv) {
+        val userId = profile.optString("userId").toIntOrNull() ?: 0
+        if (registeredTv && userId > 0) {
+            // Gonzo 25/11 : une fois la TV connectée, le profil s'affiche comme dans l'appli normale.
+            showFullProfile(userId)
+        } else if (registeredTv) {
             val who = listOf(profile.optString("name"), profile.optString("email"))
                 .filter { it.isNotBlank() }.joinToString(" · ")
                 .ifBlank { "#" + profile.optString("userId") }
@@ -152,7 +163,35 @@ class TvAccountFragment : Fragment(), HomeFragment {
         }
     }
 
+    /** Profil public de la TV, rendu par l'écran natif habituel, + bouton « autre compte ». */
+    private fun showFullProfile(userId: Int) {
+        scroll.isVisible = false
+        profileHost.isVisible = true
+        toolbar.menu.clear()
+        toolbar.title = getString(R.string.tv_account_profile_title, tvName)
+        toolbar.inflateMenu(R.menu.tv_account_menu)
+        toolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == R.id.tv_account_switch_menu) { showEmail(); true } else false
+        }
+        if (shownProfileUser == userId) return
+        shownProfileUser = userId
+        childFragmentManager.beginTransaction()
+            .replace(R.id.tv_account_profile,
+                com.tomclaw.appsend.screen.profile.createProfileFragment(userId, withToolbar = false))
+            .commitAllowingStateLoss()
+    }
+
+    private fun hideProfile() {
+        profileHost.isVisible = false
+        scroll.isVisible = true
+        toolbar.menu.clear()
+        toolbar.title = if (client != null) getString(R.string.tv_account_profile_title, tvName)
+        else getString(R.string.tv_account_title)
+    }
+
     private fun showEmail() {
+        hideProfile()
+        nameLayout.isVisible = false
         switchButton.isVisible = false
         codeBox.isVisible = false
         emailBox.isVisible = true
@@ -173,7 +212,9 @@ class TvAccountFragment : Fragment(), HomeFragment {
             sentTo = address
             emailBox.isVisible = false
             codeBox.isVisible = true
-            nameLayout.isVisible = !registered
+            // Gonzo 25/11 : comme l'appli d'origine, pas de pseudo demandé d'entrée ;
+            // le champ n'apparaît que si le serveur le réclame.
+            nameLayout.isVisible = false
             code.setText("")
             code.requestFocus()
             showMessage(getString(R.string.tv_account_code_sent, sentTo))
@@ -191,7 +232,14 @@ class TvAccountFragment : Fragment(), HomeFragment {
         }
         // Gonzo 25/11 : le serveur peut annoncer « nouveau compte » pour un compte qui existe déjà.
         // Le pseudo reste facultatif : le serveur le refusera s'il est vraiment nécessaire.
-        run({ tv.accountVerify(id, value, nick) }) { response ->
+        run({ tv.accountVerify(id, value, nick) }, onError = { error ->
+            // Le serveur réclame un pseudo (nouveau compte) : le champ apparaît alors seulement.
+            if (!registered && nick.isEmpty() && (error as? TvRemoteException)?.code?.startsWith("http_") == true) {
+                nameLayout.isVisible = true
+                showMessage(getString(R.string.tv_account_need_name), error = true)
+                name.requestFocus()
+            } else showMessage(errorText(error), error = true)
+        }) { response ->
             requestId = null
             val profile = response.optJSONObject("profile")
             if (profile != null) showProfile(profile) else loadStatus()
