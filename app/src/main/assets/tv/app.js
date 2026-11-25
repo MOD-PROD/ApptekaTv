@@ -1119,22 +1119,19 @@ window.onAuthError = function (json) {
 // ------------------------------------------------------------ navigation
 
 function headerMove(focused, dir) {
-    // Les boutons masqués (bouton QR quand un portable est associé) sont sautés
+    // Les boutons masqués (ex. mode portable) sont sautés
     const items = HEADER_ITEMS.filter(el => el.getClientRects().length > 0);
     const i = items.indexOf(focused);
     const j = i + (dir === 'right' ? 1 : -1);
     if (j >= 0 && j < items.length) items[j].focus();
 }
 
-// Bouton QR de l'accueil : visible seulement tant qu'aucun portable n'est associé.
-// Il réapparaît après « Oublier » / « Tout oublier » du dernier portable.
+// Bouton QR de l'accueil : toujours visible, même après une association, pour pouvoir
+// associer d'autres appareils (la TV accepte plusieurs portables ; chaque appui crée une
+// nouvelle invitation). Annule le choix de la 2164 (bouton masqué tant qu'un portable était associé).
 function updatePairButton() {
     if (!BTN_PAIR) return;
-    let devices = [];
-    try { devices = JSON.parse((window.Android && window.Android.tvLinkInfo && window.Android.tvLinkInfo()) || '{}').devices || []; } catch (e) { /* */ }
-    const hide = devices.length > 0;
-    if (hide && document.activeElement === BTN_PAIR) BTN_SCOPE.focus();
-    BTN_PAIR.classList.toggle('hidden-paired', hide);
+    BTN_PAIR.classList.remove('hidden-paired');
 }
 
 function onHeaderEnter(el) {
