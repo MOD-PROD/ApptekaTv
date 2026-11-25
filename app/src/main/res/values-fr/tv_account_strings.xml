@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tv_account_title">Compte Appteka de la TV</string>
+    <string name="tv_account_profile_title">Profil · %1$s</string>
+    <string name="tv_account_status_unknown">Compte de %1$s inconnu (%2$s). Tu peux quand même connecter la TV ci-dessous.</string>
     <string name="tv_account_pref_title">Compte Appteka de la TV</string>
     <string name="tv_account_pref_summary">Connecter %1$s à un compte Appteka depuis ce téléphone</string>
     <string name="tv_account_loading">Interrogation de %1$s…</string>

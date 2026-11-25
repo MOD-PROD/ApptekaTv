@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tv_account_title">Appteka account of the TV</string>
+    <string name="tv_account_profile_title">Profile · %1$s</string>
+    <string name="tv_account_status_unknown">Account of %1$s unknown (%2$s). You can still sign the TV in below.</string>
     <string name="tv_account_pref_title">Appteka account of the TV</string>
     <string name="tv_account_pref_summary">Sign %1$s in to an Appteka account from this phone</string>
     <string name="tv_account_loading">Asking %1$s…</string>

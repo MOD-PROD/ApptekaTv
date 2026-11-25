@@ -722,6 +722,8 @@ class TvWebActivity : AppCompatActivity() {
 
     // ATV : mêmes appels que le formulaire des Paramètres TV, demandés par le téléphone en mode 📺
     // (thread de la liaison, bloquants et bornés). La session reste celle de la TV.
+    // L'état du compte ne doit jamais bloquer la connexion : en cas d'échec, `profile` est absent
+    // et `statusError` donne la cause (http_401, network…) pour le diagnostic.
     private fun remoteAccountStatus(): JSONObject = try {
         val p = api.getProfile(userId = null).timeout(ACCOUNT_CALL_TIMEOUT_S, TimeUnit.SECONDS).blockingGet().result.profile
         JSONObject().put("ok", true).put("profile", JSONObject()
@@ -732,7 +734,7 @@ class TvWebActivity : AppCompatActivity() {
             .put("verified", p.isVerified))
     } catch (e: Exception) {
         Log.e(TAG, "remote account status failed", e)
-        accountFailure(e)
+        JSONObject().put("ok", true).put("statusError", accountFailure(e).optString("error"))
     }
 
     private fun remoteAccountRequestCode(email: String): JSONObject = try {
@@ -764,7 +766,7 @@ class TvWebActivity : AppCompatActivity() {
         val cause = (error as? RuntimeException)?.cause ?: error
         val code = when {
             cause is retrofit2.HttpException && cause.code() == 429 -> "rate_limit"
-            cause is retrofit2.HttpException -> "refused"
+            cause is retrofit2.HttpException -> "http_" + cause.code()
             else -> "network"
         }
         return JSONObject().put("ok", false).put("error", code)

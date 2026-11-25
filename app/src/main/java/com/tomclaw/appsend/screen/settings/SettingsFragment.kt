@@ -90,22 +90,6 @@ class SettingsFragment : PreferenceFragmentCompat(),
 
         setPreferencesFromResource(R.xml.preferences, rootKey)
         if (rootKey == null) {
-            // ATV (bug Gonzo 25/11) : en mode 📺, connecter la TV au compte Appteka depuis le téléphone,
-            // comme « Paramètres → Connexion au compte Appteka » sur la TV. En tête de liste.
-            com.tomclaw.appsend.target.TvTarget.current(requireContext())?.let { tv ->
-                preferenceScreen.addPreference(Preference(requireContext()).apply {
-                    key = "tv_account"
-                    order = -100
-                    title = getString(R.string.tv_account_pref_title)
-                    summary = getString(R.string.tv_account_pref_summary, tv.name)
-                    setIcon(R.drawable.ic_account)
-                    isPersistent = false
-                    setOnPreferenceClickListener {
-                        startActivity(com.tomclaw.appsend.screen.tvaccount.createTvAccountActivityIntent(requireContext()))
-                        true
-                    }
-                })
-            }
             // ATV (Gonzo 25/11) : ce téléphone / cette tablette peut être piloté par un autre appareil.
             if (com.tomclaw.appsend.screen.linktarget.LocalLinkTarget.isAvailable(requireContext())) {
                 preferenceScreen.addPreference(Preference(requireContext()).apply {
