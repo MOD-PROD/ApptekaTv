@@ -160,9 +160,10 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
      * - Cet appareil (téléphone par défaut) ;
      * - les appareils connectés, icône verte et leur nom : clic = devient la source,
      *   appui long = réglages (icône parmi les 4, Renommer, Supprimer) ;
-     * - tant qu'il y a moins de 4 appareils connectés, les 4 types en blanc : clic = connexion.
+     * - « À proximité » (appareils vus sur le Wi-Fi) ;
+     * - tant qu'il y a moins de 4 appareils connectés, « Ajouter un appareil » : 2e liste des 4 types.
      */
-    private fun showDeviceMenu(anchor: View) {
+    private fun showDeviceMenu(anchor: View, addMode: Boolean = false) {
         val context = requireContext()
         val shown = connection
         data class Row(val label: String, val icon: Int, val green: Boolean, val checked: Boolean, val plus: Boolean,
@@ -171,6 +172,15 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val local = DeviceKinds.current(context, null)
         val known = TvTarget.known(context)
         val rows = mutableListOf<Row>()
+        // Place de la section « À proximité » : après « Cet appareil » et les appareils associés.
+        val nearbyAt = if (!addMode && known.size < MAX_DEVICES) 1 + known.size else -1
+        // Gonzo 25/11 : « Ajouter » ouvre une 2e liste avec les 4 types à associer.
+        if (addMode) {
+            DeviceKind.values().forEach { kind ->
+                rows += Row(getString(kind.label), kind.icon, false, false, true, false,
+                    action = { pendingKind = kind; showPairDialog() })
+            }
+        } else {
         rows += Row(getString(R.string.local_target_this_device, getString(local.label)), local.icon, false, shown == null,
             false, false, action = { if (connection != null) { TvTarget.select(context, null); renderTarget() } },
             longAction = { showIconChooser(null) })
@@ -180,16 +190,14 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                 false, false, action = { if (!current) reconnect(device) }, longAction = { showDeviceSettings(device) })
         }
         // ATV proximité (Gonzo 25/11, « 1 et 2 ») : appareils Appteka vus sur le Wi-Fi, sans QR.
-        val nearbyAt = if (known.size < MAX_DEVICES) rows.size else -1
         if (nearbyAt >= 0) {
             rows += Row(getString(R.string.tv_nearby_searching), android.R.drawable.ic_menu_search, false, false,
                 false, true, action = {}, header = true)
         }
         if (known.size < MAX_DEVICES) {
-            DeviceKind.values().forEachIndexed { index, kind ->
-                rows += Row(getString(kind.label), kind.icon, false, false, true, index == 0,
-                    action = { pendingKind = kind; showPairDialog() })
-            }
+            rows += Row(getString(R.string.device_add), android.R.drawable.ic_input_add, false, false, true, true,
+                action = { anchor.post { showDeviceMenu(anchor, addMode = true) } })
+        }
         }
         val density = resources.displayMetrics.density
         val tint = com.google.android.material.color.MaterialColors.getColor(anchor, com.google.android.material.R.attr.colorOnSurface)
