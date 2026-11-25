@@ -2,7 +2,7 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/01-durcissement, atv/fix-phone-update-channel, atv/simulateur-atksimultv, atv/fix-tv-reelle-mibox4, atv/parametres-tv, atv/installees-tv-identiques, atv/09-fichiers-distants, atv/icone-appareil, atv/traduction-fr, atv/fix-connexion-compte-tv, atv/qr-association-permanent, atv/association-tablette-telephone, atv/menu-appareils ]
+    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/01-durcissement, atv/fix-phone-update-channel, atv/simulateur-atksimultv, atv/fix-tv-reelle-mibox4, atv/parametres-tv, atv/installees-tv-identiques, atv/09-fichiers-distants, atv/icone-appareil, atv/traduction-fr, atv/fix-connexion-compte-tv, atv/qr-association-permanent, atv/association-tablette-telephone, atv/menu-appareils, atv/connexion-proximite ]
   workflow_dispatch:
     inputs:
       publish:
@@ -39,8 +39,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Le runner Ubuntu fournit déjà le SDK Android (ANDROID_HOME).
-      # setup-android@v3 échouait en cherchant le paquet obsolète 'tools'.
       - name: Install Android platform 37
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
@@ -81,9 +79,6 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      # Release compactée (R8) et signée avec la clé ModProd d'apk-factory.
-      # Secrets : ANDROID_KEYSTORE_B64 (.p12 / .keystore en base64), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
-      # ANDROID_KEY_PASSWORD (facultatif : seulement si la clé a un mot de passe différent du fichier).
       - name: Build signed release APK
         id: release
         env:
@@ -102,7 +97,6 @@ jobs:
             exit 0
           fi
           echo "$ANDROID_KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > modprod-release.keystore
-          # ATV: both flavors, same key: Appteka TV (standard) and ATKsimulTv (simultv, TV simulator for phones).
           ./gradlew assembleStandardRelease assembleSimultvRelease --stacktrace -PversionCode="$VERSION_CODE" \
             -PstoreFile=modprod-release.keystore \
             -PstorePassword="$ANDROID_KEYSTORE_PASSWORD" \
@@ -113,7 +107,7 @@ jobs:
           for FLAVOR in standard simultv; do
             APK=$(find app/build/outputs/apk/$FLAVOR/release -name "*.apk" | head -n 1)
             "$BT/apksigner" verify --print-certs "$APK"
-            unzip -l "$APK" | grep -c "classes.*\.dex" | xargs echo "Fichiers dex :"
+            unzip -l "$APK" | grep -c "classes.*\\.dex" | xargs echo "Fichiers dex :"
             ls -la app/build/outputs/apk/$FLAVOR/release/
           done
           echo "built=true" >> $GITHUB_OUTPUT
@@ -129,7 +123,6 @@ jobs:
             "$BT/aapt" dump badging "$APK" | head -n 1
             test -s "$APK"
           done
-          # Distinct packages so both install side by side on one phone.
           STD_INFO=$("$BT/aapt" dump badging app/build/outputs/apk/standard/release/*.apk)
           SIM_INFO=$("$BT/aapt" dump badging app/build/outputs/apk/simultv/release/*.apk)
           grep -q "package: name='app.modprod.apptekatv'" <<< "$STD_INFO"
@@ -153,10 +146,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # ATV: ATKsimulTv has its own release channel (simultv-latest/update.json, package
-      # app.modprod.apptekatv.simultv), never mixed with the Appteka TV stable/beta/test channels.
-      # The Appteka TV APK of the same commit is attached too, so both apps on one phone speak
-      # the same pairing protocol.
       - name: Publish ATKsimulTv channel
         if: (inputs.publish == true && inputs.channel == 'simultv' || github.event_name == 'push' && github.ref == 'refs/heads/atv/simulateur-atksimultv') && steps.release.outputs.built == 'true'
         env:
