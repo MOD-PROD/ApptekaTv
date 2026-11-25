@@ -92,6 +92,6 @@ class TvRemoteFiles(private val context: Context) {
             context.getSystemService(StorageManager::class.java)?.getStorageVolume(dir)?.getDescription(context)
         }.getOrNull() else null
         return description?.takeIf { it.isNotBlank() }
-            ?: if (removable) "USB · ${dir.name}" else "Stockage interne"
+            ?: if (removable) "USB · ${dir.name}" else context.getString(com.tomclaw.appsend.R.string.atv_internal_storage)
     }
 }

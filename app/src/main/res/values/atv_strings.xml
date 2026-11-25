@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ATV: self-update (phone and TV) and TV link texts that were hard-coded. -->
+    <string name="atv_update_check">Check for updates</string>
+    <string name="atv_update_summary">%1$s — %2$s (%3$d) · %4$s channel</string>
+    <string name="atv_update_channel_title">Update channel</string>
+    <string name="atv_channel_stable">Stable</string>
+    <string name="atv_channel_beta">Beta</string>
+    <string name="atv_channel_test">Test</string>
+    <string name="atv_update_none">No update available (%1$s)</string>
+    <string name="atv_update_title">%1$s — Update</string>
+    <string name="atv_update_versions">Installed version: %1$s\nAvailable version: %2$s</string>
+    <string name="atv_update_later">Later</string>
+    <string name="atv_update_download">Download</string>
+    <string name="atv_update_check_failed">Could not check for updates (%1$s)</string>
+    <string name="atv_update_allow_install">Allow %1$s to install apps, then start the update again.</string>
+    <string name="atv_update_allow">Allow</string>
+    <string name="atv_update_setting_unavailable">Setting unavailable</string>
+    <string name="atv_update_downloading">Downloading</string>
+    <string name="atv_update_failed">Download or verification failed (%1$s)</string>
+    <string name="atv_update_install_failed">Installation failed: %1$s</string>
+    <string name="atv_update_confirm">Confirm the installation on the Android screen that opens</string>
+    <string name="tv_connected_to">Connected to %1$s</string>
+    <string name="tv_connected_back">TV connected: %1$s. Back to the phone.</string>
+    <string name="atv_internal_storage">Internal storage</string>
+</resources>

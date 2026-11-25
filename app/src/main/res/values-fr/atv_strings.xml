@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="atv_update_check">Rechercher une mise à jour</string>
+    <string name="atv_update_summary">%1$s — %2$s (%3$d) · canal %4$s</string>
+    <string name="atv_update_channel_title">Canal de mise à jour</string>
+    <string name="atv_channel_stable">Stable</string>
+    <string name="atv_channel_beta">Bêta</string>
+    <string name="atv_channel_test">Test</string>
+    <string name="atv_update_none">Aucune mise à jour disponible (%1$s)</string>
+    <string name="atv_update_title">%1$s — Mise à jour</string>
+    <string name="atv_update_versions">Version installée : %1$s\nVersion disponible : %2$s</string>
+    <string name="atv_update_later">Plus tard</string>
+    <string name="atv_update_download">Télécharger</string>
+    <string name="atv_update_check_failed">Vérification impossible (%1$s)</string>
+    <string name="atv_update_allow_install">Autorise %1$s à installer des applications, puis relance la mise à jour.</string>
+    <string name="atv_update_allow">Autoriser</string>
+    <string name="atv_update_setting_unavailable">Réglage indisponible</string>
+    <string name="atv_update_downloading">Téléchargement</string>
+    <string name="atv_update_failed">Téléchargement ou vérification impossible (%1$s)</string>
+    <string name="atv_update_install_failed">Installation impossible : %1$s</string>
+    <string name="atv_update_confirm">Confirme l\'installation sur l\'écran Android qui s\'ouvre</string>
+    <string name="tv_connected_to">Connecté à %1$s</string>
+    <string name="tv_connected_back">TV connectée : %1$s. Revenir au téléphone.</string>
+    <string name="atv_internal_storage">Stockage interne</string>
+</resources>

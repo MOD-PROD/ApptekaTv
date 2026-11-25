@@ -201,6 +201,18 @@ window.TvI18n = (function () {
         "Écran indisponible": ["Screen unavailable", "Pantalla no disponible", "Bildschirm nicht verfügbar", "Schermata non disponibile", "Tela indisponível", "Экран недоступен", "Ekran kullanılamıyor", "الشاشة غير متاحة"],
         "Fermer": ["Close", "Cerrar", "Schließen", "Chiudi", "Fechar", "Закрыть", "Kapat", "إغلاق"],
         "Retour": ["Back", "Atrás", "Zurück", "Indietro", "Voltar", "Назад", "Geri", "رجوع"],
+
+        // ---------------------------------------------------------------- ajouts 25/11 (traduction complète)
+        "Neuro sombre": ["Neuro dark", "Neuro oscuro", "Neuro dunkel", "Neuro scuro", "Neuro escuro", "Нейро тёмная", "Neuro koyu", "نيورو داكن"],
+        "Neuro clair": ["Neuro light", "Neuro claro", "Neuro hell", "Neuro chiaro", "Neuro claro", "Нейро светлая", "Neuro açık", "نيورو فاتح"],
+        "Oublier": ["Forget", "Olvidar", "Vergessen", "Dimentica", "Esquecer", "Забыть", "Unut", "نسيان"],
+        "Gravité !": ["Gravity!", "¡Gravedad!", "Schwerkraft!", "Gravità!", "Gravidade!", "Гравитация!", "Yerçekimi!", "الجاذبية!"],
+        "Mise à jour Appteka TV": ["Appteka TV update", "Actualización de Appteka TV", "Appteka TV aktualisieren", "Aggiornamento di Appteka TV", "Atualização do Appteka TV", "Обновление Appteka TV", "Appteka TV güncellemesi", "تحديث Appteka TV"],
+        "Mise à jour ATKsimulTv": ["ATKsimulTv update", "Actualización de ATKsimulTv", "ATKsimulTv aktualisieren", "Aggiornamento di ATKsimulTv", "Atualização do ATKsimulTv", "Обновление ATKsimulTv", "ATKsimulTv güncellemesi", "تحديث ATKsimulTv"],
+        "Association TV indisponible": ["TV pairing unavailable", "Vinculación de TV no disponible", "TV-Kopplung nicht verfügbar", "Associazione TV non disponibile", "Vínculo da TV indisponível", "Связывание ТВ недоступно", "TV eşleme kullanılamıyor", "ربط التلفاز غير متاح"],
+        "Presse-papiers indisponible": ["Clipboard unavailable", "Portapapeles no disponible", "Zwischenablage nicht verfügbar", "Appunti non disponibili", "Área de transferência indisponível", "Буфер обмена недоступен", "Pano kullanılamıyor", "الحافظة غير متاحة"],
+        "Code": ["Code", "Código", "Code", "Codice", "Código", "Код", "Kod", "الرمز"],
+        "Adresse": ["Address", "Dirección", "Adresse", "Indirizzo", "Endereço", "Адрес", "Adres", "العنوان"],
     };
 
     // Textes avec parties variables : modèle français -> traductions (même ordre que ORDER)
@@ -229,6 +241,9 @@ window.TvI18n = (function () {
         ["{0} avis", ["{0} reviews", "{0} reseñas", "{0} Bewertungen", "{0} recensioni", "{0} avaliações", "отзывов: {0}", "{0} yorum", "{0} مراجعة"]],
         ["{0} — OK pour les afficher", ["{0} — OK to show them", "{0} — OK para verlos", "{0} — OK zum Anzeigen", "{0} — OK per mostrarle", "{0} — OK para mostrar", "{0} — OK, чтобы показать", "{0} — göstermek için OK", "{0} — OK لعرضها"]],
         ["{0} par {1}", ["{0} by {1}", "{0} por {1}", "{0} von {1}", "{0} da {1}", "{0} por {1}", "{0}, {1}", "{0}, {1}", "{0} بواسطة {1}"]],
+        ["Recherche de mise à jour ({0}) lancée…", ["Checking for updates ({0})…", "Buscando actualizaciones ({0})…", "Suche nach Updates ({0})…", "Ricerca aggiornamenti ({0})…", "Procurando atualizações ({0})…", "Поиск обновлений ({0})…", "Güncellemeler aranıyor ({0})…", "جارٍ البحث عن تحديث ({0})…"]],
+        ["Version installée : {0}", ["Installed version: {0}", "Versión instalada: {0}", "Installierte Version: {0}", "Versione installata: {0}", "Versão instalada: {0}", "Установленная версия: {0}", "Yüklü sürüm: {0}", "الإصدار المثبّت: {0}"]],
+        ["{0} copié", ["{0} copied", "{0} copiado", "{0} kopiert", "{0} copiato", "{0} copiado", "{0}: скопировано", "{0} kopyalandı", "تم نسخ {0}"]],
         ["Versions ({0})", ["Versions ({0})", "Versiones ({0})", "Versionen ({0})", "Versioni ({0})", "Versões ({0})", "Версии ({0})", "Sürümler ({0})", "الإصدارات ({0})"]],
         ["{0} version(s) incompatible(s) masquée(s)", ["{0} incompatible version(s) hidden", "{0} versión(es) incompatible(s) oculta(s)", "{0} inkompatible Version(en) ausgeblendet", "{0} versioni incompatibili nascoste", "{0} versão(ões) incompatível(is) oculta(s)", "Скрыто несовместимых версий: {0}", "{0} uyumsuz sürüm gizlendi", "أُخفي {0} إصدار غير متوافق"]],
         ["v{0} · affichée", ["v{0} · shown", "v{0} · mostrada", "v{0} · angezeigt", "v{0} · mostrata", "v{0} · exibida", "v{0} · открыта", "v{0} · gösteriliyor", "v{0} · معروض"]],

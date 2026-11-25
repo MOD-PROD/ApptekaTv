@@ -795,7 +795,7 @@ function renderSettings(focusKey) {
         ${IS_MOBILE ? '' : settingsSection('tvlink', 'Portables associés', tvLinkHtml())}
         ${settingsSection('update', 'Mise à jour', `
             <div class="set-label">${IS_SIMULATOR ? 'Mise à jour ATKsimulTv' : 'Mise à jour Appteka TV'}</div>
-            <div class="set-sub" data-no-i18n>Version installée : ${escapeHtml(String(call('installedUpdateVersion') || 'indisponible'))}</div>
+            <div class="set-sub">Version installée : ${escapeHtml(String(call('installedUpdateVersion') || 'indisponible'))}</div>
             ${IS_SIMULATOR ? `<div class="set-row">
                 <button class="btn focusable" type="button" data-k="self-update-simultv" data-act="self-update" data-channel="simultv">Rechercher une mise à jour</button>
             </div>

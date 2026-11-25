@@ -92,7 +92,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val context = context ?: return@TvLinkSender
         TvTarget.select(context, paired)
         renderTarget()
-        android.widget.Toast.makeText(context, "Connecté à ${paired.name}", android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(context, context.getString(R.string.tv_connected_to, paired.name), android.widget.Toast.LENGTH_SHORT).show()
     })
 
     private val pairingScanner = registerForActivityResult(ScanContract()) { result ->
@@ -107,7 +107,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val kind = DeviceKinds.current(context, shown)
         targetButton?.apply {
             setImageResource(kind.icon)
-            contentDescription = (shown?.let { "TV connectée : ${it.name}. Revenir au téléphone." }
+            contentDescription = (shown?.let { getString(R.string.tv_connected_back, it.name) }
                 ?: getString(R.string.tv_pair_title)) + ". " + getString(R.string.device_kind_hint)
         }
         if (shown != null) refreshRemoteKind(shown)
@@ -219,7 +219,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                     is TvReconnect.Result.Connected -> {
                         TvTarget.select(requireContext(), result.connection)
                         renderTarget()
-                        android.widget.Toast.makeText(appContext, "Connecté à ${result.connection.name}", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(appContext, appContext.getString(R.string.tv_connected_to, result.connection.name), android.widget.Toast.LENGTH_SHORT).show()
                     }
                     TvReconnect.Result.Forgotten -> {
                         TvTarget.forget(requireContext())

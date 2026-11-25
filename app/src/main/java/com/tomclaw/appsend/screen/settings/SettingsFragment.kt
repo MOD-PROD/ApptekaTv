@@ -92,22 +92,22 @@ class SettingsFragment : PreferenceFragmentCompat(),
         if (rootKey == null) {
             preferenceScreen.addPreference(Preference(requireContext()).apply {
                 key = "self_update"
-                title = "Rechercher une mise à jour"
+                title = getString(R.string.atv_update_check)
                 setIcon(R.drawable.ic_system_update) // Gonzo 25/11 : icône comme les autres réglages
                 isPersistent = false
                 // ATV: choose the channel (stable / beta / test) on the phone too; remembered.
                 fun refresh() {
-                    summary = getString(R.string.app_name_phone) + " — " + com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" +
-                        com.tomclaw.appsend.BuildConfig.VERSION_CODE + ") · canal " +
-                        com.tomclaw.appsend.update.UpdateChannel.label(com.tomclaw.appsend.update.UpdateChannel.get(requireContext()))
+                    summary = getString(R.string.atv_update_summary, getString(R.string.app_name_phone),
+                        com.tomclaw.appsend.BuildConfig.VERSION_NAME, com.tomclaw.appsend.BuildConfig.VERSION_CODE,
+                        com.tomclaw.appsend.update.UpdateChannel.label(requireContext(), com.tomclaw.appsend.update.UpdateChannel.get(requireContext())))
                 }
                 refresh()
                 setOnPreferenceClickListener {
                     val channels = com.tomclaw.appsend.update.UpdateChannel.CHANNELS
                     val current = channels.indexOf(com.tomclaw.appsend.update.UpdateChannel.get(requireContext()))
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Canal de mise à jour")
-                        .setSingleChoiceItems(com.tomclaw.appsend.update.UpdateChannel.LABELS.toTypedArray(), current) { dialog, which ->
+                        .setTitle(R.string.atv_update_channel_title)
+                        .setSingleChoiceItems(com.tomclaw.appsend.update.UpdateChannel.labels(requireContext()).toTypedArray(), current) { dialog, which ->
                             com.tomclaw.appsend.update.UpdateChannel.set(requireContext(), channels[which])
                             refresh()
                             dialog.dismiss()
