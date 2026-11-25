@@ -752,7 +752,10 @@ class TvWebActivity : AppCompatActivity() {
             .put("verified", p.isVerified))
     } catch (e: Exception) {
         Log.e(TAG, "remote account status failed", e)
-        JSONObject().put("ok", true).put("statusError", accountFailure(e).optString("error"))
+        val reason = accountFailure(e).optString("error")
+        // Le serveur répond 401 au profil tant que la TV n'est connectée à aucun compte.
+        if (reason == "http_401") JSONObject().put("ok", true).put("profile", JSONObject().put("registered", false).put("userId", ""))
+        else JSONObject().put("ok", true).put("statusError", reason)
     }
 
     private fun remoteAccountRequestCode(email: String): JSONObject = try {
