@@ -123,6 +123,17 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             shown?.let { DeviceKinds.displayName(context, it) } ?: com.tomclaw.appsend.tvlink.TvLink.deviceName(),
         )
         if (shown != null) refreshRemoteKind(shown)
+        reloadIfAbisChanged()
+    }
+
+    /** Gonzo 25/11 : autre appareil actif (ou réglage modifié) → la liste filtrée change. */
+    private var abiState: String? = null
+
+    private fun reloadIfAbisChanged() {
+        val state = com.tomclaw.appsend.target.DeviceAbis.stateKey(context ?: return)
+        val before = abiState
+        abiState = state
+        if (before != null && before != state) presenter.invalidateApps()
     }
 
     /** ATV : la TV annonce son type (TV ou box) dans « hello » ; mis en cache par TV. */
@@ -131,9 +142,12 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val appContext = requireContext().applicationContext
         kotlin.concurrent.thread(name = "tv-kind") {
             val announced = runCatching {
-                TvLink.request(shown.address, org.json.JSONObject().put("type", "hello")).optString("kind")
+                TvLink.request(shown.address, org.json.JSONObject().put("type", "hello"))
             }.getOrNull()
-            if (DeviceKinds.remember(appContext, shown, announced)) {
+            val kindChanged = DeviceKinds.remember(appContext, shown, announced?.optString("kind"))
+            val abisChanged = com.tomclaw.appsend.target.DeviceAbis.remember(appContext, shown.address.tv,
+                announced?.optJSONArray("abis"))
+            if (kindChanged || abisChanged) {
                 activity?.runOnUiThread { if (isAdded) renderTarget() }
             }
         }

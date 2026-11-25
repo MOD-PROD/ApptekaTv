@@ -13,4 +13,6 @@
     <string name="pair_invite_text">Touchez pour afficher le code d’association, puis saisissez-le sur cet appareil.</string>
     <string name="pair_invite_toast">%1$s veut s’associer : saisissez sur cet appareil le code affiché ici.</string>
     <string name="pair_invite_failed">Cet appareil n’a pas répondu. Appteka est-il ouvert dessus ?</string>
+    <string name="pref_title_arch_filter">Applis compatibles seulement</string>
+    <string name="pref_summary_arch_filter">Le Store cache les applis qui ne tournent pas sur le processeur de l’appareil actif (celui-ci, ou l’appareil piloté).</string>
 </resources>
