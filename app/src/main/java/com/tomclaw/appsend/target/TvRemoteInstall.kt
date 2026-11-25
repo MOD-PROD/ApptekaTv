@@ -145,7 +145,7 @@ class TvRemoteInstall(
             activity.getString(R.string.tv_install_downloading, state.percent)
         } else activity.getString(R.string.tv_install_downloading_start)
         TvRemoteState.INSTALLING -> activity.getString(R.string.tv_install_installing)
-        TvRemoteState.CONFIRM -> activity.getString(R.string.tv_install_confirm)
+        TvRemoteState.CONFIRM -> activity.getString(R.string.tv_install_installing) // the TV shows its own Android confirmation
         TvRemoteState.INSTALLED -> activity.getString(R.string.tv_install_done)
         TvRemoteState.FAILED -> when (state.reason) {
             TvRemoteState.REASON_INFO -> activity.getString(R.string.tv_install_failed_info)
