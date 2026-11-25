@@ -113,12 +113,12 @@ class LocalTargetActivity : AppCompatActivity() {
                 textSize = 16f
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             if (device["files"] == "true") {
-                row.addView(MaterialButton(this, null, com.google.android.material.R.attr.borderlessButtonStyle).apply {
+                row.addView(MaterialButton(this, null, androidx.appcompat.R.attr.borderlessButtonStyle).apply {
                     setText(R.string.local_target_revoke_files)
                     setOnClickListener { LocalLinkTarget.server?.revokeFiles(id); render() }
                 })
             }
-            row.addView(MaterialButton(this, null, com.google.android.material.R.attr.borderlessButtonStyle).apply {
+            row.addView(MaterialButton(this, null, androidx.appcompat.R.attr.borderlessButtonStyle).apply {
                 setText(R.string.local_target_forget)
                 setOnClickListener { LocalLinkTarget.server?.forget(id); render() }
             })
