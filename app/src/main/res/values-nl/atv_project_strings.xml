@@ -168,4 +168,6 @@
     <string name="tv_connected_to">Verbonden met %1$s</string>
     <string name="tv_connected_back">Tv verbonden: %1$s. Terug naar de telefoon.</string>
     <string name="atv_internal_storage">Interne opslag</string>
+    <string name="atv_force_tv_title">TV-weergave forceren</string>
+    <string name="atv_force_tv_summary">Toont de tv-interface op deze telefoon of tablet, liggend. Terug: tv-instellingen, Terug naar telefoonweergave.</string>
 </resources>

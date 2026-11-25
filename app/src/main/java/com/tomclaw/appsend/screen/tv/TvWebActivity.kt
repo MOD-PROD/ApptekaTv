@@ -37,6 +37,9 @@ import com.tomclaw.appsend.target.TvRemoteState
 import org.json.JSONObject
 import com.tomclaw.appsend.tvlink.TvLinkSender
 import com.tomclaw.appsend.util.isTvDevice
+import com.tomclaw.appsend.util.isRealTvDevice
+import com.tomclaw.appsend.util.isTvDisplayForced
+import com.tomclaw.appsend.util.setTvDisplayForced
 import com.tomclaw.appsend.categories.Category
 import com.tomclaw.appsend.core.StoreApi
 import com.tomclaw.appsend.download.ApkStorage
@@ -1066,6 +1069,22 @@ class TvWebActivity : AppCompatActivity() {
         /** true sur TV / box (interface 10 pieds), false sur portable. */
         @JavascriptInterface
         fun isTv(): Boolean = this@TvWebActivity.isTv
+
+        /** ATV : affichage TV forcé depuis les réglages d'un téléphone/tablette (pas une vraie TV). */
+        @JavascriptInterface
+        fun isTvDisplayForced(): Boolean =
+            this@TvWebActivity.isTvDisplayForced() && !this@TvWebActivity.isRealTvDevice()
+
+        /** ATV : quitte l'affichage TV forcé et rouvre l'Appteka du téléphone. */
+        @JavascriptInterface
+        fun exitTvDisplay(): Unit = runOnUiThread {
+            setTvDisplayForced(false)
+            startActivity(
+                com.tomclaw.appsend.screen.home.createHomeActivityIntent(this@TvWebActivity)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
+            finish()
+        }
 
         /** Ouvre un écran de l'interface classique (fonctions pas encore en HTML). */
         @JavascriptInterface

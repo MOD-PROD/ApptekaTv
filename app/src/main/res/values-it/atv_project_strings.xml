@@ -168,4 +168,6 @@
     <string name="tv_connected_to">Connesso a %1$s</string>
     <string name="tv_connected_back">TV connessa: %1$s. Torna al telefono.</string>
     <string name="atv_internal_storage">Memoria interna</string>
+    <string name="atv_force_tv_title">Forza vista TV</string>
+    <string name="atv_force_tv_summary">Mostra l\'interfaccia TV su questo telefono o tablet, in orizzontale. Per tornare: Impostazioni della TV, Torna alla vista telefono.</string>
 </resources>

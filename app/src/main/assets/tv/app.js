@@ -831,6 +831,11 @@ function renderSettings(focusKey) {
                 <button class="btn focusable" type="button" data-k="self-update-test" data-act="self-update" data-channel="test">Test</button>
             </div>
             <div class="set-sub">Choisir un canal pour rechercher une mise à jour.</div>`)}
+        ${call('isTvDisplayForced') ? settingsSection('forcetv', 'Affichage TV forcé', `
+            <div class="set-sub">Ce téléphone affiche l'interface TV. Réglage du téléphone : Forcer l'affichage TV.</div>
+            <div class="set-row">
+                <button class="btn focusable" type="button" data-k="exit-tv-display" data-act="exit-tv-display">Revenir à l'affichage téléphone</button>
+            </div>`) : ''}
         ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
         <div class="set-section">
             <button class="btn focusable" type="button" data-k="export-config" data-act="export-config">
@@ -971,6 +976,10 @@ function classicHtml() {
 }
 
 function onSettingsAction(b) {
+    if (b.dataset.act === 'exit-tv-display') {
+        call('exitTvDisplay');
+        return;
+    }
     if (b.dataset.act === 'self-update') {
         const channel = ['stable', 'beta', 'test'].includes(b.dataset.channel) ? b.dataset.channel : 'stable';
         settingsMsg = { text: 'Recherche de mise à jour (' + channel + ') lancée…', err: false };

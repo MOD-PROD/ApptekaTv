@@ -168,4 +168,6 @@
     <string name="tv_connected_to">已连接到 %1$s</string>
     <string name="tv_connected_back">电视已连接：%1$s。返回手机。</string>
     <string name="atv_internal_storage">内部存储</string>
+    <string name="atv_force_tv_title">强制电视显示</string>
+    <string name="atv_force_tv_summary">在此手机或平板上以横屏显示电视界面。返回方法：电视设置 > 返回手机显示。</string>
 </resources>

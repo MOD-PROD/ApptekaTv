@@ -168,4 +168,6 @@
     <string name="tv_connected_to">پەیوەستە بە %1$s</string>
     <string name="tv_connected_back">تەلەفزیۆن پەیوەستە: %1$s. گەڕانەوە بۆ مۆبایل.</string>
     <string name="atv_internal_storage">بیرگەی ناوخۆ</string>
+    <string name="atv_force_tv_title">ناچارکردنی پیشاندانی تەلەفزیۆن</string>
+    <string name="atv_force_tv_summary">ڕووکاری تەلەفزیۆن لەسەر ئەم مۆبایل یان تابلێتە بە ئاسۆیی پیشان دەدات. بۆ گەڕانەوە: ڕێکخستنەکانی تەلەفزیۆن، گەڕانەوە بۆ پیشاندانی مۆبایل.</string>
 </resources>

@@ -168,4 +168,6 @@
     <string name="tv_connected_to">متصل به %1$s</string>
     <string name="tv_connected_back">تلویزیون متصل: %1$s. بازگشت به گوشی.</string>
     <string name="atv_internal_storage">حافظهٔ داخلی</string>
+    <string name="atv_force_tv_title">اجبار نمایش تلویزیون</string>
+    <string name="atv_force_tv_summary">رابط تلویزیون را روی این گوشی یا تبلت به صورت افقی نشان می‌دهد. برای بازگشت: تنظیمات تلویزیون، بازگشت به نمای گوشی.</string>
 </resources>

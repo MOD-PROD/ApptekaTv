@@ -23,4 +23,6 @@
     <string name="tv_connected_to">Connected to %1$s</string>
     <string name="tv_connected_back">TV connected: %1$s. Back to the phone.</string>
     <string name="atv_internal_storage">Internal storage</string>
+    <string name="atv_force_tv_title">Force TV display</string>
+    <string name="atv_force_tv_summary">Show the TV interface on this phone or tablet, in landscape. To come back: TV Settings, Back to phone display.</string>
 </resources>

@@ -168,4 +168,6 @@
     <string name="tv_connected_to">%1$s ga ulandi</string>
     <string name="tv_connected_back">Televizor ulangan: %1$s. Telefonga qaytish.</string>
     <string name="atv_internal_storage">Ichki xotira</string>
+    <string name="atv_force_tv_title">TV ko‘rinishini majburlash</string>
+    <string name="atv_force_tv_summary">Ushbu telefon yoki planshetda TV interfeysini yotiq holatda ko‘rsatadi. Qaytish uchun: TV sozlamalari, Telefon ko‘rinishiga qaytish.</string>
 </resources>
