@@ -61,12 +61,11 @@ L'identifiant `app.modprod.apptekatv` permet de l'installer à côté de l'Appte
 | `app/src/main/java/com/tomclaw/appsend/screen/tv/` | Activité TV et pont vers le code natif |
 | `app/src/main/java/com/tomclaw/appsend/tvlink/` | Liaison réseau chiffrée téléphone ↔ TV |
 | `app/src/main/java/com/tomclaw/appsend/target/` | Appareil piloté, installation et fichiers à distance |
-| `app/src/simultv/` | ATKsimulTv : simulateur de TV sur téléphone, pour les tests |
 | `design/archive/` | Anciennes images (jamais écrasées, archivées) |
 
 ## Compilation
 
-Le workflow **Build TV APK** (`.github/workflows/build-tv-apk.yml`) se lance à chaque push sur `main` et sur les branches `atv/...`. Il produit un APK de débogage et un APK de production signé avec la clé ModProd (secrets du dépôt). Un push sur `main` publie la version Test ; Bêta, Stable et ATKsimulTv se publient à la main (*Run workflow*), Stable uniquement depuis `main`.
+Le workflow **Build TV APK** (`.github/workflows/build-tv-apk.yml`) se lance à chaque push sur `main` et sur les branches `atv/...`. Il produit un APK de débogage et un APK de production signé avec la clé ModProd (secrets du dépôt). Un push sur `main` publie la version Test ; Bêta et Stable se publient à la main (*Run workflow*), Stable uniquement depuis `main`.
 
 En local (JDK 17, SDK Android plateforme 37) :
 

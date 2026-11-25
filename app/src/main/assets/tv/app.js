@@ -74,8 +74,6 @@ function setPref(key, value) {
 function loadJson(key, def) {
     try { const v = getPref(key); return v ? JSON.parse(v) : def; } catch (e) { return def; }
 }
-// ATV: ATKsimulTv, TV simulator flavor installed on a phone.
-const IS_SIMULATOR = !!(window.Android && typeof window.Android.isSimulator === 'function' && window.Android.isSimulator());
 
 function call(fn, ...args) {
     if (window.Android && typeof window.Android[fn] === 'function') return window.Android[fn](...args.map(String));
@@ -825,18 +823,14 @@ function renderSettings(focusKey) {
         `)}
         ${IS_MOBILE ? '' : settingsSection('tvlink', 'Portables associés', tvLinkHtml())}
         ${settingsSection('update', 'Mise à jour', `
-            <div class="set-label">${IS_SIMULATOR ? 'Mise à jour ATKsimulTv' : 'Mise à jour Appteka TV'}</div>
+            <div class="set-label">Mise à jour Appteka TV</div>
             <div class="set-sub">Version installée : ${escapeHtml(String(call('installedUpdateVersion') || 'indisponible'))}</div>
-            ${IS_SIMULATOR ? `<div class="set-row">
-                <button class="btn focusable" type="button" data-k="self-update-simultv" data-act="self-update" data-channel="simultv">Rechercher une mise à jour</button>
-            </div>
-            <div class="set-sub">Canal ATKsimulTv (simultv-latest), séparé des canaux d'Appteka TV.</div>` : `
             <div class="set-row" role="group" aria-label="Canal de mise à jour">
                 <button class="btn focusable" type="button" data-k="self-update-stable" data-act="self-update" data-channel="stable">Stable</button>
                 <button class="btn focusable" type="button" data-k="self-update-beta" data-act="self-update" data-channel="beta">Bêta</button>
                 <button class="btn focusable" type="button" data-k="self-update-test" data-act="self-update" data-channel="test">Test</button>
             </div>
-            <div class="set-sub">Choisir un canal pour rechercher une mise à jour.</div>`}`)}
+            <div class="set-sub">Choisir un canal pour rechercher une mise à jour.</div>`)}
         ${settingsSection('classic', 'Plus de fonctions', classicHtml())}
         <div class="set-section">
             <button class="btn focusable" type="button" data-k="export-config" data-act="export-config">
@@ -978,7 +972,7 @@ function classicHtml() {
 
 function onSettingsAction(b) {
     if (b.dataset.act === 'self-update') {
-        const channel = ['stable', 'beta', 'test', 'simultv'].includes(b.dataset.channel) ? b.dataset.channel : 'stable';
+        const channel = ['stable', 'beta', 'test'].includes(b.dataset.channel) ? b.dataset.channel : 'stable';
         settingsMsg = { text: 'Recherche de mise à jour (' + channel + ') lancée…', err: false };
         call('checkSelfUpdate', channel);
         renderSettings('self-update-' + channel);

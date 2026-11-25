@@ -14,24 +14,15 @@ android {
         targetSdkVersion 36
         versionCode project.hasProperty("versionCode") ? Integer.parseInt(project.versionCode) : 1195
         versionName = "24.0"
-        buildConfigField "boolean", "FORCE_TV_SIMULATOR", "false"
         manifestPlaceholders = [tvOrientation: "unspecified", launcherLabel: "@string/app_name", phoneLabel: "@string/app_name_phone"]
     }
 
     // ATV: "standard" = Appteka TV (app.modprod.apptekatv, phone + real TV).
-    // "simultv" = ATKsimulTv, the same code forced into TV mode in landscape, with its own
-    // applicationId so it installs beside the standard app on one phone to test pairing.
+    // (Le simulateur ATKsimulTv a été retiré de main le 25/11 : voir la branche archive/atksimultv.)
     flavorDimensions = ["target"]
     productFlavors {
         standard {
             dimension "target"
-        }
-        simultv {
-            dimension "target"
-            applicationIdSuffix ".simultv"
-            buildConfigField "boolean", "FORCE_TV_SIMULATOR", "true"
-            resValue "string", "simultv_app_name", "ATKsimulTv"
-            manifestPlaceholders = [tvOrientation: "sensorLandscape", launcherLabel: "@string/simultv_app_name", phoneLabel: "@string/simultv_app_name"]
         }
     }
 
@@ -104,7 +95,7 @@ androidComponents {
     onVariants(selector()) { variant ->
         def vName = android.defaultConfig.versionName
         def vCode = android.defaultConfig.versionCode
-        def prefix = variant.flavorName == "simultv" ? "atksimultv" : "appteka"
+        def prefix = "appteka"
         variant.outputs.forEach { output ->
             output.outputFileName.set("${prefix}-${vName}-${vCode}.apk")
         }

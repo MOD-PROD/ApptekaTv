@@ -535,10 +535,7 @@ object TvLink {
 
         @Synchronized
         fun pairingQr(): PairingQr? {
-            // ATV: ATKsimulTv falls back to loopback so a phone on mobile data can still pair
-            // with Appteka TV installed on the same phone.
-            val address = localIpv4()
-                ?: (if (com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR) "127.0.0.1" else return null)
+            val address = localIpv4() ?: return null
             if (port == 0) return null
             val secret = randomHex()
             val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -587,8 +584,7 @@ object TvLink {
         private fun handle(client: java.net.Socket) {
             // ATV-01 durcissement : clients du réseau local IPv4 uniquement, et durée bornée.
             val remote = client.inetAddress
-            val simulatorLoopback = com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR && remote.isLoopbackAddress
-            if (remote !is Inet4Address || !(remote.isSiteLocalAddress || remote.isLinkLocalAddress || simulatorLoopback)) {
+            if (remote !is Inet4Address || !(remote.isSiteLocalAddress || remote.isLinkLocalAddress)) {
                 try {
                     client.close()
                 } catch (_: Exception) {

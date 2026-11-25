@@ -63,7 +63,7 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
         }
     }
 
-    /** Pas sur une TV/box (ni ATKsimulTv) : leur serveur est celui de l'interface TV. */
+    /** Pas sur une TV/box : leur serveur est celui de l'interface TV. */
     fun isAvailable(context: Context): Boolean = !context.isTvDevice()
 
     fun isEnabled(context: Context): Boolean =

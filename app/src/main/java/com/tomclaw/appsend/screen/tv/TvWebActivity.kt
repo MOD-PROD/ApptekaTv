@@ -29,10 +29,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
-import com.tomclaw.appsend.BuildConfig
 import com.google.gson.Gson
 import com.tomclaw.appsend.R
 import com.tomclaw.appsend.appComponent
@@ -154,7 +150,6 @@ class TvWebActivity : AppCompatActivity() {
         webView = WebView(this)
         webView.setBackgroundColor(0xffe0e5ec.toInt())
         setContentView(webView)
-        applySimulatorFullscreen()
         webView.requestFocus()
 
         setupWebView()
@@ -211,61 +206,15 @@ class TvWebActivity : AppCompatActivity() {
         val image = ImageView(this).apply {
             setImageBitmap(Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888))
             adjustViewBounds = true
-            // ATV: on a phone in landscape (ATKsimulTv) a full-size QR pushed the OK /
-            // code buttons off screen; keep it within ~40 % of the height.
-            maxHeight = if (BuildConfig.FORCE_TV_SIMULATOR) {
-                minOf(size, (resources.displayMetrics.heightPixels * 0.4f).toInt())
-            } else size
+            maxHeight = size
         }
         val hostPort = TvLink.Pairing.parse(pairing.payload).let { "${it.host}:${it.port}" }
-        val dialog = if (BuildConfig.FORCE_TV_SIMULATOR) {
-            // ATV: ATKsimulTv, same phone as Appteka TV: long press on the code or the address
-            // copies it, to paste into "Taper le code" (the QR secret itself is never copied).
-            val pad = (16 * resources.displayMetrics.density).toInt()
-            fun copyable(label: String, value: String, textSize: Float) = android.widget.TextView(this).apply {
-                text = "$label : $value"
-                this.textSize = textSize
-                setPadding(pad, pad / 2, pad, pad / 2)
-                setOnLongClickListener {
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                    if (clipboard == null) {
-                        toast("Presse-papiers indisponible")
-                    } else {
-                        val clip = android.content.ClipData.newPlainText(label, value)
-                        // ATV-01: keep the code out of the clipboard preview.
-                        if (Build.VERSION.SDK_INT >= 24) clip.description.extras = android.os.PersistableBundle().apply {
-                            putBoolean(if (Build.VERSION.SDK_INT >= 33) android.content.ClipDescription.EXTRA_IS_SENSITIVE
-                                else "android.content.extra.IS_SENSITIVE", true)
-                        }
-                        clipboard.setPrimaryClip(clip)
-                        toast("$label copié")
-                    }
-                    true
-                }
-            }
-            val content = android.widget.LinearLayout(this).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                setPadding(pad, pad, pad, 0)
-                addView(copyable("Code", pairing.code, 22f))
-                addView(copyable("Adresse", hostPort, 18f))
-                addView(android.widget.TextView(this@TvWebActivity).apply {
-                    text = "Appui long sur le code ou l'adresse pour les copier."
-                    setPadding(pad, 0, pad, pad / 2)
-                })
-                addView(image)
-            }
-            MaterialAlertDialogBuilder(this)
-                .setView(android.widget.ScrollView(this).apply { addView(content) })
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
-        } else {
-            MaterialAlertDialogBuilder(this)
-                .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
-                .setMessage(getString(R.string.tv_pair_display_address, hostPort))
-                .setView(image)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
-        }
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.tv_pair_display_code, pairing.code))
+            .setMessage(getString(R.string.tv_pair_display_address, hostPort))
+            .setView(image)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
         pairingDialog = dialog
         val expireDialog = Runnable { dialog.dismiss() }
         dialog.setOnDismissListener {
@@ -459,20 +408,6 @@ class TvWebActivity : AppCompatActivity() {
             Log.e(TAG, "openClassic $screen failed", e)
             toast("Écran indisponible")
         }
-    }
-
-    /** ATV: ATKsimulTv fills the phone screen like a TV (system bars hidden, swipe to show). */
-    private fun applySimulatorFullscreen() {
-        if (!BuildConfig.FORCE_TV_SIMULATOR) return
-        WindowCompat.getInsetsController(window, window.decorView).apply {
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(WindowInsetsCompat.Type.systemBars())
-        }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) window.decorView.post { applySimulatorFullscreen() }
     }
 
     override fun onResume() {
@@ -1048,11 +983,7 @@ class TvWebActivity : AppCompatActivity() {
 
     inner class TvJsBridge {
         @JavascriptInterface
-        fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test", "simultv") } ?: "stable") }
-
-        /** ATV: ATKsimulTv (single update channel "simultv"). */
-        @JavascriptInterface
-        fun isSimulator(): Boolean = com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR
+        fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test") } ?: "stable") }
 
         @JavascriptInterface
         fun installedUpdateVersion(): String = com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
