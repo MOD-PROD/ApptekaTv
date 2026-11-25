@@ -136,6 +136,39 @@ class TvLinkSender(
     }
 
     /**
+     * ATV proximité : saisie du code avec adresse déjà connue (pré-remplie, masquée).
+     */
+    fun showCodeEntry(host: String, port: Int) {
+        val pad = (24 * activity.resources.displayMetrics.density).toInt()
+        val code = android.widget.EditText(activity).apply {
+            hint = activity.getString(R.string.tv_pair_code_hint)
+            isSingleLine = true
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        }
+        val fields = android.widget.LinearLayout(activity).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, 0, pad, 0)
+            addView(code)
+        }
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.tv_pair_title)
+            .setMessage(activity.getString(R.string.tv_pair_nearby_hint))
+            .setView(fields)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.tv_pair_confirm, null)
+            .show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+            val value = code.text.toString().trim().uppercase(java.util.Locale.ROOT)
+            if (!value.matches(Regex("[A-Z2-9]{8}"))) {
+                code.error = activity.getString(R.string.tv_pair_code_hint)
+                return@setOnClickListener
+            }
+            dialog.dismiss()
+            pairCode(host, port, value)
+        }
+    }
+
+    /**
      * ATV-01 durcissement : identifiant aléatoire de cette installation, envoyé à la TV pour
      * qu'une nouvelle association remplace l'ancienne au lieu d'ajouter un second jeton.
      */
