@@ -84,10 +84,12 @@ object TvLink {
     private fun open(address: Pairing): SSLSocket = try {
         openAt(address)
     } catch (e: java.io.IOException) {
-        // Seulement une connexion impossible (rien n'a été envoyé), jamais pendant une association.
+        // Seulement une connexion impossible (rien n'a été envoyé).
         val unreachable = e is java.net.ConnectException || e is java.net.NoRouteToHostException ||
             e is java.net.SocketTimeoutException
-        if (!unreachable || address.secret.isNotEmpty() || relocating.get() == true) throw e
+        // Aussi pendant une association : l'adresse du QR peut être la mauvaise interface ; l'appareil
+        // retrouvé sur le Wi-Fi doit présenter la même empreinte TLS avant que l'invitation parte.
+        if (!unreachable || relocating.get() == true) throw e
         relocating.set(true)
         val moved = try {
             runCatching { relocator?.invoke(address) }.getOrNull()
@@ -268,13 +270,20 @@ object TvLink {
         host
     }
 
+    /**
+     * Adresse Wi-Fi / Ethernet de cet appareil. Gonzo 25/11 (« tablette injoignable ») : la
+     * première adresse privée venue pouvait être celle des données mobiles (10.x de l'opérateur)
+     * ou d'un VPN ; on écarte ces interfaces et on préfère wlan/eth puis 192.168.x.
+     */
     fun localIpv4(): String? = try {
+        val skipped = Regex("^(rmnet|ccmni|pdp|ppp|tun|tap|ipsec|v4-|dummy|clat|wwan|usb|rndis|bt-pan|p2p).*")
         NetworkInterface.getNetworkInterfaces().toList()
-            .filter { it.isUp && !it.isLoopback }
-            .flatMap { it.inetAddresses.toList() }
-            .filterIsInstance<Inet4Address>()
-            .firstOrNull { it.isSiteLocalAddress }
-            ?.hostAddress
+            .filter { it.isUp && !it.isLoopback && !it.isVirtual && !it.isPointToPoint && !skipped.matches(it.name.orEmpty()) }
+            .flatMap { nif -> nif.inetAddresses.toList().filterIsInstance<Inet4Address>()
+                .filter { it.isSiteLocalAddress }.map { nif.name.orEmpty() to it } }
+            .sortedWith(compareBy({ (name, _) -> if (name.startsWith("wlan") || name.startsWith("eth")) 0 else 1 },
+                { (_, address) -> if (address.hostAddress.orEmpty().startsWith("192.168.")) 0 else 1 }))
+            .firstOrNull()?.second?.hostAddress
     } catch (e: Exception) {
         null
     }

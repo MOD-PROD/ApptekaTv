@@ -14,5 +14,5 @@
     <string name="tv_link_send_title">%1$s → %2$s</string>
     <string name="tv_link_sent">Sent to %1$s</string>
     <string name="tv_link_failed">The TV refused the request.</string>
-    <string name="tv_link_unreachable">TV unreachable. Is Appteka TV open?</string>
+    <string name="tv_link_unreachable">Device unreachable. Is Appteka open on it, on the same Wi-Fi?</string>
 </resources>
