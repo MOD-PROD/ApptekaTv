@@ -22,6 +22,9 @@ object TvDetailsMapper {
         "category" to app.category?.id,
         "time" to app.time,
         "versionCode" to app.verCode,
+        // Gonzo 25/11 : filtres « Open source » et « Exclusive » de la recherche TV.
+        "exclusive" to app.exclusive,
+        "openSource" to !app.sourceUrl.isNullOrBlank(),
     )
 
     fun details(d: Details, locale: String): Map<String, Any?> {
