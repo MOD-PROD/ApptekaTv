@@ -122,6 +122,7 @@ class HomeViewImpl(view: View) : HomeView {
     private val bottomNavigation: BottomNavigationView = view.findViewById(R.id.bottom_navigation)
     private val uploadButton: FloatingActionButton = view.findViewById(R.id.fab_upload)
     private val storeIconBar: View = view.findViewById(R.id.store_icon_bar)
+    private val storeHeader: View = view.findViewById(R.id.store_header)
     private val toolbarInsetStart = toolbar.contentInsetStart
     private val toolbarInsetEnd = toolbar.contentInsetEnd
     private val postButton: FloatingActionButton = view.findViewById(R.id.fab_post)
@@ -222,6 +223,7 @@ class HomeViewImpl(view: View) : HomeView {
             invalidateMenu()
         }
         storeIconBar.isVisible = true
+        storeHeader.isVisible = true
         // Filters are part of the store's chrome, so they come and go
         // with its title and menu. The store screen owns what they do;
         // the app bar only owns where they sit.
@@ -238,6 +240,7 @@ class HomeViewImpl(view: View) : HomeView {
         }
         storeFilters.isVisible = false
         storeIconBar.isVisible = false
+        storeHeader.isVisible = false
     }
 
     override fun showDiscussToolbar() {
@@ -250,6 +253,7 @@ class HomeViewImpl(view: View) : HomeView {
         }
         storeFilters.isVisible = false
         storeIconBar.isVisible = false
+        storeHeader.isVisible = false
     }
 
     override fun showProfileToolbar() {
@@ -262,6 +266,7 @@ class HomeViewImpl(view: View) : HomeView {
         }
         storeFilters.isVisible = false
         storeIconBar.isVisible = false
+        storeHeader.isVisible = false
     }
 
     override fun selectStoreTab() {

@@ -91,6 +91,9 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     private fun pairingSender() = TvLinkSender(requireActivity(), onAssociated = { paired ->
         val context = context ?: return@TvLinkSender
         TvTarget.select(context, paired)
+        // Gonzo 25/11 : l'icône choisie dans la liste avant la connexion.
+        pendingKind?.let { DeviceKinds.choose(context, paired, it) }
+        pendingKind = null
         renderTarget()
         android.widget.Toast.makeText(context, context.getString(R.string.tv_connected_to, paired.name), android.widget.Toast.LENGTH_SHORT).show()
     })
@@ -107,9 +110,18 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val kind = DeviceKinds.current(context, shown)
         targetButton?.apply {
             setImageResource(kind.icon)
-            contentDescription = (shown?.let { getString(R.string.tv_connected_back, it.name) }
+            // Gonzo 25/11 : un appareil connecté actif s'affiche en vert.
+            imageTintList = if (shown != null) android.content.res.ColorStateList.valueOf(CONNECTED_GREEN)
+            else android.content.res.ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(
+                this, com.google.android.material.R.attr.colorOnSurface))
+            contentDescription = (shown?.let { getString(R.string.tv_connected_back, DeviceKinds.displayName(context, it)) }
                 ?: getString(R.string.tv_pair_title)) + ". " + getString(R.string.device_kind_hint)
         }
+        // Gonzo 25/11 : en-tête « App Store - <appareil actif> » ou « TV App Store - <appareil actif> ».
+        activity?.findViewById<android.widget.TextView>(R.id.store_header)?.text = getString(
+            if (kind == DeviceKind.TV || kind == DeviceKind.BOX) R.string.store_header_tv else R.string.store_header,
+            shown?.let { DeviceKinds.displayName(context, it) } ?: com.tomclaw.appsend.tvlink.TvLink.deviceName(),
+        )
         if (shown != null) refreshRemoteKind(shown)
     }
 
@@ -129,33 +141,40 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
 
     private val kindAsked = mutableSetOf<String>()
 
-    /** ATV : appui long = liste déroulante pour choisir le type parmi les 4 (ou automatique). */
-    private fun showKindChooser(anchor: View) {
+    /**
+     * ATV (Gonzo 25/11) : un clic sur l'icône ouvre la liste des appareils.
+     * - Cet appareil (téléphone par défaut) ;
+     * - les appareils connectés, icône verte et leur nom : clic = devient la source,
+     *   appui long = réglages (icône parmi les 4, Renommer, Supprimer) ;
+     * - tant qu'il y a moins de 4 appareils connectés, les 4 types en blanc : clic = connexion.
+     */
+    private fun showDeviceMenu(anchor: View) {
         val context = requireContext()
         val shown = connection
-        val chosen = DeviceKinds.chosen(context, shown)
-        val detected = DeviceKinds.detected(context, shown)
-        // ATV (Gonzo 25/11) : sous le type, une ligne par appareil associé pour basculer sans rescanner.
-        data class Row(val kind: DeviceKind?, val label: String, val icon: Int, val checked: Boolean,
-                       val action: (() -> Unit)? = null, val divider: Boolean = false)
+        data class Row(val label: String, val icon: Int, val green: Boolean, val checked: Boolean, val plus: Boolean,
+                       val divider: Boolean, val action: () -> Unit, val longAction: (() -> Unit)? = null)
         val local = DeviceKinds.current(context, null)
         val known = TvTarget.known(context)
-        val rows = listOf(Row(null, getString(R.string.device_kind_auto, getString(detected.label)), detected.icon, chosen == null)) +
-            DeviceKind.values().map { Row(it, getString(it.label), it.icon, chosen == it) } +
-            listOf(Row(null, getString(R.string.local_target_this_device, getString(local.label)), local.icon, shown == null,
-                action = { if (connection != null) { TvTarget.select(context, null); renderTarget() } }, divider = true)) +
-            known.map { device ->
-                val current = shown?.address?.tv == device.address.tv
-                Row(null, device.name, DeviceKinds.current(context, device).icon, current,
-                    action = { if (!current) reconnect(device) })
-            } +
-            listOf(Row(null, getString(R.string.local_target_pair_other), R.drawable.ic_target_mobile, false,
-                action = { showPairDialog() }))
+        val rows = mutableListOf<Row>()
+        rows += Row(getString(R.string.local_target_this_device, getString(local.label)), local.icon, false, shown == null,
+            false, false, action = { if (connection != null) { TvTarget.select(context, null); renderTarget() } },
+            longAction = { showIconChooser(null) })
+        known.forEach { device ->
+            val current = shown?.address?.tv == device.address.tv
+            rows += Row(DeviceKinds.displayName(context, device), DeviceKinds.current(context, device).icon, true, current,
+                false, false, action = { if (!current) reconnect(device) }, longAction = { showDeviceSettings(device) })
+        }
+        if (known.size < MAX_DEVICES) {
+            DeviceKind.values().forEachIndexed { index, kind ->
+                rows += Row(getString(kind.label), kind.icon, false, false, true, index == 0,
+                    action = { pendingKind = kind; showPairDialog() })
+            }
+        }
         val density = resources.displayMetrics.density
         val tint = com.google.android.material.color.MaterialColors.getColor(anchor, com.google.android.material.R.attr.colorOnSurface)
         val popup = androidx.appcompat.widget.ListPopupWindow(context)
         popup.anchorView = anchor
-        popup.width = (260 * density).toInt()
+        popup.width = (280 * density).toInt()
         popup.isModal = true
         popup.setAdapter(object : android.widget.BaseAdapter() {
             override fun getCount() = rows.size
@@ -164,25 +183,30 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val row = rows[position]
                 val pad = (16 * density).toInt()
+                val color = if (row.green) CONNECTED_GREEN else tint
                 val line = android.widget.LinearLayout(parent.context).apply {
                     orientation = android.widget.LinearLayout.HORIZONTAL
                     gravity = android.view.Gravity.CENTER_VERTICAL
                     setPadding(pad, (10 * density).toInt(), pad, (10 * density).toInt())
                     addView(android.widget.ImageView(parent.context).apply {
                         setImageResource(row.icon)
-                        imageTintList = android.content.res.ColorStateList.valueOf(tint)
-                        alpha = if (row.kind == null && row.action == null) 0.6f else 1f
+                        imageTintList = android.content.res.ColorStateList.valueOf(color)
                     }, android.widget.LinearLayout.LayoutParams((28 * density).toInt(), (28 * density).toInt()))
                     addView(android.widget.TextView(parent.context).apply {
                         text = row.label
-                        setTextColor(tint)
+                        setTextColor(color)
                         textSize = 16f
                         setPadding(pad, 0, 0, 0)
                         if (row.checked) setTypeface(typeface, android.graphics.Typeface.BOLD)
                     }, android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-                    if (row.checked) addView(android.widget.TextView(parent.context).apply {
-                        text = "✓"
-                        setTextColor(tint)
+                    val mark = when {
+                        row.checked -> "✓"
+                        row.plus -> "+"
+                        else -> null
+                    }
+                    if (mark != null) addView(android.widget.TextView(parent.context).apply {
+                        text = mark
+                        setTextColor(color)
                         textSize = 18f
                     })
                 }
@@ -199,33 +223,98 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         })
         popup.setOnItemClickListener { _, _, position, _ ->
             popup.dismiss()
-            rows[position].action?.let { return@setOnItemClickListener it() }
-            DeviceKinds.choose(context, shown, rows[position].kind)
-            renderTarget()
-            val label = getString(DeviceKinds.current(context, shown).label)
-            val message = shown?.let { getString(R.string.device_kind_remote, it.name, label) }
-                ?: getString(R.string.device_kind_this, label)
-            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            rows[position].action()
         }
         popup.show()
+        popup.listView?.setOnItemLongClickListener { _, _, position, _ ->
+            val longAction = rows[position].longAction ?: return@setOnItemLongClickListener false
+            popup.dismiss()
+            longAction()
+            true
+        }
+    }
+
+    /** Type choisi dans la liste avant la connexion : appliqué à l'appareil qui vient d'être associé. */
+    private var pendingKind: DeviceKind? = null
+
+    /** Appui long sur un appareil connecté : Icône, Renommer, Supprimer. */
+    private fun showDeviceSettings(device: TvLinkSender.Connection) {
+        val context = requireContext()
+        MaterialAlertDialogBuilder(context)
+            .setTitle(DeviceKinds.displayName(context, device))
+            .setItems(arrayOf(getString(R.string.device_settings_icon), getString(R.string.device_settings_rename),
+                getString(R.string.device_settings_delete))) { _, which ->
+                when (which) {
+                    0 -> showIconChooser(device)
+                    1 -> showRename(device)
+                    else -> confirmDelete(device)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Icône parmi les 4 ([device] null = cet appareil). */
+    private fun showIconChooser(device: TvLinkSender.Connection?) {
+        val context = requireContext()
+        val kinds = DeviceKind.values()
+        val selected = kinds.indexOf(DeviceKinds.current(context, device))
+        MaterialAlertDialogBuilder(context)
+            .setTitle(R.string.device_settings_icon)
+            .setSingleChoiceItems(kinds.map { getString(it.label) }.toTypedArray(), selected) { dialog, which ->
+                DeviceKinds.choose(context, device, kinds[which])
+                dialog.dismiss()
+                renderTarget()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showRename(device: TvLinkSender.Connection) {
+        val context = requireContext()
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        val input = android.widget.EditText(context).apply {
+            setText(DeviceKinds.displayName(context, device))
+            setSelection(text.length)
+            isSingleLine = true
+            filters = arrayOf(android.text.InputFilter.LengthFilter(40))
+        }
+        val box = android.widget.FrameLayout(context).apply {
+            setPadding(pad, pad / 2, pad, 0)
+            addView(input)
+        }
+        MaterialAlertDialogBuilder(context)
+            .setTitle(R.string.device_settings_rename)
+            .setView(box)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                DeviceKinds.rename(context, device, input.text.toString())
+                renderTarget()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmDelete(device: TvLinkSender.Connection) {
+        val context = requireContext()
+        MaterialAlertDialogBuilder(context)
+            .setMessage(getString(R.string.device_delete_confirm, DeviceKinds.displayName(context, device)))
+            .setPositiveButton(R.string.device_settings_delete) { _, _ ->
+                TvTarget.forget(context, device)
+                DeviceKinds.forget(context, device)
+                renderTarget()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun bindTargetSwitch() {
         val target = requireActivity().findViewById<ImageButton>(R.id.demo_tv_target)
         targetButton = target
         target.visibility = View.VISIBLE
-        target.setOnClickListener {
-            if (connection != null) {
-                TvTarget.select(requireContext(), null)
-                renderTarget()
-            } else {
-                // ATV: back to the last TV without pairing again, when it still knows this phone.
-                val last = TvTarget.last(requireContext())
-                if (last != null) reconnect(last) else showPairDialog()
-            }
-        }
+        // Gonzo 25/11 : un clic ouvre la liste des appareils (l'appui long fait de même).
+        target.setOnClickListener { showDeviceMenu(it) }
         target.setOnLongClickListener {
-            showKindChooser(it)
+            showDeviceMenu(it)
             true
         }
         renderTarget()
@@ -341,3 +430,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
 fun createStoreFragment(): StoreFragment = StoreFragment()
 
 private const val KEY_PRESENTER_STATE = "presenter_state"
+
+/** Gonzo 25/11 : au plus 4 appareils connectés dans la liste ; vert = connecté. */
+private const val MAX_DEVICES = 4
+private const val CONNECTED_GREEN = 0xFF3DDC84.toInt()

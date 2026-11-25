@@ -7,5 +7,11 @@
     <string name="device_kind_auto">Automatique (%1$s)</string>
     <string name="device_kind_this">Cet appareil : %1$s</string>
     <string name="device_kind_remote">%1$s : %2$s</string>
-    <string name="device_kind_hint">Appui long : changer le type d’appareil</string>
+    <string name="device_kind_hint">Appui : choisir l’appareil. Appui long sur un appareil connecté : ses réglages</string>
+    <string name="device_settings_icon">Icône</string>
+    <string name="device_settings_rename">Renommer</string>
+    <string name="device_settings_delete">Supprimer</string>
+    <string name="device_delete_confirm">Supprimer %1$s ? Il faudra l’associer à nouveau.</string>
+    <string name="store_header">App Store - %1$s</string>
+    <string name="store_header_tv">TV App Store - %1$s</string>
 </resources>

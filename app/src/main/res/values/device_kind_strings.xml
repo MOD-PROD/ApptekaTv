@@ -7,5 +7,11 @@
     <string name="device_kind_auto">Automatic (%1$s)</string>
     <string name="device_kind_this">This device: %1$s</string>
     <string name="device_kind_remote">%1$s: %2$s</string>
-    <string name="device_kind_hint">Long press: change the device type</string>
+    <string name="device_kind_hint">Tap: choose the device. Long press on a connected device: its settings</string>
+    <string name="device_settings_icon">Icon</string>
+    <string name="device_settings_rename">Rename</string>
+    <string name="device_settings_delete">Delete</string>
+    <string name="device_delete_confirm">Delete %1$s? You will have to pair it again.</string>
+    <string name="store_header">App Store - %1$s</string>
+    <string name="store_header_tv">TV App Store - %1$s</string>
 </resources>

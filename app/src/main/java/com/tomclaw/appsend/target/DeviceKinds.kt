@@ -91,6 +91,23 @@ object DeviceKinds {
         return current(context, tv).icon
     }
 
+    /** Gonzo 25/11 : nom donné par l'utilisateur, sinon celui annoncé par l'appareil. */
+    fun displayName(context: Context, connection: TvLinkSender.Connection): String =
+        prefs(context).getString("name:" + key(connection), null)?.takeIf { it.isNotBlank() } ?: connection.name
+
+    fun rename(context: Context, connection: TvLinkSender.Connection, name: String) {
+        val clean = name.trim().take(40)
+        val editor = prefs(context).edit()
+        if (clean.isEmpty()) editor.remove("name:" + key(connection)) else editor.putString("name:" + key(connection), clean)
+        editor.apply()
+    }
+
+    /** Appareil supprimé de la liste : on oublie aussi son icône et son nom. */
+    fun forget(context: Context, connection: TvLinkSender.Connection) {
+        val k = key(connection)
+        prefs(context).edit().remove(k).remove("detected:$k").remove("name:$k").apply()
+    }
+
     private fun key(connection: TvLinkSender.Connection?) =
         if (connection == null) LOCAL else "tv:" + connection.address.tv
 
