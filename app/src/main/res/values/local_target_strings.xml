@@ -28,4 +28,7 @@
     <string name="local_target_known">Paired devices</string>
     <string name="local_target_pair_other">Pair another device…</string>
     <string name="local_target_this_device">This device (%1$s)</string>
+    <string name="local_target_test">Test the connection</string>
+    <string name="local_target_test_ok">This device answers on %1$s. If the phone still cannot reach it, the network blocks connections between devices: turn off any VPN on both devices, avoid a guest network, check that both are on the same Wi-Fi.</string>
+    <string name="local_target_test_failed">This device does not answer on its own Wi-Fi address (%1$s). Close Appteka completely, reopen it and try again.</string>
 </resources>

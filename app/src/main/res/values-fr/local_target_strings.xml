@@ -28,4 +28,7 @@
     <string name="local_target_known">Appareils associés</string>
     <string name="local_target_pair_other">Associer un autre appareil…</string>
     <string name="local_target_this_device">Cet appareil (%1$s)</string>
+    <string name="local_target_test">Tester la connexion</string>
+    <string name="local_target_test_ok">Cet appareil répond sur %1$s. Si le téléphone ne l’atteint toujours pas, c’est le réseau qui bloque les connexions entre appareils : coupe tout VPN sur les deux appareils, évite un réseau invité, vérifie qu’ils sont sur le même Wi-Fi.</string>
+    <string name="local_target_test_failed">Cet appareil ne répond pas sur sa propre adresse Wi-Fi (%1$s). Ferme complètement Appteka, rouvre-le et réessaie.</string>
 </resources>

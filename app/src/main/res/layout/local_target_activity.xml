@@ -46,6 +46,14 @@
                 android:layout_marginTop="16dp"
                 android:text="@string/local_target_pair" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/local_target_test"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/local_target_test" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -35,6 +35,7 @@ class LocalTargetActivity : AppCompatActivity() {
     private lateinit var pair: MaterialButton
     private lateinit var list: LinearLayout
     private lateinit var forgetAll: MaterialButton
+    private lateinit var test: MaterialButton
     private var pairingDialog: AlertDialog? = null
 
     private val onChanged: () -> Unit = {
@@ -61,6 +62,8 @@ class LocalTargetActivity : AppCompatActivity() {
             render()
         }
         pair.setOnClickListener { showPairingQr() }
+        test = findViewById(R.id.local_target_test)
+        test.setOnClickListener { selfTest() }
         forgetAll.setOnClickListener {
             MaterialAlertDialogBuilder(this)
                 .setMessage(R.string.local_target_forget_all_confirm)
@@ -89,6 +92,7 @@ class LocalTargetActivity : AppCompatActivity() {
         val server = LocalLinkTarget.server
         val on = server != null
         pair.isEnabled = on
+        test.isEnabled = on
         address.isVisible = on
         address.text = if (on) getString(R.string.local_target_address, TvLink.deviceName(),
             (TvLink.localIpv4() ?: getString(R.string.local_target_no_wifi)) + ":" + server!!.port) else ""
@@ -160,6 +164,35 @@ class LocalTargetActivity : AppCompatActivity() {
             server.dismissPairing(pairing.sessionId)
         }
         handler.postDelayed(expire, 5 * 60 * 1000L)
+    }
+
+    /**
+     * Gonzo 25/11 (« tablette injoignable ») : cet appareil se connecte à son propre serveur par
+     * son adresse Wi-Fi, comme le ferait le téléphone. Si ça marche ici mais pas depuis le
+     * téléphone, c'est le réseau qui bloque (VPN, réseau invité, isolation des appareils).
+     */
+    private fun selfTest() {
+        val server = LocalLinkTarget.server ?: return
+        test.isEnabled = false
+        Thread {
+            val invitation = server.pairingQr()
+            val message = if (invitation == null) getString(R.string.local_target_no_wifi) else try {
+                val address = TvLink.Pairing.parse(invitation.payload)
+                val hello = TvLink.request(address.copy(secret = ""), org.json.JSONObject().put("type", "hello"))
+                if (hello.optBoolean("ok")) getString(R.string.local_target_test_ok, "${address.host}:${address.port}")
+                else getString(R.string.local_target_test_failed, hello.optString("error"))
+            } catch (e: Exception) {
+                getString(R.string.local_target_test_failed, e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
+            } finally {
+                invitation?.let { server.dismissPairing(it.sessionId) }
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                test.isEnabled = LocalLinkTarget.server != null
+                MaterialAlertDialogBuilder(this).setTitle(R.string.local_target_test)
+                    .setMessage(message).setPositiveButton(android.R.string.ok, null).show()
+            }
+        }.start()
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
