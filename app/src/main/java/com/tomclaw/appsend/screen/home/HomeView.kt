@@ -121,6 +121,9 @@ class HomeViewImpl(view: View) : HomeView {
     private val frameLayout: View = view.findViewById(R.id.frame)
     private val bottomNavigation: BottomNavigationView = view.findViewById(R.id.bottom_navigation)
     private val uploadButton: FloatingActionButton = view.findViewById(R.id.fab_upload)
+    private val storeIconBar: View = view.findViewById(R.id.store_icon_bar)
+    private val toolbarInsetStart = toolbar.contentInsetStart
+    private val toolbarInsetEnd = toolbar.contentInsetEnd
     private val postButton: FloatingActionButton = view.findViewById(R.id.fab_post)
     private val createChatButton: FloatingActionButton = view.findViewById(R.id.fab_create_chat)
     private val updateButton: Button = view.findViewById(R.id.update)
@@ -159,7 +162,26 @@ class HomeViewImpl(view: View) : HomeView {
             true
         }
 
+        // ATV (Gonzo 25/11) : barre du Store en icônes, réparties sur toute la largeur.
+        listOf(
+            R.id.store_bar_files to tvFilesRelay,
+            R.id.store_bar_distro to distroRelay,
+            R.id.store_bar_installed to installedRelay,
+            R.id.store_bar_settings to settingsRelay,
+            R.id.store_bar_search to searchRelay,
+        ).forEach { (id, relay) ->
+            view.findViewById<View>(id).apply {
+                setOnClickListener { relay.accept(Unit) }
+                androidx.appcompat.widget.TooltipCompat.setTooltipText(this, contentDescription)
+            }
+        }
+
         bottomNavigation.setOnItemSelectedListener { item: MenuItem ->
+            // ATV (Gonzo 25/11) : Upload au centre du menu du bas, sans changer d'onglet.
+            if (item.itemId == R.id.nav_upload) {
+                uploadRelay.accept(Unit)
+                return@setOnItemSelectedListener false
+            }
             when (item.itemId) {
                 R.id.nav_store -> storeRelay.accept(Unit)
                 R.id.nav_feed -> feedRelay.accept(Unit)
@@ -169,7 +191,9 @@ class HomeViewImpl(view: View) : HomeView {
             true
         }
 
-        bottomNavigation.setOnItemReselectedListener { tabReselectRelay.accept(Unit) }
+        bottomNavigation.setOnItemReselectedListener {
+            if (it.itemId == R.id.nav_upload) uploadRelay.accept(Unit) else tabReselectRelay.accept(Unit)
+        }
 
         uploadButton.clicks(uploadRelay)
         postButton.clicks(postRelay)
@@ -191,12 +215,13 @@ class HomeViewImpl(view: View) : HomeView {
 
     override fun showStoreToolbar() {
         with(toolbar) {
-            // ATV : plus de texte « Store », seule l'icône d'appareil reste à gauche.
+            // ATV : plus de texte « Store » ni de menu : la barre d'icônes prend toute la largeur.
             title = null
             menu.clear()
-            inflateMenu(R.menu.store_menu)
+            setContentInsetsRelative(0, 0)
             invalidateMenu()
         }
+        storeIconBar.isVisible = true
         // Filters are part of the store's chrome, so they come and go
         // with its title and menu. The store screen owns what they do;
         // the app bar only owns where they sit.
@@ -206,31 +231,37 @@ class HomeViewImpl(view: View) : HomeView {
     override fun showFeedToolbar() {
         with(toolbar) {
             setTitle(R.string.tab_feed)
+            setContentInsetsRelative(toolbarInsetStart, toolbarInsetEnd)
             menu.clear()
             inflateMenu(R.menu.home_menu)
             invalidateMenu()
         }
         storeFilters.isVisible = false
+        storeIconBar.isVisible = false
     }
 
     override fun showDiscussToolbar() {
         with(toolbar) {
             setTitle(R.string.tab_discuss)
+            setContentInsetsRelative(toolbarInsetStart, toolbarInsetEnd)
             menu.clear()
             inflateMenu(R.menu.home_menu)
             invalidateMenu()
         }
         storeFilters.isVisible = false
+        storeIconBar.isVisible = false
     }
 
     override fun showProfileToolbar() {
         with(toolbar) {
             setTitle(R.string.tab_profile)
+            setContentInsetsRelative(toolbarInsetStart, toolbarInsetEnd)
             menu.clear()
             inflateMenu(R.menu.user_menu)
             invalidateMenu()
         }
         storeFilters.isVisible = false
+        storeIconBar.isVisible = false
     }
 
     override fun selectStoreTab() {
@@ -296,7 +327,8 @@ class HomeViewImpl(view: View) : HomeView {
     }
 
     override fun showUploadButton() {
-        uploadButton.show()
+        // ATV (Gonzo 25/11) : Upload est au centre du menu du bas, plus de bouton flottant.
+        uploadButton.hide()
     }
 
     override fun showPostButton() {

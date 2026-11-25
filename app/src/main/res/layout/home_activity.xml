@@ -20,15 +20,81 @@
             android:layout_height="?attr/actionBarSize"
             app:popupTheme="@style/AppTheme.PopupOverlay">
 
-            <ImageButton
-                android:id="@+id/demo_tv_target"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="start|center_vertical"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:scaleType="center"
-                android:visibility="gone"
-                app:tint="?attr/colorOnSurface" />
+            <!-- ATV (Gonzo 25/11) : barre du Store = 6 icônes réparties sur toute la largeur. -->
+            <LinearLayout
+                android:id="@+id/store_icon_bar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageButton
+                    android:id="@+id/demo_tv_target"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:visibility="gone"
+                    app:tint="?attr/colorOnSurface" />
+                <ImageButton
+                    android:id="@+id/store_bar_files"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/nav_tv_files"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_bar_files"
+                    app:tint="?attr/colorOnSurface" />
+                <ImageButton
+                    android:id="@+id/store_bar_distro"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/nav_downloaded"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_bar_downloaded"
+                    app:tint="?attr/colorOnSurface" />
+                <ImageButton
+                    android:id="@+id/store_bar_installed"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/nav_installed"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_bar_installed"
+                    app:tint="?attr/colorOnSurface" />
+                <ImageButton
+                    android:id="@+id/store_bar_settings"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/nav_settings"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_bar_settings"
+                    app:tint="?attr/colorOnSurface" />
+                <ImageButton
+                    android:id="@+id/store_bar_search"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/menu_search"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_bar_search"
+                    app:tint="?attr/colorOnSurface" />
+            </LinearLayout>
         </androidx.appcompat.widget.Toolbar>
 
         <HorizontalScrollView
@@ -149,7 +215,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        app:labelVisibilityMode="labeled"
+        android:minHeight="56dp"
+        app:itemPaddingBottom="16dp"
+        app:itemPaddingTop="16dp"
+        app:labelVisibilityMode="unlabeled"
         app:menu="@menu/bottom_navigation_menu" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

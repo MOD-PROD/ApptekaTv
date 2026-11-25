@@ -10,6 +10,12 @@
         android:enabled="true"
         android:icon="@drawable/feed"
         android:title="@string/tab_feed" />
+    <!-- ATV (Gonzo 25/11) : Upload au centre, à la place du bouton flottant. -->
+    <item
+        android:id="@+id/nav_upload"
+        android:enabled="true"
+        android:icon="@drawable/ic_cloud_upload"
+        android:title="@string/upload_app" />
     <item
         android:id="@+id/nav_discuss"
         android:enabled="true"
