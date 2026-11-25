@@ -488,3 +488,8 @@ html, body {
 .account-stats { display: flex; gap: 22px; margin-top: 12px; }
 .account-stats b { display: block; font-size: 17px; color: var(--accent-light); }
 .account-stats span { font-size: 11px; color: var(--muted); }
+
+/* ATV (Gonzo 25/11) : marge basse pendant la saisie pour pouvoir remonter le champ
+   au-dessus d'un clavier qui couvre la moitié basse de l'écran. */
+.kb-lift { padding-bottom: 60vh !important; }
+.modal-box, .settings-panel { transition: transform .2s ease; }
