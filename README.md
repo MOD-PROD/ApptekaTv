@@ -36,7 +36,7 @@
 | Connexion de la TV au compte Appteka depuis le téléphone | téléphone, TV |
 | Mises à jour intégrées, canaux Stable, Bêta et Test | tous |
 | Thèmes, couleur d'accent, logo Appteka TV Store | TV |
-| Interface en 13 langues (traductions des ajouts ATV pas encore relues par des natifs) | tous |
+| Téléphone en 13 langues, interface TV en 9 langues (traductions des ajouts ATV pas encore relues par des natifs) | tous |
 
 Le téléphone trouve la TV sur le réseau local par DNS-SD (`_apptekatv._tcp`, port 8336 par défaut). Code de la liaison : `app/src/main/java/com/tomclaw/appsend/tvlink/` et `.../target/`.
 
@@ -53,7 +53,7 @@ L'identifiant `app.modprod.apptekatv` permet de l'installer à côté de l'Appte
 
 - **`main`** : la version de référence. Toute publication stable part de `main`.
 - **`atv/<sujet>`** : une branche courte par sujet, partie de `main`, avec une pull request. Elle est supprimée une fois fusionnée.
-- Les anciennes branches de prototype sont conservées en étiquettes `archive/...`.
+- Les anciennes branches (prototype HTML, simulateur ATKsimulTv…) sont conservées sous `archive/...`.
 
 | Emplacement | Rôle |
 |---|---|
