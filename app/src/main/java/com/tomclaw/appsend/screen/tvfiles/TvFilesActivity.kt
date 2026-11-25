@@ -54,7 +54,10 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     data class Entry(val name: String, val path: String, val dir: Boolean, val size: Long, val modified: Long, val count: Int)
 
-    private lateinit var client: TvAppsClient
+    private lateinit var backend: FilesBackend
+    /** Liaison TV (transferts) : null quand on explore cet appareil. */
+    private var client: TvAppsClient? = null
+    private val localBackend: LocalFilesBackend? get() = backend as? LocalFilesBackend
     private val io: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "tv-files-ui").apply { isDaemon = true } }
 
     private lateinit var toolbar: Toolbar
@@ -80,7 +83,8 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     private val pickFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         val dir = path ?: return@registerForActivityResult
-        uris.forEach { uri -> enqueueUpload(uri, dir) }
+        val local = localBackend
+        if (local != null) importLocal(local, uris, dir) else uris.forEach { uri -> enqueueUpload(uri, dir) }
     }
 
     private var pendingDownloads: List<Entry> = emptyList()
@@ -92,13 +96,10 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val found = TvAppsClient.current(this) ?: TvAppsClient.last(this)
-        if (found == null) {
-            toast(getString(R.string.tv_files_no_tv))
-            finish()
-            return
-        }
-        client = found
+        // ATV (Gonzo 24/11) : la TV en mode TV, sinon les fichiers de cet appareil.
+        val tv = TvAppsClient.current(this)
+        client = tv
+        backend = if (tv != null) RemoteFilesBackend(tv) else LocalFilesBackend(this)
         setContentView(R.layout.tv_files_activity)
         toolbar = findViewById(R.id.toolbar)
         refresh = findViewById(R.id.tv_files_refresh)
@@ -115,7 +116,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         showHidden = savedInstanceState?.getBoolean(STATE_HIDDEN) ?: false
         sort = savedInstanceState?.getInt(STATE_SORT) ?: SORT_NAME
 
-        toolbar.title = getString(R.string.tv_files_title, client.tvName)
+        toolbar.title = getString(R.string.tv_files_title, backend.name)
         toolbar.setNavigationOnClickListener { finish() }
         toolbar.setOnMenuItemClickListener(::onMenu)
         showMenu()
@@ -123,8 +124,9 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = adapter
         refresh.setOnRefreshListener { reload() }
-        retry.setOnClickListener { connect() }
+        retry.setOnClickListener { if (localStorageAsked) requestLocalStorage() else connect() }
         upload.setOnClickListener { pickFiles.launch(arrayOf("*/*")) }
+        if (backend.local) upload.text = getString(R.string.files_import)
         findViewById<MaterialButton>(R.id.tv_files_transfer_cancel).setOnClickListener { TvFileTransfers.cancelAll() }
         list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -146,7 +148,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     override fun onStart() {
         super.onStart()
-        if (::client.isInitialized) TvFileTransfers.addListener(this)
+        if (::backend.isInitialized && !backend.local) TvFileTransfers.addListener(this)
     }
 
     override fun onStop() {
@@ -170,12 +172,13 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     /** Ouvre l'accès (accord sur la TV la première fois), puis le dossier courant ou la première racine. */
     private fun connect() {
-        showMessage(getString(R.string.tv_files_waiting_tv, client.tvName), retry = false)
+        if (!backend.local) showMessage(getString(R.string.tv_files_waiting_tv, backend.name), retry = false)
         refresh.isRefreshing = true
-        background({ client.fsAccess() }) { response ->
+        background({ backend.access() }) { response ->
             if (response.optString("access") != "full") {
                 refresh.isRefreshing = false
-                showMessage(getString(R.string.tv_files_storage_needed, client.tvName), retry = true)
+                if (backend.local) askLocalStorage()
+                else showMessage(getString(R.string.tv_files_storage_needed, backend.name), retry = true)
                 return@background
             }
             val array = response.optJSONArray("roots")
@@ -185,7 +188,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
             }
             if (roots.isEmpty()) {
                 refresh.isRefreshing = false
-                showMessage(getString(R.string.tv_files_storage_needed, client.tvName), retry = true)
+                showMessage(getString(R.string.tv_files_storage_needed, backend.name), retry = true)
                 return@background
             }
             val current = path?.takeIf { p -> roots.any { p == it.path || p.startsWith(it.path.trimEnd('/') + "/") } }
@@ -200,7 +203,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     private fun open(target: String) {
         refresh.isRefreshing = true
-        background({ client.fsList(target, showHidden) }) { response ->
+        background({ backend.list(target, showHidden) }) { response ->
             refresh.isRefreshing = false
             path = response.optString("path", target)
             parentPath = response.optString("parent").takeIf { !response.isNull("parent") && it.isNotEmpty() }
@@ -238,7 +241,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
             toolbar.subtitle = null
             return
         }
-        toolbar.title = getString(R.string.tv_files_title, client.tvName)
+        toolbar.title = getString(R.string.tv_files_title, backend.name)
         val current = path ?: return
         val root = roots.filter { current == it.path || current.startsWith(it.path.trimEnd('/') + "/") }.maxByOrNull { it.path.length }
         toolbar.subtitle = if (root == null) current else root.label + current.removePrefix(root.path.trimEnd('/')).ifEmpty { "" }
@@ -259,6 +262,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         toolbar.menu.clear()
         if (selected.isNotEmpty()) {
             toolbar.inflateMenu(R.menu.tv_files_selection_menu)
+            toolbar.menu.findItem(R.id.tv_files_menu_download)?.isVisible = !backend.local
             toolbar.setNavigationOnClickListener { clearSelection() }
         } else {
             toolbar.inflateMenu(R.menu.tv_files_menu)
@@ -279,7 +283,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
             R.id.tv_files_menu_volumes -> chooseRoot()
             R.id.tv_files_menu_mkdir -> askName(getString(R.string.tv_files_new_folder), "") { name ->
                 val dir = path ?: return@askName
-                action({ client.fsMkdir(dir, name) }) { reload() }
+                action({ backend.mkdir(dir, name) }) { reload() }
             }
             R.id.tv_files_menu_hidden -> {
                 showHidden = !showHidden
@@ -325,8 +329,14 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         if (entry.dir) return open(entry.path)
         val isApk = entry.name.endsWith(".apk", ignoreCase = true)
         val actions = ArrayList<Pair<String, () -> Unit>>()
-        actions += getString(R.string.tv_files_download) to { download(listOf(entry)) }
-        if (isApk) actions += getString(R.string.tv_files_install) to { install(entry) }
+        val local = localBackend
+        if (local != null) {
+            actions += getString(R.string.files_open) to { openLocal(local, entry, install = false) }
+            if (isApk) actions += getString(R.string.files_install_here) to { install(entry) }
+        } else {
+            actions += getString(R.string.tv_files_download) to { download(listOf(entry)) }
+            if (isApk) actions += getString(R.string.tv_files_install) to { install(entry) }
+        }
         if (writable) {
             actions += getString(R.string.tv_files_rename) to { rename(entry) }
             actions += getString(R.string.tv_files_delete) to { confirmDelete(listOf(entry)) }
@@ -374,7 +384,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     private fun rename(entry: Entry) {
         askName(getString(R.string.tv_files_rename), entry.name) { name ->
-            if (name != entry.name) action({ client.fsRename(entry.path, name) }) { reload() }
+            if (name != entry.name) action({ backend.rename(entry.path, name) }) { reload() }
         }
     }
 
@@ -383,7 +393,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         val what = if (items.size == 1) items.first().name else getString(R.string.tv_files_delete_many, items.size)
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.tv_files_delete)
-            .setMessage(getString(R.string.tv_files_delete_confirm, what, client.tvName))
+            .setMessage(getString(R.string.tv_files_delete_confirm, what, backend.name))
             .setPositiveButton(R.string.tv_files_delete) { _, _ ->
                 val folders = items.filter { it.dir && it.count != 0 }
                 if (folders.isEmpty()) delete(items) else MaterialAlertDialogBuilder(this)
@@ -399,14 +409,16 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     }
 
     private fun delete(items: List<Entry>) {
-        action({ client.fsDelete(items.map { it.path }) }) {
+        action({ backend.delete(items.map { it.path }) }) {
             toast(getString(R.string.tv_files_deleted))
             reload()
         }
     }
 
     private fun install(entry: Entry) {
-        action({ client.fsInstall(entry.path) }) { toast(getString(R.string.tv_files_install_sent, client.tvName)) }
+        val local = localBackend
+        if (local != null) return openLocal(local, entry, install = true)
+        action({ backend.install(entry.path) }) { toast(getString(R.string.tv_files_install_sent, backend.name)) }
     }
 
     private fun download(items: List<Entry>) {
@@ -423,12 +435,80 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     }
 
     private fun enqueueDownload(entry: Entry) {
-        TvFileTransfers.enqueue(this, TvFileTransfers.Job.Download(client, entry.path, entry.name, entry.size))
+        val tv = client ?: return
+        TvFileTransfers.enqueue(this, TvFileTransfers.Job.Download(tv, entry.path, entry.name, entry.size))
     }
 
     private fun enqueueUpload(uri: Uri, dir: String) {
         val (name, size) = TvFileTransfers.describe(this, uri)
-        TvFileTransfers.enqueue(this, TvFileTransfers.Job.Upload(client, uri, dir, name, size))
+        val tv = client ?: return
+        TvFileTransfers.enqueue(this, TvFileTransfers.Job.Upload(tv, uri, dir, name, size))
+    }
+
+    // ------------------------------------------------------------------ cet appareil
+
+    private var localStorageAsked = false
+    private var awaitingSettings = false
+
+    private val localStoragePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { connect() }
+
+    /** Fichiers de cet appareil : l'accès à tous les fichiers est demandé avant de parcourir. */
+    private fun askLocalStorage() {
+        localStorageAsked = true
+        showMessage(getString(R.string.files_local_storage_needed), retry = true)
+        retry.text = getString(R.string.tv_files_storage_allow)
+    }
+
+    private fun requestLocalStorage() {
+        val local = localBackend ?: return
+        localStorageAsked = false
+        retry.text = getString(R.string.tv_files_retry)
+        if (local.needsSettingsScreen) {
+            awaitingSettings = local.openAllFilesSettings()
+            if (!awaitingSettings) toast(getString(R.string.files_local_storage_needed))
+            showMessage(getString(R.string.files_local_storage_return), retry = true)
+        } else {
+            localStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Retour de l'écran système « Accès à tous les fichiers ».
+        if (awaitingSettings) {
+            awaitingSettings = false
+            connect()
+        }
+    }
+
+    private fun openLocal(local: LocalFilesBackend, entry: Entry, install: Boolean) {
+        val file = runCatching { local.file(entry.path) }.getOrElse { return showError(it) }
+        val uri = runCatching { androidx.core.content.FileProvider.getUriForFile(this, "$packageName.provider", file) }
+            .getOrElse { return toast(getString(R.string.files_cannot_open, entry.name)) }
+        val type = if (install || entry.name.endsWith(".apk", ignoreCase = true)) "application/vnd.android.package-archive"
+            else android.webkit.MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(entry.name.substringAfterLast('.', "").lowercase()) ?: "*/*"
+        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, type).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            startActivity(if (install) intent else Intent.createChooser(intent, entry.name))
+        } catch (_: android.content.ActivityNotFoundException) {
+            toast(getString(R.string.files_cannot_open, entry.name))
+        }
+    }
+
+    private fun importLocal(local: LocalFilesBackend, uris: List<Uri>, dir: String) {
+        if (uris.isEmpty()) return
+        action({
+            var last = ""
+            uris.forEach { uri ->
+                val (name, size) = TvFileTransfers.describe(this, uri)
+                last = local.import(uri, dir, name, size)
+            }
+            JSONObject().put("ok", true).put("name", last)
+        }) {
+            toast(getString(R.string.files_imported, uris.size))
+            if (dir == path) reload()
+        }
     }
 
     private fun askName(title: String, initial: String, done: (String) -> Unit) {
@@ -464,7 +544,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         if (job == null) return
         val label = when (job) {
             is TvFileTransfers.Job.Download -> getString(R.string.tv_files_downloading, job.name)
-            is TvFileTransfers.Job.Upload -> getString(R.string.tv_files_uploading, job.name, client.tvName)
+            is TvFileTransfers.Job.Upload -> getString(R.string.tv_files_uploading, job.name, backend.name)
         }
         transferText.text = if (state.waiting > 0) label + " · " + getString(R.string.tv_files_queue, state.waiting) else label
         transferProgress.progress = if (state.total > 0) (state.done * 100 / state.total).toInt() else 0
@@ -476,7 +556,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
             error != null -> toast(getString(R.string.tv_files_failed, job.name) + " (" + describe(error) + ")")
             job is TvFileTransfers.Job.Download -> toast(getString(R.string.tv_files_downloaded, job.name))
             job is TvFileTransfers.Job.Upload -> {
-                toast(getString(R.string.tv_files_uploaded, job.name, client.tvName))
+                toast(getString(R.string.tv_files_uploaded, job.name, backend.name))
                 if (job.dir == path) reload()
             }
         }
@@ -509,17 +589,18 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     private fun showError(error: Throwable) {
         refresh.isRefreshing = false
         val code = (error as? TvRemoteException)?.code
+        if (backend.local && code == null) return toast(error.message ?: error.javaClass.simpleName)
         when (code) {
-            "fs_refused" -> showMessage(getString(R.string.tv_files_refused, client.tvName), retry = true)
-            "fs_storage" -> showMessage(getString(R.string.tv_files_storage_needed, client.tvName), retry = true)
+            "fs_refused" -> showMessage(getString(R.string.tv_files_refused, backend.name), retry = true)
+            "fs_storage" -> showMessage(getString(R.string.tv_files_storage_needed, backend.name), retry = true)
             "fs_forbidden" -> connect()
-            "unknown", "version" -> showMessage(getString(R.string.tv_files_needs_update, client.tvName), retry = true)
+            "unknown", "version" -> showMessage(getString(R.string.tv_files_needs_update, backend.name), retry = true)
             "unauthorized" -> {
                 toast(getString(R.string.tv_unauthorized))
                 finish()
             }
-            null -> if (entries.isEmpty()) showMessage(getString(R.string.tv_files_offline, client.tvName), retry = true)
-                else toast(getString(R.string.tv_files_offline, client.tvName))
+            null -> if (entries.isEmpty()) showMessage(getString(R.string.tv_files_offline, backend.name), retry = true)
+                else toast(getString(R.string.tv_files_offline, backend.name))
             else -> toast(describe(error))
         }
     }
@@ -527,10 +608,10 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     private fun describe(error: Throwable): String = when ((error as? TvRemoteException)?.code) {
         "read_only" -> getString(R.string.tv_files_read_only)
         "exists" -> getString(R.string.tv_files_exists)
-        "storage" -> getString(R.string.tv_no_space, client.tvName)
-        "not_apk" -> getString(R.string.tv_not_apk, client.tvName)
-        null -> getString(R.string.tv_files_offline, client.tvName)
-        else -> getString(R.string.tv_files_error, client.tvName, (error as TvRemoteException).code)
+        "storage" -> getString(R.string.tv_no_space, backend.name)
+        "not_apk" -> getString(R.string.tv_not_apk, backend.name)
+        null -> getString(R.string.tv_files_offline, backend.name)
+        else -> getString(R.string.tv_files_error, backend.name, (error as TvRemoteException).code)
     }
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()

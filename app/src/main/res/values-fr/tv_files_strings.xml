@@ -11,7 +11,7 @@
     <string name="tv_files_storage_adb">Cette TV n\'a pas d\'écran « Accès à tous les fichiers ». Depuis un ordinateur, lance :\nadb shell appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
 
     <!-- ATV-09 : gestionnaire de fichiers à distance (téléphone) -->
-    <string name="nav_tv_files">Fichiers TV</string>
+    <string name="nav_tv_files">Fichiers</string>
     <string name="tv_files_title">Fichiers · %1$s</string>
     <string name="tv_files_no_tv">Associe d\'abord une TV avec l\'icône 📺 de l\'écran Store</string>
     <string name="tv_files_connecting">Connexion à %1$s…</string>

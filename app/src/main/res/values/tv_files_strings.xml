@@ -11,7 +11,7 @@
     <string name="tv_files_storage_adb">This TV has no \"All files access\" screen. From a computer, run:\nadb shell appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
 
     <!-- ATV-09: remote file manager (phone side) -->
-    <string name="nav_tv_files">TV files</string>
+    <string name="nav_tv_files">Files</string>
     <string name="tv_files_title">Files · %1$s</string>
     <string name="tv_files_no_tv">Pair a TV first with the 📺 icon of the Store screen</string>
     <string name="tv_files_connecting">Connecting to %1$s…</string>

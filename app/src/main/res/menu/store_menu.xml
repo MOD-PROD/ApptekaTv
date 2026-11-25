@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- ATV (Gonzo 24/11) : barre du haut = menu d'icônes, l'appareil en premier à gauche. -->
     <item
         android:id="@+id/menu_search"
         android:icon="@drawable/ic_search"
@@ -9,31 +10,26 @@
         app:showAsAction="always|collapseActionView" />
     <item
         android:id="@+id/menu_settings"
-        android:title="@string/nav_settings" />
+        android:icon="@drawable/ic_bar_settings"
+        android:title="@string/nav_settings"
+        app:iconTint="?attr/colorOnSurface"
+        app:showAsAction="always" />
     <item
         android:id="@+id/menu_installed"
-        android:enabled="true"
         android:icon="@drawable/ic_bar_installed"
         android:title="@string/nav_installed"
         app:iconTint="?attr/colorOnSurface"
         app:showAsAction="always" />
     <item
         android:id="@+id/menu_distro"
-        android:enabled="true"
         android:icon="@drawable/ic_bar_downloaded"
         android:title="@string/nav_downloaded"
         app:iconTint="?attr/colorOnSurface"
         app:showAsAction="always" />
     <item
         android:id="@+id/menu_tv_files"
-        android:icon="@drawable/ic_bar_tv_files"
+        android:icon="@drawable/ic_bar_files"
         android:title="@string/nav_tv_files"
-        app:iconTint="?attr/colorOnSurface"
-        app:showAsAction="always" />
-    <item
-        android:id="@+id/menu_about"
-        android:icon="@drawable/ic_bar_info"
-        android:title="@string/nav_info"
         app:iconTint="?attr/colorOnSurface"
         app:showAsAction="always" />
 </menu>

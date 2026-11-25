@@ -128,6 +128,10 @@ class SettingsFragment : PreferenceFragmentCompat(),
         setupSortOrderPreference()
         setupInstallMethodPreference()
         setupClearCachePreference()
+        findPreference<Preference>("atv_about")?.setOnPreferenceClickListener {
+            startActivity(com.tomclaw.appsend.screen.about.createAboutActivityIntent(requireContext()))
+            true
+        }
         setupProxyPreferences()
     }
 
