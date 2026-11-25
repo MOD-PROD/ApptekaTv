@@ -94,6 +94,10 @@ if (settings.skinV !== 3) { if (settings.skinV == null) { settings.skin = 'class
 let favorites = loadJson('favorites', []);
 const rowData = {};           // key -> [apps] | null (erreur) | undefined (en cours)
 const rowLoading = {};
+// ATV (Gonzo 25/11) : cause du dernier échec d'une rangée et nombre de nouveaux essais.
+const rowError = {};
+const rowRetries = {};
+const ROW_MAX_RETRIES = 3;
 let searchQuery = '';
 let searchRaw = undefined;    // résultats bruts (avant filtre de catégories)
 let movingKey = null;         // rangée en cours de déplacement
@@ -325,7 +329,8 @@ function fillRow(key) {
     if (apps === undefined) {
         box.innerHTML = '<div class="loading">Chargement…</div>';
     } else if (apps === null) {
-        box.innerHTML = '<div class="loading">Erreur réseau</div>';
+        box.innerHTML = '<div class="loading">Erreur réseau</div>' +
+            (rowError[key] ? `<div class="set-sub" data-no-i18n>(${escapeHtml(rowError[key])}${rowRetries[key] < ROW_MAX_RETRIES ? ' · nouvel essai…' : ''})</div>` : '');
     } else if (!apps.length) {
         let msg = 'Aucune application';
         if (key === 'fav') msg = 'Aucun favori. Dans une fiche, choisis « Favori » (ou touche jaune sur une carte).';
@@ -1429,11 +1434,23 @@ window.loadTvAppsJson = function (json) {
     }
 };
 
-window.onCategoryError = function (key) {
+// ATV (Gonzo 25/11) : cause de l'échec affichée dans la rangée + nouvel essai automatique.
+window.onCategoryError = function (key, reason) {
     if (key.indexOf('author:') === 0) { if (window.TvAuthor) window.TvAuthor.onError(key); return; }
     rowLoading[key] = false;
+    rowError[key] = String(reason || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 40);
+    rowRetries[key] = rowRetries[key] || 0;
     if (rowData[key] === undefined) rowData[key] = null;
     fillRow(key);
+    if (rowRetries[key] < ROW_MAX_RETRIES) {
+        const attempt = ++rowRetries[key];
+        setTimeout(() => {
+            if (rowData[key] !== null) return;
+            rowData[key] = undefined;
+            fillRow(key);
+            ensureLoaded(key);
+        }, 4000 * attempt);
+    }
 };
 
 window.onSearchResults = function (json) {

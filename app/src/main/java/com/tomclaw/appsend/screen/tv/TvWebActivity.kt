@@ -604,10 +604,28 @@ class TvWebActivity : AppCompatActivity() {
                 }, { error ->
                     Log.e(TAG, "Failed to load source $key", error)
                     if (accumulated.isEmpty()) {
-                        webView.evaluateJavascript("window.onCategoryError && window.onCategoryError('$key');", null)
+                        // ATV (Gonzo 25/11, « Erreur réseau » sur toutes les rangées) : la cause exacte
+                        // s'affiche dans la rangée pour le diagnostic ; la page relance seule.
+                        val reason = loadErrorReason(error)
+                        webView.evaluateJavascript("window.onCategoryError && window.onCategoryError('$key', '$reason');", null)
                     }
                 })
         )
+    }
+
+    /** Cause courte et sûre (lettres, chiffres, _) d'un échec de chargement. */
+    private fun loadErrorReason(error: Throwable): String {
+        var e: Throwable = error
+        while (e.cause != null && e.cause !== e && e !is retrofit2.HttpException) e = e.cause!!
+        return when (e) {
+            is retrofit2.HttpException -> "http_" + e.code()
+            is java.net.SocketTimeoutException -> "timeout"
+            is java.net.UnknownHostException -> "dns"
+            is java.net.ConnectException -> "connect"
+            is javax.net.ssl.SSLException -> "ssl"
+            is com.google.gson.JsonParseException, is IllegalStateException -> "format"
+            else -> e.javaClass.simpleName.replace(Regex("[^A-Za-z0-9_]"), "").take(40)
+        }
     }
 
     private var searchSubscription: Disposable? = null
