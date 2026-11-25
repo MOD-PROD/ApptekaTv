@@ -71,6 +71,24 @@ object TvTarget {
         }
     }
 
+    /** ATV (Gonzo 25/11) : l'appareil [tv] a changé d'adresse ; mise à jour de toutes les copies. */
+    @Synchronized
+    fun relocate(context: Context, tv: String, host: String, port: Int) {
+        fun moved(c: TvLinkSender.Connection) =
+            if (c.address.tv == tv) TvLinkSender.Connection(c.address.copy(host = host, port = port), c.token, c.name) else c
+        current(context)?.takeIf { it.address.tv == tv }?.let { cached = moved(it) }
+        runCatching {
+            val prefs = preferences(context)
+            val editor = prefs.edit()
+            for (key in listOf(KEY, KEY_LAST)) {
+                val c = runCatching { read(context, key) }.getOrNull() ?: continue
+                if (c.address.tv == tv) editor.putString(key, encode(moved(c)))
+            }
+            editor.putString(KEY_KNOWN, encodeAll(knownList(context).map { moved(it) }))
+            editor.apply()
+        }
+    }
+
     /** Appareils associés mémorisés (le plus récent en dernier), pour l'appui long sur l'icône. */
     fun known(context: Context): List<TvLinkSender.Connection> {
         val list = knownList(context)

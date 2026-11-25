@@ -71,7 +71,34 @@ object TvLink {
         }
     }
 
-    private fun open(address: Pairing): SSLSocket {
+    /**
+     * ATV (Gonzo 25/11, « pertes d'association ») : retrouve sur le Wi-Fi un appareil associé
+     * qui a changé d'adresse IP ou de port (box redémarrée, port 8336 occupé…). Renvoie la
+     * nouvelle adresse (même identifiant et même empreinte TLS), ou null. Installé par l'appli.
+     */
+    @Volatile
+    var relocator: ((Pairing) -> Pairing?)? = null
+
+    private val relocating = ThreadLocal<Boolean>()
+
+    private fun open(address: Pairing): SSLSocket = try {
+        openAt(address)
+    } catch (e: java.io.IOException) {
+        // Seulement une connexion impossible (rien n'a été envoyé), jamais pendant une association.
+        val unreachable = e is java.net.ConnectException || e is java.net.NoRouteToHostException ||
+            e is java.net.SocketTimeoutException
+        if (!unreachable || address.secret.isNotEmpty() || relocating.get() == true) throw e
+        relocating.set(true)
+        val moved = try {
+            runCatching { relocator?.invoke(address) }.getOrNull()
+        } finally {
+            relocating.remove()
+        }
+        if (moved == null || (moved.host == address.host && moved.port == address.port)) throw e
+        openAt(moved)
+    }
+
+    private fun openAt(address: Pairing): SSLSocket {
         val factory = TvTls.client(address.pin).socketFactory
         val socket = factory.createSocket() as SSLSocket
         try {

@@ -51,6 +51,10 @@ class Appteka : Application() {
         initAnalytics()
         // ATV : ce téléphone / cette tablette peut être piloté par un autre appareil (désactivé par défaut).
         com.tomclaw.appsend.screen.linktarget.LocalLinkTarget.init(this)
+        // ATV (Gonzo 25/11) : un appareil associé qui change d'adresse est retrouvé tout seul.
+        com.tomclaw.appsend.tvlink.TvLink.relocator = { address ->
+            com.tomclaw.appsend.target.TvReconnect.relocate(this, address)
+        }
     }
 
     private fun initRxErrorHandler() {

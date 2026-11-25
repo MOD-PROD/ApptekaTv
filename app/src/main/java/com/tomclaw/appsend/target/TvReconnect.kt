@@ -44,6 +44,37 @@ object TvReconnect {
         return Result.Unreachable
     }
 
+    private val lastMiss = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /**
+     * ATV (Gonzo 25/11) : appelé par [TvLink] quand l'adresse mémorisée ne répond plus. Cherche
+     * l'appareil sur le réseau local (NSD) ; seul celui qui a le même identifiant et la même
+     * empreinte TLS est accepté, puis l'adresse est mise à jour partout. Au plus une recherche
+     * toutes les 30 s par appareil, pour ne pas ralentir chaque écran quand il est vraiment éteint.
+     */
+    fun relocate(context: Context, address: TvLink.Pairing): TvLink.Pairing? {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val missed = lastMiss[address.tv]
+        if (missed != null && now - missed < RELOCATE_COOLDOWN_MS) return null
+        for ((host, port) in discover(context)) {
+            if (host == address.host && port == address.port) continue
+            val moved = address.copy(host = host, port = port)
+            val same = runCatching {
+                val hello = TvLink.request(moved, JSONObject().put("type", "hello"))
+                hello.optBoolean("ok") && hello.optString("tv") == address.tv
+            }.getOrDefault(false)
+            if (same) {
+                lastMiss.remove(address.tv)
+                TvTarget.relocate(context, address.tv, host, port)
+                return moved
+            }
+        }
+        lastMiss[address.tv] = now
+        return null
+    }
+
+    private const val RELOCATE_COOLDOWN_MS = 30_000L
+
     /** true = jeton accepté, false = refusé par cette TV, null = injoignable ou autre TV. */
     private fun ping(connection: TvLinkSender.Connection): Boolean? = try {
         val hello = TvLink.request(connection.address, JSONObject().put("type", "hello"))
