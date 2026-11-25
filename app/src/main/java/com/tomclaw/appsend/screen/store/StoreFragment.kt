@@ -152,7 +152,8 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val context = requireContext()
         val shown = connection
         data class Row(val label: String, val icon: Int, val green: Boolean, val checked: Boolean, val plus: Boolean,
-                       val divider: Boolean, val action: () -> Unit, val longAction: (() -> Unit)? = null)
+                       val divider: Boolean, val action: () -> Unit, val longAction: (() -> Unit)? = null,
+                       val header: Boolean = false)
         val local = DeviceKinds.current(context, null)
         val known = TvTarget.known(context)
         val rows = mutableListOf<Row>()
@@ -163,6 +164,12 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             val current = shown?.address?.tv == device.address.tv
             rows += Row(DeviceKinds.displayName(context, device), DeviceKinds.current(context, device).icon, true, current,
                 false, false, action = { if (!current) reconnect(device) }, longAction = { showDeviceSettings(device) })
+        }
+        // ATV proximité (Gonzo 25/11, « 1 et 2 ») : appareils Appteka vus sur le Wi-Fi, sans QR.
+        val nearbyAt = if (known.size < MAX_DEVICES) rows.size else -1
+        if (nearbyAt >= 0) {
+            rows += Row(getString(R.string.tv_nearby_searching), android.R.drawable.ic_menu_search, false, false,
+                false, true, action = {}, header = true)
         }
         if (known.size < MAX_DEVICES) {
             DeviceKind.values().forEachIndexed { index, kind ->
@@ -176,7 +183,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         popup.anchorView = anchor
         popup.width = (280 * density).toInt()
         popup.isModal = true
-        popup.setAdapter(object : android.widget.BaseAdapter() {
+        val adapter = object : android.widget.BaseAdapter() {
             override fun getCount() = rows.size
             override fun getItem(position: Int) = rows[position]
             override fun getItemId(position: Int) = position.toLong()
@@ -220,8 +227,34 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                     addView(line)
                 }
             }
-        })
+        }
+        popup.setAdapter(adapter)
+        if (nearbyAt >= 0) {
+            val app = context.applicationContext
+            val self = TvLink.localIpv4()
+            val taken = known.map { it.address.host to it.address.port }.toSet()
+            kotlin.concurrent.thread(name = "nearby", isDaemon = true) {
+                val found = runCatching { com.tomclaw.appsend.target.TvReconnect.discoverNearby(app) }
+                    .getOrDefault(emptyList())
+                    .filter { it.host != self && (it.host to it.port) !in taken }
+                activity?.runOnUiThread {
+                    if (!popup.isShowing || !isAdded) return@runOnUiThread
+                    val nearby = found.map { device ->
+                        Row(device.name, android.R.drawable.ic_menu_share, false, false, true, false,
+                            action = { inviteNearby(device.host, device.port) })
+                    }
+                    rows.removeAt(nearbyAt)
+                    if (nearby.isNotEmpty()) {
+                        rows.add(nearbyAt, Row(getString(R.string.tv_nearby_section), android.R.drawable.ic_menu_search,
+                            false, false, false, true, action = {}, header = true))
+                        rows.addAll(nearbyAt + 1, nearby)
+                    }
+                    adapter.notifyDataSetChanged()
+                }
+            }
+        }
         popup.setOnItemClickListener { _, _, position, _ ->
+            if (rows[position].header) return@setOnItemClickListener
             popup.dismiss()
             rows[position].action()
         }
@@ -231,6 +264,26 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             popup.dismiss()
             longAction()
             true
+        }
+    }
+
+    /**
+     * ATV proximité : l'autre appareil ouvre son écran de code, on saisit ce code ici.
+     * « busy » = une invitation vient déjà d'ouvrir l'écran : la saisie reste utile.
+     */
+    private fun inviteNearby(host: String, port: Int) {
+        pendingKind = null
+        kotlin.concurrent.thread(name = "pair-invite", isDaemon = true) {
+            val result = runCatching { TvLink.pairInvite(host, port) }
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                if (result.isSuccess || result.exceptionOrNull()?.message == "busy") {
+                    pairingSender().showCodeEntry(host, port)
+                } else {
+                    android.widget.Toast.makeText(requireContext(), R.string.pair_invite_failed,
+                        android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 

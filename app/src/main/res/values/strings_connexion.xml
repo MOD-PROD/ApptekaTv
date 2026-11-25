@@ -8,4 +8,9 @@
     <string name="link_target_notif_title">Appteka</string>
     <string name="link_target_notif_text">Paired devices can connect</string>
     <string name="tv_background_reachable">Stay reachable in the background</string>
+    <string name="pair_invite_channel">Pairing requests</string>
+    <string name="pair_invite_title">%1$s wants to pair</string>
+    <string name="pair_invite_text">Tap to show the pairing code, then type it on that device.</string>
+    <string name="pair_invite_toast">%1$s wants to pair: type the code shown here on that device.</string>
+    <string name="pair_invite_failed">This device did not answer. Is Appteka open on it?</string>
 </resources>

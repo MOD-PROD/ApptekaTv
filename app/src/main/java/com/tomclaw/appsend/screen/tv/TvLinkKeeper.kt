@@ -50,7 +50,13 @@ object TvLinkKeeper {
                 runCatching { it.stop() }
                 return null
             }
+            // ATV proximité : un appareil du Wi-Fi demande à s'associer → écran du code sur la TV.
+            it.onPairInvite = { device ->
+                com.tomclaw.appsend.screen.linktarget.PairInvites.show(app, device, TvWebActivity::class.java)
+            }
             server = it
+            // ATV arrière-plan (Gonzo « 1 et 2 ») : la TV reste joignable écran fermé.
+            com.tomclaw.appsend.tvlink.LinkTargetService.start(app)
         }
         current.confirmFiles = confirmFiles
         current

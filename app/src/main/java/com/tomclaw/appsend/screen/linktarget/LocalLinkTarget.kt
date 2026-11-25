@@ -56,7 +56,11 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
     fun init(application: Application) {
         app = application
         application.registerActivityLifecycleCallbacks(this)
-        if (isAvailable(application) && isEnabled(application)) start()
+        if (isAvailable(application) && isEnabled(application)) {
+            start()
+            // ATV arrière-plan : reste joignable appli fermée (refusé par Android si lancé hors premier plan).
+            com.tomclaw.appsend.tvlink.LinkTargetService.start(application)
+        }
     }
 
     /** Pas sur une TV/box (ni ATKsimulTv) : leur serveur est celui de l'interface TV. */
@@ -94,6 +98,8 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
         val s = TvLink.Server(app, NativeHost(app))
         s.confirmFiles = { device, answer -> confirm(R.string.tv_files_confirm_title,
             app.getString(R.string.local_target_files_confirm_message, device), answer) }
+        // ATV proximité : un appareil du Wi-Fi demande à s'associer → écran du code.
+        s.onPairInvite = { device -> PairInvites.show(app, device, LocalTargetActivity::class.java) }
         try {
             s.start()
             server = s
@@ -112,6 +118,7 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
 
     private fun toast(text: String) = main.post { Toast.makeText(app, text, Toast.LENGTH_LONG).show() }
 
+    /** Accord explicite sur l'appareil piloté ; refus si Appteka n'est pas au premier plan. */
     private fun confirm(title: Int, message: String, answer: (Boolean) -> Unit) {
         val activity = currentActivity() ?: return answer(false)
         val dialog = MaterialAlertDialogBuilder(activity)
@@ -120,10 +127,12 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
             .setCancelable(true)
             .setPositiveButton(R.string.tv_pair_confirm_accept) { _, _ -> answer(true) }
             .setNegativeButton(R.string.tv_pair_confirm_refuse) { _, _ -> answer(false) }
-            .setOnDismissListener { answer(false) }
+            .setOnDismissListener { answer(false) } // une 2e réponse est ignorée par le serveur
             .show()
         main.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
     }
+
+    // ------------------------------------------------ ActivityLifecycleCallbacks
 
     override fun onActivityResumed(activity: Activity) {
         resumed = WeakReference(activity)
@@ -139,6 +148,9 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
     override fun onActivityDestroyed(activity: Activity) = Unit
 
+    // ------------------------------------------------------------ Host natif
+
+    /** Aussi utilisé sur la TV quand l'écran Appteka TV est fermé (voir TvLinkKeeper). */
     internal open class NativeHost(protected val context: Application) : TvLink.Host {
         private val component = context.appComponent
         private val appInstaller = component.appInstaller()
@@ -150,12 +162,14 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
 
         override fun onPaired(device: String) {
             LocalLinkTarget.notifyChanged()
+            // Comme sur la TV : une association ne doit jamais passer inaperçue.
             LocalLinkTarget.toast(context.getString(R.string.local_target_paired_notice, device))
         }
 
+        /** Ordre « ouvrir / installer » : fiche native, téléchargement lancé par la fiche. */
         override fun onOpen(appId: String, install: Boolean, device: String) {
             if (install) {
-                remoteInstalls.track(appId)
+                remoteInstalls.track(appId) // ordre `status` : progression vue par le téléphone
                 attachInfo(appId)
             }
             val intent = createDetailsActivityIntent(context = context, appId = appId, label = "", finishOnly = true)
@@ -177,18 +191,28 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
         }
 
         override fun status(appId: String): JSONObject = remoteInstalls.status(appId).toJson()
+
         override fun content(): JSONObject = TvContent.build(context)
+
         override fun content(system: Boolean): JSONObject = TvContent.build(context, system)
+
         override fun appAction(type: String, packageName: String): JSONObject = remoteApps.action(type, packageName)
+
         override fun icon(packageName: String): ByteArray? = remoteApps.icon(packageName)
+
         override fun apkFile(packageName: String): java.io.File? = remoteApps.apkFile(packageName)
+
         override fun incomingApk(size: Long): java.io.File? = remoteApps.incomingApk(size)
+
         override fun downloads(): JSONObject = remoteDownloads.list()
+
         override fun downloadAction(type: String, fileName: String): JSONObject =
             remoteDownloads.action(type, fileName) { uri, label ->
                 appInstaller.install(InstallRequest(key = "download:$fileName", label = label, uri = uri))
             }
+
         override fun downloadIcon(fileName: String): ByteArray? = remoteDownloads.icon(fileName)
+
         override fun downloadFile(fileName: String): java.io.File? = remoteDownloads.file(fileName)
 
         override fun accountStatus(): JSONObject = try {
@@ -230,6 +254,7 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
         }
 
         override fun fsAccessMode(): String = remoteFiles.accessMode()
+
         override fun fsRoots(): List<TvLink.FsRoot> = remoteFiles.roots()
 
         override fun fsRequestStorage() {

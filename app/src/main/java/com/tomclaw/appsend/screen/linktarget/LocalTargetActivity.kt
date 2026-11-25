@@ -64,6 +64,7 @@ class LocalTargetActivity : AppCompatActivity() {
         pair.setOnClickListener { showPairingQr() }
         test = findViewById(R.id.local_target_test)
         test.setOnClickListener { selfTest() }
+        handleInvite(intent)
         forgetAll.setOnClickListener {
             MaterialAlertDialogBuilder(this)
                 .setMessage(R.string.local_target_forget_all_confirm)
@@ -75,6 +76,18 @@ class LocalTargetActivity : AppCompatActivity() {
                 .show()
         }
         render()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleInvite(intent)
+    }
+
+    /** ATV proximité : un appareil du Wi-Fi a demandé l'association → afficher le code. */
+    private fun handleInvite(intent: Intent?) {
+        if (intent?.getBooleanExtra(PairInvites.EXTRA_SHOW_PAIRING, false) != true) return
+        intent.removeExtra(PairInvites.EXTRA_SHOW_PAIRING)
+        if (LocalLinkTarget.server != null) pair.post { showPairingQr() }
     }
 
     override fun onStart() {

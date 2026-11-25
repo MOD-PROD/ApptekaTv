@@ -8,4 +8,9 @@
     <string name="link_target_notif_title">Appteka</string>
     <string name="link_target_notif_text">Vos appareils associés peuvent se connecter</string>
     <string name="tv_background_reachable">Rester joignable en arrière-plan</string>
+    <string name="pair_invite_channel">Demandes d’association</string>
+    <string name="pair_invite_title">%1$s veut s’associer</string>
+    <string name="pair_invite_text">Touchez pour afficher le code d’association, puis saisissez-le sur cet appareil.</string>
+    <string name="pair_invite_toast">%1$s veut s’associer : saisissez sur cet appareil le code affiché ici.</string>
+    <string name="pair_invite_failed">Cet appareil n’a pas répondu. Appteka est-il ouvert dessus ?</string>
 </resources>
