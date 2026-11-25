@@ -41,7 +41,6 @@ class TvLinkSender(
                 TvLink.request(address, JSONObject().put("type", "ping").put("token", saved)).optBoolean("ok")) {
                 saved
             } else {
-                hint(R.string.tv_pair_confirm_on_tv)
                 val response = TvLink.request(address, JSONObject().put("type", "pair")
                     .put("device", TvLink.deviceName()).put("install", installId(prefs)).put("secret", address.secret))
                 if (!response.optBoolean("ok") || response.optString("tv") != address.tv) {
@@ -73,7 +72,6 @@ class TvLinkSender(
     }
 
     fun pairCode(host: String, port: Int, code: String) = thread {
-        hint(R.string.tv_pair_confirm_on_tv)
         val result = runCatching {
             val (address, response) = TvLink.pairByCode(host, port, code, installId(preferences()))
             val token = response.getString("token")
@@ -176,11 +174,6 @@ class TvLinkSender(
     }
 
     private fun toast(res: Int) = Toast.makeText(activity, res, Toast.LENGTH_LONG).show()
-
-    /** Message affiché depuis un thread de travail (ATV-01 durcissement). */
-    private fun hint(res: Int) = activity.runOnUiThread {
-        if (!activity.isFinishing && !activity.isDestroyed) toast(res)
-    }
 
     private companion object {
         const val KEY_INSTALL = "install_id"

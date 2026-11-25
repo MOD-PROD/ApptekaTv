@@ -81,8 +81,6 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
     private fun start() {
         if (server != null) return
         val s = TvLink.Server(app, NativeHost(app))
-        s.confirmPairing = { device, answer -> confirm(R.string.local_target_confirm_title,
-            app.getString(R.string.local_target_confirm_message, device), answer) }
         s.confirmFiles = { device, answer -> confirm(R.string.tv_files_confirm_title,
             app.getString(R.string.local_target_files_confirm_message, device), answer) }
         try {

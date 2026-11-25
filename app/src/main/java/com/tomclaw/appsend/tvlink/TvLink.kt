@@ -871,12 +871,14 @@ object TvLink {
         }
 
         /**
-         * The phone proved it knows the invitation; the TV user must still accept it before a
-         * token exists. Runs outside the server lock so other requests are not blocked meanwhile.
+         * The phone proved it knows the single-use invitation shown on screen. Gonzo 25/11 : no
+         * extra « Associer ? » dialog by default (confirmPairing = null) ; the host still shows a
+         * notice in onPaired. When a confirmPairing callback is set, the user must accept first.
+         * Runs outside the server lock so other requests are not blocked meanwhile.
          */
         private fun confirmedToken(msg: JSONObject): JSONObject {
             val device = TvTokens.cleanDevice(msg.optString("device"))
-            val confirm = confirmPairing ?: return error("refused")
+            val confirm = confirmPairing ?: return synchronized(this) { issueToken(msg) }
             val latch = java.util.concurrent.CountDownLatch(1)
             val accepted = java.util.concurrent.atomic.AtomicBoolean(false)
             val answered = java.util.concurrent.atomic.AtomicBoolean(false)

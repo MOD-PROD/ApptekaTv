@@ -2,7 +2,7 @@
 <resources>
     <string name="local_target_title">Piloter cet appareil à distance</string>
     <string name="local_target_switch">Autoriser un autre appareil à piloter celui-ci</string>
-    <string name="local_target_info">Un téléphone ou une tablette associé peut installer des applis ici, parcourir Fichiers, Installées et Downloaded, et envoyer des applis (Send to). Les deux appareils doivent être sur le même Wi-Fi et Appteka doit être ouvert ici pour accepter une association.</string>
+    <string name="local_target_info">Un téléphone ou une tablette associé peut installer des applis ici, parcourir Fichiers, Installées et Downloaded, et envoyer des applis (Send to). Les deux appareils doivent être sur le même Wi-Fi et Appteka doit être ouvert ici pendant l’association.</string>
     <string name="local_target_address">%1$s · %2$s</string>
     <string name="local_target_no_wifi">Aucun réseau Wi-Fi</string>
     <string name="local_target_pair">Associer un appareil (QR ou code)</string>

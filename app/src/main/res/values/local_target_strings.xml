@@ -2,7 +2,7 @@
 <resources>
     <string name="local_target_title">Control this device remotely</string>
     <string name="local_target_switch">Allow another device to control this one</string>
-    <string name="local_target_info">A paired phone or tablet can install apps here, browse Files, Installed and Downloaded, and send apps (Send to). Both devices must be on the same Wi-Fi and Appteka must be open here to accept a pairing.</string>
+    <string name="local_target_info">A paired phone or tablet can install apps here, browse Files, Installed and Downloaded, and send apps (Send to). Both devices must be on the same Wi-Fi and Appteka must be open here during pairing.</string>
     <string name="local_target_address">%1$s · %2$s</string>
     <string name="local_target_no_wifi">No Wi-Fi network</string>
     <string name="local_target_pair">Pair a device (QR or code)</string>
