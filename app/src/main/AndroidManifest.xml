@@ -50,76 +50,170 @@
         android:label="${launcherLabel}"
         android:networkSecurityConfig="@xml/network_security_config"
         android:requestLegacyExternalStorage="true"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        tools:targetApi="31">
+        android:enableOnBackInvokedCallback="true">
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+
+        <receiver
+            android:name=".install.InstallResultReceiver"
+            android:exported="false" />
+
+        <activity
+            android:name=".install.InstallActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/AppTheme.Transparent" />
+        <activity
+            android:name=".install.InstallFailureActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/AppTheme.Transparent" />
+        <activity
+            android:name=".screen.settings.SettingsActivity"
+            android:label="@string/settings" />
+        <activity
+            android:name=".screen.upload.UploadActivity"
+            android:label="@string/upload" />
+        <activity
+            android:name=".screen.search.SearchActivity"
+            android:label="@string/search_app"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
+        <activity
+            android:name=".screen.moderation.ModerationActivity"
+            android:label="@string/apps_on_moderation" />
+        <activity
+            android:name=".screen.chat.ChatActivity"
+            android:label="@string/chat_activity" />
+        <activity
+            android:name=".screen.create_chat.CreateChatActivity"
+            android:label="@string/create_chat_title"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".screen.details.DetailsActivity"
+            android:exported="true"
+            android:label="@string/details_activity">
+            <intent-filter
+                android:autoVerify="true"
+                tools:targetApi="23">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="appteka.store" />
+                <data android:pathPrefix="/app" />
+            </intent-filter>
+            <intent-filter
+                android:autoVerify="true"
+                tools:targetApi="23">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="appteka.store" />
+                <data android:pathPrefix="/apps" />
+            </intent-filter>
+            <intent-filter
+                android:autoVerify="true"
+                tools:targetApi="23">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="appteka.store" />
+                <data android:pathPrefix="/package" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".screen.rate.RateActivity"
+            android:label="@string/rate_app" />
+        <activity
+            android:name=".screen.favorite.FavoriteActivity"
+            android:label="@string/favorite_activity" />
+        <activity
+            android:name=".screen.auth.request_code.RequestCodeActivity"
+            android:label="@string/your_email" />
+        <activity
+            android:name=".screen.auth.verify_code.VerifyCodeActivity"
+            android:label="@string/verify_email" />
+        <activity
+            android:name=".screen.change_email.ChangeEmailActivity"
+            android:label="@string/change_email_title" />
+        <activity
+            android:name=".screen.edit_profile.EditProfileActivity"
+            android:label="@string/edit_profile_title" />
+        <activity
+            android:name=".screen.avatar_crop.AvatarCropActivity"
+            android:label="@string/edit_profile_avatar_change"
+            android:screenOrientation="portrait"
+            android:theme="@style/AppThemeSemitransparent" />
+        <activity
+            android:name=".screen.permissions.PermissionsActivity"
+            android:label="@string/required_permissions" />
+        <activity
+            android:name=".screen.gallery.GalleryActivity"
+            android:theme="@style/AppThemeSemitransparent" />
+        <activity
+            android:name=".screen.profile.ProfileActivity"
+            android:exported="true"
+            android:label="@string/profile"
+            android:windowSoftInputMode="stateHidden">
+            <intent-filter
+                android:autoVerify="true"
+                tools:targetApi="23">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="appteka.store" />
+                <data android:pathPrefix="/profile" />
+            </intent-filter>
+            <intent-filter
+                android:autoVerify="true"
+                tools:targetApi="23">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="appteka.store" />
+                <data android:pathPrefix="/user" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".screen.reviews.ReviewsActivity" />
+
+        <!-- Phone / Tablet launcher -->
         <activity
             android:name=".screen.home.HomeActivity"
             android:exported="true"
-            android:label="${launcherLabel}"
-            android:theme="@style/AppTheme.Home"
-            android:windowSoftInputMode="adjustResize">
+            android:label="${phoneLabel}"
+            android:theme="@style/AppTheme.Splash"
+            android:launchMode="singleTop">
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".screen.details.DetailsActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".screen.upload.UploadActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".screen.moderation.ModerationActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".screen.profile.ProfileActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".screen.auth.AuthActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".screen.chat.ChatActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".screen.gallery.GalleryActivity"
-            android:exported="false"
-            android:theme="@style/AppTheme.Gallery" />
-
-        <activity
-            android:name=".screen.permissions.PermissionsActivity"
-            android:label="@string/required_permissions" />
-
-        <activity
-            android:name=".screen.favorite.FavoriteActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".screen.topics.TopicsActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".screen.users.UsersActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".screen.settings.SettingsActivity"
-            android:exported="false" />
-
+        <!-- Android TV launcher - HTML interface -->
         <activity
             android:name=".screen.tv.TvWebActivity"
             android:exported="true"
