@@ -2,11 +2,11 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/01-durcissement, atv/fix-phone-update-channel, atv/simulateur-atksimultv, atv/fix-tv-reelle-mibox4, atv/parametres-tv, atv/installees-tv-identiques, atv/09-fichiers-distants, atv/icone-appareil, atv/traduction-fr, atv/fix-connexion-compte-tv, atv/qr-association-permanent, atv/association-tablette-telephone, atv/menu-appareils ]
+    branches: [ main, 'atv/**' ]
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish the selected channel (stable from tv-html only; simultv = ATKsimulTv)
+        description: Publish the selected channel (stable from main only; simultv = ATKsimulTv)
         type: boolean
         default: false
       channel:
@@ -54,7 +54,7 @@ jobs:
         env:
           VERSION_CODE: ${{ inputs.version_code }}
         run: |
-          if [ "${{ inputs.channel }}" = stable ]; then test "$GITHUB_REF" = refs/heads/tv-html; fi
+          if [ "${{ inputs.channel }}" = stable ]; then test "$GITHUB_REF" = refs/heads/main; fi
           [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]
           test "$VERSION_CODE" -gt 1195
           test "$VERSION_CODE" -le 2100000000
@@ -158,7 +158,7 @@ jobs:
       # The Appteka TV APK of the same commit is attached too, so both apps on one phone speak
       # the same pairing protocol.
       - name: Publish ATKsimulTv channel
-        if: (inputs.publish == true && inputs.channel == 'simultv' || github.event_name == 'push' && github.ref == 'refs/heads/atv/simulateur-atksimultv') && steps.release.outputs.built == 'true'
+        if: (inputs.publish == true && inputs.channel == 'simultv') && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_CODE: ${{ inputs.version_code || '' }}
@@ -197,7 +197,7 @@ jobs:
           fi
 
       - name: Publish selected release channel
-        if: (inputs.publish == true && inputs.channel != 'simultv' || github.event_name == 'push' && (github.ref == 'refs/heads/atv/fix-tv-settings-focus-themes' || github.ref == 'refs/heads/atv/fix-tv-reelle-mibox4' || github.ref == 'refs/heads/atv/parametres-tv' || github.ref == 'refs/heads/atv/installees-tv-identiques' || github.ref == 'refs/heads/atv/09-fichiers-distants' || github.ref == 'refs/heads/atv/icone-appareil' || github.ref == 'refs/heads/atv/traduction-fr')) && steps.release.outputs.built == 'true'
+        if: (inputs.publish == true && inputs.channel != 'simultv' || github.event_name == 'push' && github.ref == 'refs/heads/main') && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_CODE: ${{ inputs.version_code || '' }}
