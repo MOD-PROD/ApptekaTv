@@ -15,26 +15,17 @@ data class ReleaseUpdate(
         const val MANIFEST_URL = "https://github.com/MOD-PROD/ApptekaTv/releases/latest/download/update.json"
         private const val BASE = "https://github.com/MOD-PROD/ApptekaTv/releases"
 
-        // ATV: ATKsimulTv has its own package, APK name and single update channel, never mixed
-        // with the Appteka TV channels (stable/beta/test).
         const val PACKAGE = "app.modprod.apptekatv"
         const val APK_NAME = "apptekatv-release.apk"
-        const val SIMULTV_PACKAGE = "app.modprod.apptekatv.simultv"
-        const val SIMULTV_APK_NAME = "atksimultv-release.apk"
-        const val SIMULTV_CHANNEL = "simultv"
-        private val simulator: Boolean get() = com.tomclaw.appsend.BuildConfig.FORCE_TV_SIMULATOR
 
-        fun manifestUrl(channel: String): String = if (simulator) {
-            "$BASE/download/simultv-latest/update.json"
-        } else when (channel) {
+        fun manifestUrl(channel: String): String = when (channel) {
             "test" -> "$BASE/download/test-latest/update.json"
             "beta" -> "$BASE/download/beta-latest/update.json"
             else -> "$BASE/latest/download/update.json"
         }
 
         fun parse(json: String, installedVersion: Long, channel: String = "stable"): ReleaseUpdate? =
-            if (simulator) parse(json, installedVersion, SIMULTV_CHANNEL, SIMULTV_PACKAGE, SIMULTV_APK_NAME)
-            else parse(json, installedVersion, channel, PACKAGE, APK_NAME)
+            parse(json, installedVersion, channel, PACKAGE, APK_NAME)
 
         fun parse(
             json: String,

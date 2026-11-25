@@ -23,7 +23,7 @@ class UpdateController(private val activity: Activity) {
 
     @Suppress("DEPRECATION")
     fun check(manual: Boolean = false, channel: String = "stable") {
-        require(channel in setOf("stable", "beta", "test", "simultv"))
+        require(channel in setOf("stable", "beta", "test"))
         if (!busy.compareAndSet(false, true)) return
         Thread {
             val result = runCatching {
