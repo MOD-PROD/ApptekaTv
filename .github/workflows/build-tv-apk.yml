@@ -197,7 +197,7 @@ jobs:
           fi
 
       - name: Publish selected release channel
-        if: (inputs.publish == true && inputs.channel != 'simultv' || github.event_name == 'push' && (github.ref == 'refs/heads/atv/fix-tv-settings-focus-themes' || github.ref == 'refs/heads/atv/fix-tv-reelle-mibox4' || github.ref == 'refs/heads/atv/parametres-tv' || github.ref == 'refs/heads/atv/installees-tv-identiques' || github.ref == 'refs/heads/atv/09-fichiers-distants' || github.ref == 'refs/heads/atv/icone-appareil' || github.ref == 'refs/heads/atv/traduction-fr')) && steps.release.outputs.built == 'true'
+        if: (inputs.publish == true && inputs.channel != 'simultv' || github.event_name == 'push' && (github.ref == 'refs/heads/atv/fix-tv-settings-focus-themes' || github.ref == 'refs/heads/atv/fix-tv-reelle-mibox4' || github.ref == 'refs/heads/atv/parametres-tv' || github.ref == 'refs/heads/atv/installees-tv-identiques' || github.ref == 'refs/heads/atv/09-fichiers-distants' || github.ref == 'refs/heads/atv/icone-appareil' || github.ref == 'refs/heads/atv/traduction-fr' || github.ref == 'refs/heads/atv/fix-connexion-compte-tv')) && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_CODE: ${{ inputs.version_code || '' }}
