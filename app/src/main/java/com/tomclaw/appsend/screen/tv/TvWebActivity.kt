@@ -265,8 +265,11 @@ class TvWebActivity : AppCompatActivity() {
         handler.postDelayed(expireDialog, 5 * 60 * 1000L)
     }
 
+    /** Ordres reçus pendant que cet écran est ouvert (voir TvLinkKeeper). */
+    private var linkHost: TvLink.Host? = null
+
     private fun startTvLink() {
-        val server = TvLink.Server(this, object : TvLink.Host {
+        val host = object : TvLink.Host {
             override fun onPaired(device: String) {
                 // ATV (vraie TV, 24/11) : la fenêtre du QR / code se ferme dès que l'association réussit.
                 runOnUiThread { pairingDialog?.takeIf { it.isShowing }?.dismiss() }
@@ -350,10 +353,16 @@ class TvWebActivity : AppCompatActivity() {
                     toast(getString(R.string.tv_apk_received, label, device))
                     appInstaller.install(InstallRequest(key = "push:" + file.name, label = label, uri = uri))
                 }
-        })
-        server.confirmFiles = ::confirmFiles // ATV-09 : droit « Fichiers » accordé sur la TV
-        runCatching { server.start() }.onFailure { Log.w(TAG, "TV link unavailable", it) }
-        tvLink = server
+        }
+        linkHost = host
+        // Gonzo 25/11 : le serveur survit à cet écran (Retour, recréation) : plus de perte d'association.
+        tvLink = TvLinkKeeper.attach(this, host, ::confirmFiles) // ATV-09 : « Fichiers » accordé sur la TV
+    }
+
+    /** Ordre « ouvrir / installer » reçu pendant que l'écran était fermé. */
+    private fun replayPendingOpen() {
+        val (appId, install, device) = TvLinkKeeper.takePendingOpen() ?: return
+        linkHost?.onOpen(appId, install, device)
     }
 
     /** ATV-09 : un téléphone n'accède aux fichiers de la TV que si l'utilisateur de la TV accepte. */
@@ -481,6 +490,7 @@ class TvWebActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 handler.postDelayed({ playStartupAnimation() }, GRAVITY_FALLBACK_MS)
+                handler.postDelayed({ replayPendingOpen() }, GRAVITY_FALLBACK_MS + PENDING_OPEN_DELAY_MS)
             }
         }
 
@@ -1256,7 +1266,8 @@ class TvWebActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        tvLink?.stop()
+        linkHost?.let { TvLinkKeeper.detach(it) }
+        linkHost = null
         remoteInstalls.dispose()
         handler.removeCallbacksAndMessages(null)
         stateSubscription?.dispose()
@@ -1277,6 +1288,7 @@ class TvWebActivity : AppCompatActivity() {
         private const val MAX_VERSIONS_INFO = 40
         private const val MAX_PAGES = 5
         private const val GRAVITY_FALLBACK_MS = 1500L
+        private const val PENDING_OPEN_DELAY_MS = 1000L
         private const val AI_STATUS_PENDING = "pending"
         private const val AI_POLL_INTERVAL_MS = 4000L
         private const val AI_POLL_TIMEOUT_MS = 3 * 60 * 1000L

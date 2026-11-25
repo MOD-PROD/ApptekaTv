@@ -133,7 +133,8 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
 
     // ------------------------------------------------------------ Host natif
 
-    private class NativeHost(private val context: Application) : TvLink.Host {
+    /** Aussi utilisé sur la TV quand l'écran Appteka TV est fermé (voir TvLinkKeeper). */
+    internal open class NativeHost(protected val context: Application) : TvLink.Host {
         private val component = context.appComponent
         private val appInstaller = component.appInstaller()
         private val remoteInstalls by lazy { TvRemoteInstalls(context, component.downloadManager(), appInstaller) }
