@@ -2,7 +2,7 @@ name: Build TV APK
 
 on:
   push:
-    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/01-durcissement, atv/fix-phone-update-channel, atv/simulateur-atksimultv, atv/fix-tv-reelle-mibox4, atv/parametres-tv, atv/installees-tv-identiques, atv/09-fichiers-distants, atv/icone-appareil, atv/traduction-fr ]
+    branches: [ tv-html, atv/self-update, atv/integration-real-tv, atv/fix-tv-settings-focus-themes, atv/01-durcissement, atv/fix-phone-update-channel, atv/simulateur-atksimultv, atv/fix-tv-reelle-mibox4, atv/parametres-tv, atv/installees-tv-identiques, atv/09-fichiers-distants, atv/icone-appareil, atv/traduction-fr, atv/fix-connexion-compte-tv ]
   workflow_dispatch:
     inputs:
       publish:
