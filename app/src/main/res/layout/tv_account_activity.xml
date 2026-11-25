@@ -5,6 +5,14 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
+    <!-- Profil complet de la TV (ProfileFragment), affiché une fois la TV connectée. -->
+    <FrameLayout
+        android:id="@+id/tv_account_profile"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
     <androidx.core.widget.NestedScrollView
         android:id="@+id/tv_account_scroll"
         android:layout_width="match_parent"
