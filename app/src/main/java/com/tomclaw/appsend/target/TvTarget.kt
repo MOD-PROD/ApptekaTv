@@ -17,6 +17,8 @@ object TvTarget {
     private const val KEY = "current"
     /** ATV : dernière TV choisie, gardée en mode 📱 pour « Send to <TV> ». */
     private const val KEY_LAST = "last"
+    /** ATV (Gonzo 25/11) : tous les appareils associés (TV, tablette, téléphone…), une icône à la fois. */
+    private const val KEY_KNOWN = "known"
 
     @Volatile
     private var cached: TvLinkSender.Connection? = null
@@ -41,7 +43,10 @@ object TvTarget {
         runCatching {
             val editor = preferences(context).edit()
             if (connection == null) editor.remove(KEY) else editor.putString(KEY, encode(connection))
-            if (connection != null) editor.putString(KEY_LAST, encode(connection))
+            if (connection != null) {
+                editor.putString(KEY_LAST, encode(connection))
+                editor.putString(KEY_KNOWN, encodeAll(knownList(context).filter { it.address.tv != connection.address.tv } + connection))
+            }
             editor.apply()
         }
     }
@@ -50,15 +55,46 @@ object TvTarget {
     fun last(context: Context): TvLinkSender.Connection? =
         current(context) ?: runCatching { read(context, KEY_LAST) }.getOrNull()
 
-    /** La TV a refusé le jeton : on l'oublie aussi pour « Send to <TV> ». */
+    /**
+     * La TV a refusé le jeton : on l'oublie aussi pour « Send to <TV> » et la liste des appareils.
+     * [which] = l'appareil refusé (par défaut la cible actuelle, sinon la dernière).
+     */
     @Synchronized
-    fun forget(context: Context) {
-        select(context, null)
-        runCatching { preferences(context).edit().remove(KEY_LAST).apply() }
+    fun forget(context: Context, which: TvLinkSender.Connection? = null) {
+        val gone = (which ?: last(context))?.address?.tv ?: return select(context, null)
+        if (current(context)?.address?.tv == gone) select(context, null)
+        runCatching {
+            val editor = preferences(context).edit()
+            if (runCatching { read(context, KEY_LAST) }.getOrNull()?.address?.tv == gone) editor.remove(KEY_LAST)
+            editor.putString(KEY_KNOWN, encodeAll(knownList(context).filter { it.address.tv != gone }))
+            editor.apply()
+        }
     }
+
+    /** Appareils associés mémorisés (le plus récent en dernier), pour l'appui long sur l'icône. */
+    fun known(context: Context): List<TvLinkSender.Connection> {
+        val list = knownList(context)
+        // Association faite avant cette version : seule la dernière TV était gardée.
+        val last = runCatching { read(context, KEY_LAST) }.getOrNull()
+        return if (last != null && list.none { it.address.tv == last.address.tv }) listOf(last) + list else list
+    }
+
+    private fun knownList(context: Context): List<TvLinkSender.Connection> = runCatching {
+        val array = org.json.JSONArray(preferences(context).getString(KEY_KNOWN, null) ?: return emptyList())
+        (0 until array.length()).mapNotNull { runCatching { decode(array.getString(it)) }.getOrNull() }
+    }.getOrDefault(emptyList())
+
+    private fun encodeAll(list: List<TvLinkSender.Connection>): String =
+        org.json.JSONArray(list.takeLast(MAX_KNOWN).map { encode(it) }).toString()
+
+    private const val MAX_KNOWN = 10
 
     private fun read(context: Context, key: String = KEY): TvLinkSender.Connection? {
         val raw = preferences(context).getString(key, null) ?: return null
+        return decode(raw)
+    }
+
+    private fun decode(raw: String): TvLinkSender.Connection {
         val json = JSONObject(raw)
         val address = TvLink.Pairing(
             host = json.getString("host"),

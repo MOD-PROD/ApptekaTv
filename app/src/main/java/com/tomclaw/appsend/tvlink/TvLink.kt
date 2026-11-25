@@ -809,7 +809,7 @@ object TvLink {
             if (msg.optInt("v") != 2) return error("version")
             val type = msg.optString("type")
             if (type == "hello") return ok().put("name", deviceName()).put("tv", tvId)
-                .put("kind", com.tomclaw.appsend.target.DeviceKinds.detectLocal(context).id)
+                .put("kind", com.tomclaw.appsend.target.DeviceKinds.current(context, null).id)
                 .put("abis", org.json.JSONArray(Build.SUPPORTED_ABIS.toList()))
             val from = tokenDevice(msg.optString("token")) ?: return error("unauthorized")
             return when (type) {

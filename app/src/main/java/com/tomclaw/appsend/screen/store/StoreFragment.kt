@@ -135,9 +135,22 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val shown = connection
         val chosen = DeviceKinds.chosen(context, shown)
         val detected = DeviceKinds.detected(context, shown)
-        data class Row(val kind: DeviceKind?, val label: String, val icon: Int, val checked: Boolean)
+        // ATV (Gonzo 25/11) : sous le type, une ligne par appareil associé pour basculer sans rescanner.
+        data class Row(val kind: DeviceKind?, val label: String, val icon: Int, val checked: Boolean,
+                       val action: (() -> Unit)? = null, val divider: Boolean = false)
+        val local = DeviceKinds.current(context, null)
+        val known = TvTarget.known(context)
         val rows = listOf(Row(null, getString(R.string.device_kind_auto, getString(detected.label)), detected.icon, chosen == null)) +
-            DeviceKind.values().map { Row(it, getString(it.label), it.icon, chosen == it) }
+            DeviceKind.values().map { Row(it, getString(it.label), it.icon, chosen == it) } +
+            listOf(Row(null, getString(R.string.local_target_this_device, getString(local.label)), local.icon, shown == null,
+                action = { if (connection != null) { TvTarget.select(context, null); renderTarget() } }, divider = true)) +
+            known.map { device ->
+                val current = shown?.address?.tv == device.address.tv
+                Row(null, device.name, DeviceKinds.current(context, device).icon, current,
+                    action = { if (!current) reconnect(device) })
+            } +
+            listOf(Row(null, getString(R.string.local_target_pair_other), R.drawable.ic_target_mobile, false,
+                action = { showPairDialog() }))
         val density = resources.displayMetrics.density
         val tint = com.google.android.material.color.MaterialColors.getColor(anchor, com.google.android.material.R.attr.colorOnSurface)
         val popup = androidx.appcompat.widget.ListPopupWindow(context)
@@ -151,14 +164,14 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val row = rows[position]
                 val pad = (16 * density).toInt()
-                return android.widget.LinearLayout(parent.context).apply {
+                val line = android.widget.LinearLayout(parent.context).apply {
                     orientation = android.widget.LinearLayout.HORIZONTAL
                     gravity = android.view.Gravity.CENTER_VERTICAL
                     setPadding(pad, (10 * density).toInt(), pad, (10 * density).toInt())
                     addView(android.widget.ImageView(parent.context).apply {
                         setImageResource(row.icon)
                         imageTintList = android.content.res.ColorStateList.valueOf(tint)
-                        alpha = if (row.kind == null) 0.6f else 1f
+                        alpha = if (row.kind == null && row.action == null) 0.6f else 1f
                     }, android.widget.LinearLayout.LayoutParams((28 * density).toInt(), (28 * density).toInt()))
                     addView(android.widget.TextView(parent.context).apply {
                         text = row.label
@@ -173,10 +186,20 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                         textSize = 18f
                     })
                 }
+                if (!row.divider) return line
+                return android.widget.LinearLayout(parent.context).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    addView(View(parent.context).apply {
+                        setBackgroundColor(tint)
+                        alpha = 0.2f
+                    }, android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, maxOf(1, density.toInt())))
+                    addView(line)
+                }
             }
         })
         popup.setOnItemClickListener { _, _, position, _ ->
             popup.dismiss()
+            rows[position].action?.let { return@setOnItemClickListener it() }
             DeviceKinds.choose(context, shown, rows[position].kind)
             renderTarget()
             val label = getString(DeviceKinds.current(context, shown).label)
@@ -222,7 +245,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                         android.widget.Toast.makeText(appContext, appContext.getString(R.string.tv_connected_to, result.connection.name), android.widget.Toast.LENGTH_SHORT).show()
                     }
                     TvReconnect.Result.Forgotten -> {
-                        TvTarget.forget(requireContext())
+                        TvTarget.forget(requireContext(), last)
                         android.widget.Toast.makeText(appContext, getString(R.string.tv_reconnect_forgotten, last.name), android.widget.Toast.LENGTH_LONG).show()
                         showPairDialog()
                     }

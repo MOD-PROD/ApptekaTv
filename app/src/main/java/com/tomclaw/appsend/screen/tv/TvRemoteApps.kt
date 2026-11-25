@@ -1,6 +1,5 @@
 package com.tomclaw.appsend.screen.tv
 
-import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
@@ -22,9 +21,11 @@ import java.security.SecureRandom
  * « Installed » demandées par le téléphone associé, et échange les APK.
  * Les méthodes sont appelées sur le thread de la liaison ; les écrans s'ouvrent sur la TV.
  */
-class TvRemoteApps(private val activity: Activity) {
+class TvRemoteApps(private val activity: android.content.Context) {
 
     private val pm = activity.packageManager
+    // ATV : aussi utilisé hors activité (téléphone ou tablette pilotés, LocalLinkTarget).
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     fun action(type: String, packageName: String): JSONObject {
         // ATV (fiche en mode 📺) : version installée sur la TV, -1 si absente.
@@ -96,7 +97,7 @@ class TvRemoteApps(private val activity: Activity) {
         val label = runCatching { appInfo.loadLabel(pm).toString() }.getOrNull()
             ?.takeIf { it.isNotBlank() } ?: archive.packageName
         val uri = FileProvider.getUriForFile(activity, "${activity.packageName}.provider", file)
-        activity.runOnUiThread { install(uri, label) }
+        main.post { install(uri, label) }
         return ok().put("label", label).put("package", archive.packageName)
     }
 
@@ -104,7 +105,7 @@ class TvRemoteApps(private val activity: Activity) {
 
     private fun start(intent: Intent): JSONObject {
         if (intent.resolveActivity(pm) == null) return error("no_activity")
-        activity.runOnUiThread {
+        main.post {
             try {
                 activity.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } catch (_: ActivityNotFoundException) {

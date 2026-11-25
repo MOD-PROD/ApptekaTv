@@ -177,6 +177,13 @@ interface AppComponent {
     // ATV: self-update (OTA) installs through the same PackageInstaller session as catalog apps
     fun appInstaller(): com.tomclaw.appsend.install.AppInstaller
 
+    // ATV : téléphone / tablette pilotés à distance (LocalLinkTarget, hors activité)
+    fun downloadManager(): com.tomclaw.appsend.download.DownloadManager
+
+    fun apkStorage(): com.tomclaw.appsend.download.ApkStorage
+
+    fun storeApi(): com.tomclaw.appsend.core.StoreApi
+
     fun analytics(): Analytics
 
     fun bananalytics(): Bananalytics

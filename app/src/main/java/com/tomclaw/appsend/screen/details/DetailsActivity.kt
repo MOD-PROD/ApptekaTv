@@ -173,6 +173,8 @@ class DetailsActivity : AppCompatActivity(), DetailsPresenter.DetailsRouter {
 
         if (savedInstanceState == null) {
             analytics.trackEvent("open-details-screen")
+            // ATV : ordre « installer » d'un appareil associé (cet appareil est piloté).
+            if (intent.getBooleanExtra(EXTRA_REMOTE_INSTALL, false)) presenter.installWhenReady()
         }
 
         // Only intercept back if we need custom behavior (opening store screen)
@@ -562,6 +564,8 @@ fun createDetailsActivityIntent(
     .putExtra(EXTRA_MODERATION, moderation)
     .putExtra(EXTRA_FINISH_ONLY, finishOnly)
 
+/** ATV : fiche ouverte par un appareil associé qui demande l'installation (LocalLinkTarget). */
+const val EXTRA_REMOTE_INSTALL = "remote_install"
 private const val EXTRA_APP_ID = "app_id"
 private const val EXTRA_PACKAGE = "package_name"
 private const val EXTRA_LABEL = "label"

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_target_title">Piloter cet appareil à distance</string>
+    <string name="local_target_switch">Autoriser un autre appareil à piloter celui-ci</string>
+    <string name="local_target_info">Un téléphone ou une tablette associé peut installer des applis ici, parcourir Fichiers, Installées et Downloaded, et envoyer des applis (Send to). Les deux appareils doivent être sur le même Wi-Fi et Appteka doit être ouvert ici pour accepter une association.</string>
+    <string name="local_target_address">%1$s · %2$s</string>
+    <string name="local_target_no_wifi">Aucun réseau Wi-Fi</string>
+    <string name="local_target_pair">Associer un appareil (QR ou code)</string>
+    <string name="local_target_display_address">Adresse : %1$s</string>
+    <string name="local_target_devices">Appareils associés</string>
+    <string name="local_target_none">Aucun appareil associé pour l’instant.</string>
+    <string name="local_target_off">Active l’interrupteur ci-dessus pour associer un appareil.</string>
+    <string name="local_target_forget">Oublier</string>
+    <string name="local_target_forget_all">Tout oublier</string>
+    <string name="local_target_forget_all_confirm">Oublier tous les appareils associés ? Ils devront s’associer à nouveau.</string>
+    <string name="local_target_revoke_files">Retirer l’accès fichiers</string>
+    <string name="local_target_summary_on">Activé · %1$d appareil(s) associé(s)</string>
+    <string name="local_target_summary_off">Désactivé</string>
+    <string name="local_target_confirm_title">Associer cet appareil ?</string>
+    <string name="local_target_confirm_message">%1$s veut piloter Appteka sur cet appareil. N’accepte que si c’est ton appareil.</string>
+    <string name="local_target_files_confirm_message">%1$s veut gérer les fichiers de cet appareil.</string>
+    <string name="local_target_paired_notice">Appareil associé : %1$s. Si ce n’est pas le tien, oublie-le dans Settings → Piloter cet appareil à distance.</string>
+    <string name="local_target_install_from">Installation demandée par %1$s</string>
+    <string name="local_target_open_from">Envoyé par %1$s</string>
+    <string name="local_target_files_opened">%1$s a ouvert les fichiers de cet appareil</string>
+    <string name="local_target_storage_message">L’appareil associé veut voir les fichiers. Autorise Appteka à accéder au stockage de cet appareil.</string>
+    <string name="local_target_account_notice">Compte Appteka de cet appareil modifié depuis %1$s</string>
+    <string name="local_target_known">Appareils associés</string>
+    <string name="local_target_pair_other">Associer un autre appareil…</string>
+    <string name="local_target_this_device">Cet appareil (%1$s)</string>
+</resources>

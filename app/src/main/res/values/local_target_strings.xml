@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_target_title">Control this device remotely</string>
+    <string name="local_target_switch">Allow another device to control this one</string>
+    <string name="local_target_info">A paired phone or tablet can install apps here, browse Files, Installed and Downloaded, and send apps (Send to). Both devices must be on the same Wi-Fi and Appteka must be open here to accept a pairing.</string>
+    <string name="local_target_address">%1$s · %2$s</string>
+    <string name="local_target_no_wifi">No Wi-Fi network</string>
+    <string name="local_target_pair">Pair a device (QR or code)</string>
+    <string name="local_target_display_address">Address: %1$s</string>
+    <string name="local_target_devices">Paired devices</string>
+    <string name="local_target_none">No paired device yet.</string>
+    <string name="local_target_off">Turn on the switch above to pair a device.</string>
+    <string name="local_target_forget">Forget</string>
+    <string name="local_target_forget_all">Forget all</string>
+    <string name="local_target_forget_all_confirm">Forget all paired devices? They will have to pair again.</string>
+    <string name="local_target_revoke_files">Remove file access</string>
+    <string name="local_target_summary_on">On · %1$d paired device(s)</string>
+    <string name="local_target_summary_off">Off</string>
+    <string name="local_target_confirm_title">Pair this device?</string>
+    <string name="local_target_confirm_message">%1$s wants to control Appteka on this device. Only accept if it is your device.</string>
+    <string name="local_target_files_confirm_message">%1$s wants to manage the files of this device.</string>
+    <string name="local_target_paired_notice">Device paired: %1$s. If it is not yours, forget it in Settings → Control this device remotely.</string>
+    <string name="local_target_install_from">Install requested by %1$s</string>
+    <string name="local_target_open_from">Sent by %1$s</string>
+    <string name="local_target_files_opened">%1$s opened the files of this device</string>
+    <string name="local_target_storage_message">The paired device wants to see the files. Allow Appteka to access storage on this device.</string>
+    <string name="local_target_account_notice">Appteka account of this device changed from %1$s</string>
+    <string name="local_target_known">Paired devices</string>
+    <string name="local_target_pair_other">Pair another device…</string>
+    <string name="local_target_this_device">This device (%1$s)</string>
+</resources>

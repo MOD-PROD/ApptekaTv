@@ -106,6 +106,20 @@ class SettingsFragment : PreferenceFragmentCompat(),
                     }
                 })
             }
+            // ATV (Gonzo 25/11) : ce téléphone / cette tablette peut être piloté par un autre appareil.
+            if (com.tomclaw.appsend.screen.linktarget.LocalLinkTarget.isAvailable(requireContext())) {
+                preferenceScreen.addPreference(Preference(requireContext()).apply {
+                    key = "local_target"
+                    order = -90
+                    title = getString(R.string.local_target_title)
+                    setIcon(R.drawable.ic_target_tablet)
+                    isPersistent = false
+                    setOnPreferenceClickListener {
+                        startActivity(com.tomclaw.appsend.screen.linktarget.createLocalTargetActivityIntent(requireContext()))
+                        true
+                    }
+                })
+            }
             preferenceScreen.addPreference(Preference(requireContext()).apply {
                 key = "self_update"
                 title = getString(R.string.atv_update_check)
@@ -406,6 +420,9 @@ class SettingsFragment : PreferenceFragmentCompat(),
 
     override fun onResume() {
         super.onResume()
+        findPreference<Preference>("local_target")?.summary = com.tomclaw.appsend.screen.linktarget.LocalLinkTarget.server
+            ?.let { getString(R.string.local_target_summary_on, it.pairedDevices().size) }
+            ?: getString(R.string.local_target_summary_off)
         PreferenceManager.getDefaultSharedPreferences(requireContext())
             .registerOnSharedPreferenceChangeListener(this)
     }

@@ -1,6 +1,5 @@
 package com.tomclaw.appsend.screen.tv
 
-import android.app.Activity
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -19,9 +18,11 @@ import java.io.File
  * Un nom de fichier n'est accepté que s'il figure dans la liste de la TV.
  * Méthodes appelées sur le thread de la liaison.
  */
-class TvRemoteDownloads(private val activity: Activity, private val apkStorage: ApkStorage) {
+class TvRemoteDownloads(private val activity: android.content.Context, private val apkStorage: ApkStorage) {
 
     private val pm = activity.packageManager
+    // ATV : aussi utilisé hors activité (téléphone ou tablette pilotés, LocalLinkTarget).
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
     fun list(): JSONObject {
         val files = JSONArray()
@@ -60,7 +61,7 @@ class TvRemoteDownloads(private val activity: Activity, private val apkStorage: 
             "download_install" -> {
                 val uri = apkStorage.getInstallUri(fileName) ?: return error("not_found")
                 val label = archive(fileName)?.second ?: fileName
-                activity.runOnUiThread { install(uri, label) }
+                main.post { install(uri, label) }
                 ok().put("label", label)
             }
             "download_delete" -> if (apkStorage.delete(fileName)) ok() else error("not_found")

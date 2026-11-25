@@ -49,6 +49,8 @@ class Appteka : Application() {
 
         initSimpleImageLoader()
         initAnalytics()
+        // ATV : ce téléphone / cette tablette peut être piloté par un autre appareil (désactivé par défaut).
+        com.tomclaw.appsend.screen.linktarget.LocalLinkTarget.init(this)
     }
 
     private fun initRxErrorHandler() {

@@ -65,6 +65,12 @@ interface DetailsPresenter : ItemListener {
     /** ATV (mode 📺) : relit la version installée sur la TV et met à jour les boutons. */
     fun refreshTvState()
 
+    /**
+     * ATV : ordre « installer » reçu d'un appareil associé (cet appareil est piloté) :
+     * l'installation démarre ici dès que la fiche est chargée, jamais vers une TV pilotée.
+     */
+    fun installWhenReady()
+
     interface DetailsRouter {
 
         fun leaveScreen()
@@ -337,9 +343,27 @@ class DetailsPresenterImpl(
     override fun attachRouter(router: DetailsPresenter.DetailsRouter) {
         this.router = router
         refreshTvState()
+        maybeRemoteInstall()
+    }
+
+    /** ATV : fiche ouverte par un appareil associé : elle agit sur cet appareil uniquement. */
+    private var localOnly = false
+    private var remoteInstallPending = false
+
+    override fun installWhenReady() {
+        localOnly = true
+        remoteInstallPending = true
+        maybeRemoteInstall()
+    }
+
+    private fun maybeRemoteInstall() {
+        if (!remoteInstallPending || details == null || router == null) return
+        remoteInstallPending = false
+        onInstallClick()
     }
 
     override fun refreshTvState() {
+        if (localOnly) return
         val packageName = details?.info?.packageName ?: return
         tvMode = router?.tvAppState(packageName) { code ->
             if (details?.info?.packageName != packageName) return@tvAppState
@@ -396,6 +420,7 @@ class DetailsPresenterImpl(
         dispatchPackageStatus()
         refreshTvState()
         ensureAIPolling()
+        maybeRemoteInstall()
     }
 
     private fun dispatchPackageStatus() {
@@ -797,6 +822,7 @@ class DetailsPresenterImpl(
 
     // ATV-03: in TV mode the TV downloads and installs; the phone only sends the order.
     private fun installOnTv(): Boolean {
+        if (localOnly) return false
         val info = details?.info ?: return false
         return router?.installOnTv(info.appId, info.label.orEmpty(), info.abi) == true
     }
