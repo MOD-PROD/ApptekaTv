@@ -13,7 +13,7 @@
     <string name="tv_account_switch">Sign the TV in to another account</string>
     <string name="tv_account_code_sent">Code sent to %1$s. Type it below: it signs in the TV, not this phone.</string>
     <string name="tv_account_code_hint">Code received by email</string>
-    <string name="tv_account_name_hint">Your nickname (new account)</string>
+    <string name="tv_account_name_hint">Nickname (only for a new account, optional)</string>
     <string name="tv_account_verify">Sign in the TV</string>
     <string name="tv_account_cancel">Cancel</string>
     <string name="tv_account_done">%1$s is now signed in ✔</string>
