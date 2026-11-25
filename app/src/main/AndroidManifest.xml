@@ -197,6 +197,7 @@
         <activity
             android:name=".screen.home.HomeActivity"
             android:exported="true"
+            android:label="${phoneLabel}"
             android:theme="@style/AppTheme.Splash"
             android:launchMode="singleTop">
             <meta-data
@@ -212,6 +213,7 @@
         <activity
             android:name=".screen.tv.TvWebActivity"
             android:exported="true"
+            android:label="${launcherLabel}"
             android:theme="@style/AppTheme.TvStartup"
             android:screenOrientation="${tvOrientation}"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation">

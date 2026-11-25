@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Appteka TV</string>
+    <!-- Gonzo 25/11 : « Appteka TV » sur TV/box (entrée leanback), « Appteka » sur téléphone et tablette. -->
+    <string name="app_name_phone">Appteka</string>
     <string name="percent">%d %%</string>
     <string name="uploaded_url">%1$s (%2$s)\n%3$s</string>
     <string name="app_version_format">%1$s (%2$d)</string>

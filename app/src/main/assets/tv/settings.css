@@ -130,3 +130,10 @@ html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
 }
 .logo-fun:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-glow); transform: scale(1.12) rotate(-12deg); }
 .logo-fun:active { transform: scale(.92); }
+
+/* Gonzo 25/11 : logo « Appteka TV Store » ; ses verts suivent la couleur d'accent
+   (même rotation de teinte que la gélule, blancs et noirs inchangés). */
+.logo-store { display: block; height: 46px; width: auto; flex-shrink: 0; filter: hue-rotate(var(--capsule-hue-rotation, 0deg)); }
+.logo-fun-wide { border-radius: 12px; }
+.logo-fun-wide:focus { transform: scale(1.06); }
+.mobile .logo-store { height: clamp(30px, 9vw, 42px); max-width: 100%; }

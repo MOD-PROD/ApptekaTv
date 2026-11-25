@@ -15,7 +15,7 @@ android {
         versionCode project.hasProperty("versionCode") ? Integer.parseInt(project.versionCode) : 1195
         versionName = "24.0"
         buildConfigField "boolean", "FORCE_TV_SIMULATOR", "false"
-        manifestPlaceholders = [tvOrientation: "unspecified", launcherLabel: "@string/app_name"]
+        manifestPlaceholders = [tvOrientation: "unspecified", launcherLabel: "@string/app_name", phoneLabel: "@string/app_name_phone"]
     }
 
     // ATV: "standard" = Appteka TV (app.modprod.apptekatv, phone + real TV).
@@ -31,7 +31,7 @@ android {
             applicationIdSuffix ".simultv"
             buildConfigField "boolean", "FORCE_TV_SIMULATOR", "true"
             resValue "string", "simultv_app_name", "ATKsimulTv"
-            manifestPlaceholders = [tvOrientation: "sensorLandscape", launcherLabel: "@string/simultv_app_name"]
+            manifestPlaceholders = [tvOrientation: "sensorLandscape", launcherLabel: "@string/simultv_app_name", phoneLabel: "@string/simultv_app_name"]
         }
     }
 
