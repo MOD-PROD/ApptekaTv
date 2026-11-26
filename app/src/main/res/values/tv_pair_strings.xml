@@ -14,4 +14,6 @@
     <string name="tv_pair_confirm_message">%1$s wants to control Appteka TV. Accept only if it is your phone.</string>
     <string name="tv_pair_confirm_accept">Accept</string>
     <string name="tv_pair_confirm_refuse">Refuse</string>
+    <string name="tv_pair_nearby_title">Pairing</string>
+    <string name="tv_pair_refused">Pairing refused on the other device.</string>
 </resources>

@@ -263,7 +263,7 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                     if (!popup.isShowing || !isAdded) return@runOnUiThread
                     val nearby = found.map { device ->
                         Row(device.name, android.R.drawable.ic_menu_share, false, false, true, false,
-                            action = { inviteNearby(device.host, device.port) })
+                            action = { pairNearby(device.host, device.port) })
                     }
                     rows.removeAt(nearbyAt)
                     if (nearby.isNotEmpty()) {
@@ -290,11 +290,20 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
     }
 
     /**
+     * Gonzo 26/11 « Recherche + OK sur la TV » : appui sur l'appareil, OK sur la TV, sans code.
+     * Si l'autre appareil ne peut pas poser la question (écran fermé, ancienne version),
+     * on revient à l'invitation + code.
+     */
+    private fun pairNearby(host: String, port: Int) {
+        pendingKind = null
+        pairingSender().pairNearby(host, port) { if (isAdded) inviteNearby(host, port) }
+    }
+
+    /**
      * ATV proximité : l'autre appareil ouvre son écran de code, on saisit ce code ici.
      * « busy » = une invitation vient déjà d'ouvrir l'écran : la saisie reste utile.
      */
     private fun inviteNearby(host: String, port: Int) {
-        pendingKind = null
         kotlin.concurrent.thread(name = "pair-invite", isDaemon = true) {
             val result = runCatching { TvLink.pairInvite(host, port) }
             activity?.runOnUiThread {
