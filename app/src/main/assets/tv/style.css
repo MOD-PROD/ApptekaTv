@@ -511,3 +511,13 @@ html.glass-light {
 }
 .glass-light .bg-glow { background: linear-gradient(145deg,#b6bdc3,#a9b1b7); }
 .glass-light .glass { box-shadow: inset 0 1px 0 #e2e6e580, 0 8px 24px #30394024; }
+
+/* Réglage « Animer l'arrière-plan » : moyenne (défaut), faible, désactivée. */
+html:not(.neu-skin) .bg-glow::before { will-change: transform; }
+html.bg-anim-low:not(.neu-skin) .bg-glow::before {
+    opacity: .6;
+    animation: glass-drift-low 48s ease-in-out infinite alternate;
+}
+@keyframes glass-drift-low { from { transform: translate(-2%, -1.5%); } to { transform: translate(2.5%, 2%); } }
+html.bg-anim-off:not(.neu-skin) .bg-glow::before { animation: none; will-change: auto; }
+@media (prefers-reduced-motion: reduce) { html.bg-anim-low:not(.neu-skin) .bg-glow::before { animation: none; } }

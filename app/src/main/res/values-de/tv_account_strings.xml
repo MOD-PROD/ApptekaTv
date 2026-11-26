@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_account_title">Appteka-Konto des Fernsehers</string>
+    <string name="tv_account_profile_title">Profil · %1$s</string>
+    <string name="tv_account_status_unknown">Konto von %1$s unbekannt (%2$s). Sie können den TV unten trotzdem anmelden.</string>
+    <string name="tv_account_pref_title">Appteka-Konto des Fernsehers</string>
+    <string name="tv_account_pref_summary">%1$s von diesem Telefon aus bei einem Appteka-Konto anmelden</string>
+    <string name="tv_account_loading">Kontostatus von %1$s wird abgefragt…</string>
+    <string name="tv_account_signed_in">%1$s ist als %2$s angemeldet</string>
+    <string name="tv_account_guest">%1$s ist nicht angemeldet (Gastkonto #%2$s)</string>
+    <string name="tv_account_email_hint">E-Mail-Adresse</string>
+    <string name="tv_account_send_code">Code anfordern</string>
+    <string name="tv_account_switch">TV bei einem anderen Konto anmelden</string>
+    <string name="tv_account_code_sent">Code an %1$s gesendet. Unten eingeben: er meldet den TV an, nicht dieses Telefon.</string>
+    <string name="tv_account_code_hint">Per E-Mail erhaltener Code</string>
+    <string name="tv_account_name_hint">Spitzname (nur für neues Konto, optional)</string>
+    <string name="tv_account_verify">TV anmelden</string>
+    <string name="tv_account_cancel">Abbrechen</string>
+</resources>
