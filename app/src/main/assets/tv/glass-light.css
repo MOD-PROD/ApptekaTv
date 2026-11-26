@@ -1,0 +1,124 @@
+/* Appteka TV — Glass clair : toutes les surfaces (accueil, fiche, auteur, réglages, dialogues).
+   Chargée après style.css et details.css, désactivée avec les skins Neuro (classe skin-classic).
+   Pas de blanc pur. --accent-ink = accent assombri par app.js (contraste ≥ 4,5:1 sur gris perle). */
+
+html.glass-light {
+    --accent-ink: var(--accent-dark);
+    --surface: #c9ced1;
+    --ink-soft: rgba(41, 50, 57, 0.10);
+    --well: rgba(236, 239, 240, 0.38);
+    --danger-ink: #9b2c22;
+}
+
+/* ---------- Accueil ---------- */
+.glass-light .logo-main,
+.glass-light .d-name,
+.glass-light .author-title {
+    background: linear-gradient(135deg, var(--accent-ink), var(--accent-dark));
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+.glass-light .search-icon,
+.glass-light .hbtn svg,
+.glass-light .icon-svg.line svg { stroke: var(--accent-ink); }
+html.glass-light .icon-svg.api svg,
+html.glass-light .icon-svg.api svg *:not([fill="none"]) { fill: var(--accent-ink) !important; }
+html.glass-light .icon-svg.api svg *[stroke]:not([stroke="none"]) { stroke: var(--accent-ink) !important; }
+.glass-light .hbtn.exit svg { stroke: var(--danger-ink); }
+html.glass-light.custom-accent .hbtn.exit svg { stroke: var(--accent-ink); }
+.glass-light .app-card { border-color: var(--ink-soft); }
+.glass-light .app-card:focus { border-color: var(--accent-ink); }
+.glass-light .app-icon { background: var(--well); box-shadow: 0 6px 14px rgba(48, 57, 64, 0.22); }
+.glass-light .fav-badge { color: var(--accent-ink); text-shadow: none; }
+.glass-light .search-input::placeholder { color: var(--muted); }
+
+/* ---------- Damier, dialogues, réglages ---------- */
+.glass-light .picker { background: rgba(182, 189, 195, 0.88); }
+.glass-light .picker-title,
+.glass-light .modal-title,
+.glass-light .set-title,
+.glass-light .pair-code,
+.glass-light .close-btn { color: var(--accent-ink); }
+.glass-light .pair-code { text-shadow: none; }
+.glass-light .close-btn { background: var(--well); }
+.glass-light .modal { background: rgba(41, 50, 57, 0.38); }
+.glass-light .modal-box { background: rgba(213, 218, 219, 0.92); }
+.glass-light .settings { background: rgba(150, 158, 164, 0.55); }
+.glass-light .settings-panel { background: rgba(213, 218, 219, 0.92); }
+.glass-light .set-section { border-top-color: rgba(41, 50, 57, 0.14); }
+.glass-light .modal-input,
+.glass-light .set-input { background: var(--well); border-color: rgba(41, 50, 57, 0.22); }
+.glass-light .chip-toggle { color: #3c464e; background: var(--well); border-color: rgba(41, 50, 57, 0.2); }
+.glass-light .chip-toggle .dot { border-color: rgba(41, 50, 57, 0.45); }
+.glass-light .chip-toggle.on { color: var(--text); background: rgba(var(--accent-rgb), 0.24); border-color: var(--accent-ink); }
+.glass-light .chip-toggle.on .dot { background: var(--accent-ink); border-color: var(--accent-ink); }
+.glass-light .chip-toggle .tag,
+.glass-light .set-value,
+.glass-light .set-msg,
+.glass-light .account-stats b { color: var(--accent-ink); }
+.glass-light .set-msg.err { color: var(--danger-ink); }
+.glass-light .accent-swatch { border-color: rgba(41, 50, 57, 0.45); }
+
+/* ---------- Fiche application ---------- */
+.glass-light .details,
+.glass-light .author {
+    background:
+        radial-gradient(55% 45% at 0% 0%, rgba(var(--accent-rgb), 0.16), transparent 70%),
+        radial-gradient(40% 40% at 100% 100%, rgba(var(--accent-rgb), 0.10), transparent 70%),
+        linear-gradient(145deg, #b6bdc3, #a9b1b7);
+}
+.glass-light .d-loading,
+.glass-light .d-sub,
+.glass-light .stat-label,
+.glass-light .version .v-meta,
+.glass-light .info-grid .k,
+.glass-light .review .who,
+.glass-light .score-bars,
+.glass-light .author-sub { color: var(--muted); }
+.glass-light .stat-value,
+.glass-light .btn,
+.glass-light .d-progress-label,
+.glass-light .d-text,
+.glass-light .info-grid .v,
+.glass-light .review .txt,
+.glass-light .badge { color: var(--text); }
+.glass-light .d-icon { background: var(--well); box-shadow: 0 10px 24px rgba(48, 57, 64, 0.28), 0 0 0 1px rgba(var(--accent-rgb), 0.3); }
+.glass-light .badge { background: var(--well); border-color: rgba(41, 50, 57, 0.18); }
+.glass-light .badge.green { background: rgba(22, 128, 61, 0.16); color: #14532d; }
+.glass-light .badge.orange { background: rgba(217, 119, 6, 0.18); color: #7c2d12; }
+.glass-light .badge.red { background: rgba(220, 38, 38, 0.16); color: #7f1d1d; }
+.glass-light .badge.blue,
+.glass-light .chip,
+.glass-light .d-note,
+.glass-light .d-more,
+.glass-light .d-block h3,
+.glass-light .review .stars,
+.glass-light .mini-btn,
+.glass-light .btn.fav-on,
+.glass-light .version.installed .v-name::after { color: var(--accent-ink); }
+.glass-light .btn { background: var(--well); border-color: rgba(41, 50, 57, 0.2); }
+.glass-light .btn:focus,
+.glass-light .btn.focused { border-color: var(--accent-ink); }
+.glass-light .btn.primary,
+.glass-light .btn.update { border-color: transparent; color: #0a0a0a; }
+.glass-light .btn.fav-on { background: rgba(var(--accent-rgb), 0.22); border-color: var(--accent-ink); }
+.glass-light .btn.danger { background: rgba(220, 38, 38, 0.14); color: #7f1d1d; border-color: rgba(127, 29, 29, 0.3); }
+.glass-light .d-progress-bar,
+.glass-light .score-bar { background: rgba(41, 50, 57, 0.14); }
+.glass-light .d-block {
+    background: rgba(213, 218, 219, 0.55);
+    border-color: rgba(41, 50, 57, 0.14);
+    box-shadow: inset 0 1px 0 #e2e6e580, 0 8px 22px rgba(48, 57, 64, 0.14);
+}
+.glass-light .d-block:focus { border-color: var(--accent-ink); }
+.glass-light .ai-block { background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.2), rgba(213, 218, 219, 0.55)); }
+.glass-light .d-text.clamped::after { background: linear-gradient(transparent, #c3c9cc); }
+.glass-light .shot { background: var(--well); }
+.glass-light .version { background: var(--well); border-color: rgba(41, 50, 57, 0.12); }
+.glass-light .version:focus { border-color: var(--accent-ink); }
+.glass-light .version.current { background: rgba(var(--accent-rgb), 0.18); }
+.glass-light .version.incompatible .v-meta::after { color: var(--danger-ink); }
+.glass-light .review { border-bottom-color: rgba(41, 50, 57, 0.12); }
+.glass-light .mini-btn { background: var(--well); border-color: rgba(41, 50, 57, 0.22); }
+.glass-light .mini-btn.on { color: #0a0a0a; background: linear-gradient(135deg, var(--accent-light), var(--accent)); }
+/* La visionneuse de captures reste sombre : les captures se lisent mieux sur fond noir. */
