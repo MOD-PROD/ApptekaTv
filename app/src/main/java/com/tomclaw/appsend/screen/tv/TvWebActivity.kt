@@ -158,7 +158,7 @@ class TvWebActivity : AppCompatActivity() {
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
         if (isTv) startTvLink()
-        if (savedInstanceState == null) updateController.check()
+        if (savedInstanceState == null) updateController.check(channel = com.tomclaw.appsend.update.UpdateChannel.get(this)) // canal choisi dans Paramètres
         handleInvite(intent)
     }
 
@@ -987,6 +987,27 @@ class TvWebActivity : AppCompatActivity() {
     inner class TvJsBridge {
         @JavascriptInterface
         fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test") } ?: "stable") }
+
+        /** Canal de mise à jour mémorisé (stable, beta, test), choisi dans Paramètres › Mise à jour. */
+        @JavascriptInterface
+        fun getUpdateChannel(): String = com.tomclaw.appsend.update.UpdateChannel.get(this@TvWebActivity)
+
+        @JavascriptInterface
+        fun setUpdateChannel(channel: String) {
+            if (channel in com.tomclaw.appsend.update.UpdateChannel.CHANNELS) com.tomclaw.appsend.update.UpdateChannel.set(this@TvWebActivity, channel)
+        }
+
+        /** Tuile « À propos » (clic sur le logo) : l'état arrive dans window.onSelfUpdateState. */
+        @JavascriptInterface
+        fun aboutCheckUpdate(): Unit = runOnUiThread {
+            updateController.checkForTile(com.tomclaw.appsend.update.UpdateChannel.get(this@TvWebActivity)) { js("onSelfUpdateState", it) }
+        }
+
+        @JavascriptInterface
+        fun aboutInstallUpdate(): Unit = runOnUiThread { updateController.installFromTile { js("onSelfUpdateState", it) } }
+
+        @JavascriptInterface
+        fun aboutCancelUpdate(): Unit = runOnUiThread { updateController.cancelTile() }
 
         @JavascriptInterface
         fun installedUpdateVersion(): String = com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
