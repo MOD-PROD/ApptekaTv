@@ -168,4 +168,6 @@
     <string name="tv_connected_to">%1$s से कनेक्टेड</string>
     <string name="tv_connected_back">टीवी कनेक्टेड: %1$s। फ़ोन पर वापस जाएँ।</string>
     <string name="atv_internal_storage">आंतरिक स्टोरेज</string>
+    <string name="atv_force_tv_title">टीवी डिस्प्ले लागू करें</string>
+    <string name="atv_force_tv_summary">इस फ़ोन या टैबलेट पर टीवी इंटरफ़ेस लैंडस्केप में दिखाता है। वापस आने के लिए: टीवी सेटिंग्स, फ़ोन डिस्प्ले पर लौटें।</string>
 </resources>

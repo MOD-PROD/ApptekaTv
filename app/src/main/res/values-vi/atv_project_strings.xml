@@ -168,4 +168,6 @@
     <string name="tv_connected_to">Đã kết nối với %1$s</string>
     <string name="tv_connected_back">TV đã kết nối: %1$s. Quay lại điện thoại.</string>
     <string name="atv_internal_storage">Bộ nhớ trong</string>
+    <string name="atv_force_tv_title">Buộc hiển thị TV</string>
+    <string name="atv_force_tv_summary">Hiển thị giao diện TV trên điện thoại hoặc máy tính bảng này, ở chế độ ngang. Để quay lại: Cài đặt TV, Quay lại hiển thị điện thoại.</string>
 </resources>

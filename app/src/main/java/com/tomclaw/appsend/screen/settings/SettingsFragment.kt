@@ -44,6 +44,8 @@ import com.tomclaw.appsend.install.InstallMethodType
 import com.tomclaw.appsend.install.InstallPreferences
 import com.tomclaw.appsend.screen.settings.di.SettingsModule
 import com.tomclaw.appsend.util.ThemeManager
+import com.tomclaw.appsend.util.isRealTvDevice
+import com.tomclaw.appsend.util.setTvDisplayForced
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.disposables.Disposable
 import javax.inject.Inject
@@ -143,11 +145,30 @@ class SettingsFragment : PreferenceFragmentCompat(),
         setupSortOrderPreference()
         setupInstallMethodPreference()
         setupClearCachePreference()
+        setupForceTvPreference()
         findPreference<Preference>("atv_about")?.setOnPreferenceClickListener {
             startActivity(com.tomclaw.appsend.screen.about.createAboutActivityIntent(requireContext()))
             true
         }
         setupProxyPreferences()
+    }
+
+    /** ATV : « Forcer l'affichage TV » ; caché sur une vraie TV, relance l'appli en interface TV. */
+    private fun setupForceTvPreference() {
+        val pref = findPreference<SwitchPreferenceCompat>(com.tomclaw.appsend.util.PREF_FORCE_TV) ?: return
+        if (requireContext().isRealTvDevice()) {
+            pref.isVisible = false
+            return
+        }
+        pref.setOnPreferenceChangeListener { _, newValue ->
+            if (newValue == true) {
+                requireContext().setTvDisplayForced(true)
+                val intent = requireContext().packageManager.getLaunchIntentForPackage(requireContext().packageName)
+                    ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                if (intent != null) startActivity(intent)
+            }
+            true
+        }
     }
 
     private fun setupThemePreference() {

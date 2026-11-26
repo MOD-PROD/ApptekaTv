@@ -22,4 +22,6 @@
     <string name="tv_connected_to">Connecté à %1$s</string>
     <string name="tv_connected_back">TV connectée : %1$s. Revenir au téléphone.</string>
     <string name="atv_internal_storage">Stockage interne</string>
+    <string name="atv_force_tv_title">Forcer l\'affichage TV</string>
+    <string name="atv_force_tv_summary">Affiche l\'interface TV sur ce téléphone ou cette tablette, en paysage. Pour revenir : Paramètres de la TV, Revenir à l\'affichage téléphone.</string>
 </resources>

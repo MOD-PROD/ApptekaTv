@@ -168,4 +168,6 @@
     <string name="tv_connected_to">Подключено к %1$s</string>
     <string name="tv_connected_back">ТВ подключён: %1$s. Вернуться к телефону.</string>
     <string name="atv_internal_storage">Внутренняя память</string>
+    <string name="atv_force_tv_title">Принудительный режим ТВ</string>
+    <string name="atv_force_tv_summary">Показывает интерфейс ТВ на этом телефоне или планшете в альбомной ориентации. Чтобы вернуться: настройки ТВ, «Вернуться к виду телефона».</string>
 </resources>

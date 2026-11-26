@@ -141,6 +141,15 @@
             app:useMaterialThemeColors="true"
             android:icon="@drawable/ic_clear_cache" />
 
+        <!-- ATV (Gonzo 25/11) : affiche l'interface TV sur ce téléphone/tablette (remplace ATKsimulTv). -->
+        <SwitchPreferenceCompat
+            android:key="atv_force_tv"
+            android:defaultValue="false"
+            android:title="@string/atv_force_tv_title"
+            android:summary="@string/atv_force_tv_summary"
+            app:useMaterialThemeColors="true"
+            android:icon="@drawable/ic_target_tv" />
+
         <!-- ATV (Gonzo 24/11) : « Information » quitte la barre du Store pour les réglages. -->
         <Preference
             android:key="atv_about"

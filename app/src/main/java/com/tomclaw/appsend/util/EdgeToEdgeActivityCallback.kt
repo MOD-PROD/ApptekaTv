@@ -36,6 +36,15 @@ class EdgeToEdgeActivityCallback : Application.ActivityLifecycleCallbacks {
     override fun onActivityDestroyed(activity: Activity) = Unit
 
     private fun lockPhonePortrait(activity: Activity) {
+        // ATV : affichage TV forcé sur un téléphone/tablette → paysage, comme une TV.
+        if (activity.isTvDisplayForced() && !activity.isRealTvDevice()) {
+            try {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } catch (_: IllegalStateException) {
+                // Translucent windows on API 26 inherit the underlying orientation.
+            }
+            return
+        }
         if (activity.isTvDevice()) return
         // Android 8.0 rejects fixed orientation for translucent activities.
         try {

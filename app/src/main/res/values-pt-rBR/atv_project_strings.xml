@@ -168,4 +168,6 @@
     <string name="tv_connected_to">Conectado a %1$s</string>
     <string name="tv_connected_back">TV conectada: %1$s. Voltar ao celular.</string>
     <string name="atv_internal_storage">Armazenamento interno</string>
+    <string name="atv_force_tv_title">Forçar exibição de TV</string>
+    <string name="atv_force_tv_summary">Mostra a interface de TV neste telefone ou tablet, na horizontal. Para voltar: Configurações da TV, Voltar à exibição do telefone.</string>
 </resources>

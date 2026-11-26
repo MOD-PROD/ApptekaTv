@@ -168,4 +168,6 @@
     <string name="tv_connected_to">متصل بـ %1$s</string>
     <string name="tv_connected_back">التلفاز متصل: %1$s. العودة إلى الهاتف.</string>
     <string name="atv_internal_storage">التخزين الداخلي</string>
+    <string name="atv_force_tv_title">فرض عرض التلفاز</string>
+    <string name="atv_force_tv_summary">يعرض واجهة التلفاز على هذا الهاتف أو الجهاز اللوحي بالوضع الأفقي. للعودة: إعدادات التلفاز، العودة إلى عرض الهاتف.</string>
 </resources>
