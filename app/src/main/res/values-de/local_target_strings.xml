@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_target_title">Dieses Gerät fernsteuern</string>
+    <string name="local_target_pair">Gerät koppeln (QR oder Code)</string>
+    <string name="local_target_display_address">Adresse: %1$s</string>
+    <string name="local_target_devices">Gekoppelte Geräte</string>
+    <string name="local_target_none">Noch kein gekoppeltes Gerät.</string>
+    <string name="local_target_off">Schalter oben einschalten, um ein Gerät zu koppeln.</string>
+    <string name="local_target_forget">Vergessen</string>
+    <string name="local_target_forget_all">Alle vergessen</string>
+    <string name="local_target_forget_all_confirm">Alle gekoppelten Geräte vergessen? Sie müssen erneut koppeln.</string>
+    <string name="local_target_revoke_files">Dateizugriff entfernen</string>
+    <string name="local_target_summary_on">An · %1$d gekoppelte(s) Gerät(e)</string>
+    <string name="local_target_summary_off">Aus</string>
+    <string name="local_target_confirm_title">Dieses Gerät koppeln?</string>
+    <string name="local_target_confirm_message">%1$s möchte Appteka auf diesem Gerät steuern. Nur akzeptieren, wenn es Ihr Gerät ist.</string>
+    <string name="local_target_files_confirm_message">%1$s möchte die Dateien dieses Geräts verwalten.</string>
+    <string name="local_target_paired_notice">Gerät gekoppelt: %1$s. Wenn es nicht Ihr Gerät ist, entfernen Sie es unter Einstellungen → Dieses Gerät fernsteuern.</string>
+    <string name="local_target_install_from">Installation angefordert von %1$s</string>
+    <string name="local_target_open_from">Gesendet von %1$s</string>
+    <string name="local_target_files_opened">%1$s hat die Dateien dieses Geräts geöffnet</string>
+    <string name="local_target_storage_message">Das gekoppelte Gerät möchte auf die Dateien zugreifen. Erlauben Sie Appteka auf diesem Gerät den Speicherzugriff.</string>
+    <string name="local_target_account_notice">Appteka-Konto dieses Geräts geändert von %1$s</string>
+    <string name="local_target_known">Gekoppelte Geräte</string>
+    <string name="local_target_pair_other">Weiteres Gerät koppeln…</string>
+    <string name="local_target_this_device">Dieses Gerät (%1$s)</string>
+    <string name="local_target_test">Verbindung testen</string>
+    <string name="local_target_test_ok">Dieses Gerät antwortet auf %1$s. Wenn das Telefon es trotzdem nicht erreicht, blockiert das Netzwerk Verbindungen zwischen Geräten: VPN auf beiden Geräten aus, Gästenetzwerk meiden, gleiches WLAN prüfen.</string>
+    <string name="local_target_test_failed">Dieses Gerät antwortet nicht auf seiner eigenen WLAN-Adresse (%1$s). Appteka vollständig schließen, erneut öffnen und nochmals versuchen.</string>
+</resources>

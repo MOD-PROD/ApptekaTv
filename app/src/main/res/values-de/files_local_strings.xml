@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_open">Öffnen</string>
+    <string name="files_install_here">Installieren</string>
+    <string name="files_import">Hier hinzufügen</string>
+    <string name="files_imported">%1$d Datei(en) hinzugefügt</string>
+    <string name="files_cannot_open">Keine App kann %1$s öffnen</string>
+    <string name="files_local_storage_needed">Zugriff auf alle Dateien erlauben, um dieses Gerät zu durchsuchen.</string>
+    <string name="files_local_storage_return">Zugriff für Appteka TV aktivieren, dann hierher zurückkehren.</string>
+</resources>

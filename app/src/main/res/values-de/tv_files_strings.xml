@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_files_confirm_title">Dateizugriff erlauben?</string>
+    <string name="tv_files_confirm_message">%1$s möchte Dateien auf diesem TV durchsuchen, kopieren und löschen. Erlauben?</string>
+    <string name="tv_files_opened">📱 %1$s verwaltet die Dateien dieses TV</string>
+    <string name="tv_files_storage_title">Speicherzugriff</string>
+    <string name="tv_files_storage_message">Damit Ihr Telefon die Dateien dieses TV verwalten kann, benötigt Appteka TV Zugriff auf den TV-Speicher.</string>
+    <string name="tv_files_storage_allow">Erlauben</string>
+    <string name="tv_files_storage_granted">Speicherzugriff erteilt. Tippen Sie auf dem Telefon auf Erneut versuchen.</string>
+    <string name="tv_files_storage_adb">Auf diesem Fernseher gibt es keine Einstellung „Zugriff auf alle Dateien“. Führen Sie auf einem Computer folgenden Befehl aus:\nadb shell appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
+    <string name="nav_tv_files">Dateien</string>
+    <string name="tv_files_title">Dateien · %1$s</string>
+    <string name="tv_files_no_tv">Zuerst einen TV mit dem 📺-Symbol auf dem Store-Bildschirm koppeln</string>
+    <string name="tv_files_connecting">Verbindung zu %1$s…</string>
+    <string name="tv_files_waiting_tv">Anfrage auf %1$s akzeptieren…</string>
+    <string name="tv_files_refused">%1$s hat den Dateizugriff abgelehnt.</string>
+    <string name="tv_files_storage_needed">Speicherzugriff auf %1$s erlauben, dann Erneut versuchen tippen.</string>
+    <string name="tv_files_offline">%1$s ist nicht erreichbar. Lassen Sie Appteka TV auf dem Fernseher geöffnet und verbinden Sie beide Geräte mit demselben WLAN.</string>
+    <string name="tv_files_needs_update">Appteka TV auf %1$s aktualisieren (Test-Kanal), um Dateien zu verwalten.</string>
+    <string name="tv_files_retry">Erneut versuchen</string>
+    <string name="tv_files_empty">Leerer Ordner</string>
+    <string name="tv_files_upload_here">Hierher senden</string>
+    <string name="tv_files_upload">Dateien an den TV senden</string>
+    <string name="tv_files_new_folder">Neuer Ordner</string>
+    <string name="tv_files_volumes">Speicher</string>
+    <string name="tv_files_show_hidden">Versteckte Dateien anzeigen</string>
+    <string name="tv_files_sort">Sortieren</string>
+    <string name="tv_files_sort_name">Name</string>
+    <string name="tv_files_sort_date">Datum</string>
+    <string name="tv_files_sort_size">Größe</string>
+    <string name="tv_files_refresh">Aktualisieren</string>
+    <string name="tv_files_download">Aufs Telefon herunterladen</string>
+    <string name="tv_files_install">Auf dem TV installieren</string>
+</resources>
