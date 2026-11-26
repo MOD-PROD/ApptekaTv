@@ -149,7 +149,7 @@ jobs:
           retention-days: 30
 
       - name: Publish selected release channel
-        if: (inputs.publish == true || github.event_name == 'push' && github.ref == 'refs/heads/main') && steps.release.outputs.built == 'true'
+        if: (inputs.publish == true || github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/atv/test-integration-ota')) && steps.release.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_CODE: ${{ inputs.version_code || steps.release.outputs.version_code }}
