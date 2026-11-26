@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="local_target_title">Bu cihazı uzaktan kontrol et</string>
+    <string name="local_target_pair">Cihaz eşleştir (QR veya kod)</string>
+    <string name="local_target_display_address">Adres: %1$s</string>
+    <string name="local_target_devices">Eşleştirilmiş cihazlar</string>
+    <string name="local_target_none">Henüz eşleştirilmiş cihaz yok.</string>
+    <string name="local_target_off">Cihaz eşleştirmek için yukarıdaki anahtarı açın.</string>
+    <string name="local_target_forget">Unut</string>
+    <string name="local_target_forget_all">Tümünü unut</string>
+    <string name="local_target_forget_all_confirm">Tüm eşleştirilmiş cihazlar unutulsun mu? Cihazları yeniden eşleştirmeniz gerekir.</string>
+    <string name="local_target_revoke_files">Dosya erişimini kaldır</string>
+    <string name="local_target_summary_on">Açık · %1$d eşleştirilmiş cihaz</string>
+    <string name="local_target_summary_off">Kapalı</string>
+    <string name="local_target_confirm_title">Bu cihaz eşleştirilsin mi?</string>
+    <string name="local_target_confirm_message">%1$s bu cihazda Appteka\'yı kontrol etmek istiyor. Yalnızca sizin cihazınızsa kabul edin.</string>
+    <string name="local_target_files_confirm_message">%1$s bu cihazın dosyalarını yönetmek istiyor.</string>
+    <string name="local_target_paired_notice">Cihaz eşleştirildi: %1$s. Sizin değilse Ayarlar → Bu cihazı uzaktan kontrol et\'ten unutun.</string>
+    <string name="local_target_install_from">Yükleme isteyen: %1$s</string>
+    <string name="local_target_open_from">Gönderen: %1$s</string>
+    <string name="local_target_files_opened">%1$s bu cihazın dosyalarını açtı</string>
+    <string name="local_target_storage_message">Eşleştirilmiş cihaz dosyaları görmek istiyor. Bu cihazda Appteka\'ya depolama erişimi verin.</string>
+    <string name="local_target_account_notice">Bu cihazın Appteka hesabı %1$s tarafından değiştirildi</string>
+    <string name="local_target_known">Eşleştirilmiş cihazlar</string>
+    <string name="local_target_pair_other">Başka cihaz eşleştir…</string>
+    <string name="local_target_this_device">Bu cihaz (%1$s)</string>
+    <string name="local_target_test">Bağlantıyı test et</string>
+    <string name="local_target_test_ok">Bu cihaz %1$s adresinde yanıt veriyor. Telefon hâlâ bağlanamıyorsa ağ, cihazlar arası bağlantıları engelliyor olabilir. Her iki cihazda VPN\'i kapatın, misafir ağını kullanmayın ve aynı Wi-Fi ağına bağlı olduklarını kontrol edin.</string>
+    <string name="local_target_test_failed">Bu cihaz kendi Wi-Fi adresinde (%1$s) yanıt vermiyor. Appteka\'yı tamamen kapatıp yeniden açın ve tekrar deneyin.</string>
+</resources>

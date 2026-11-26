@@ -103,6 +103,7 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
         try {
             s.start()
             server = s
+            if (currentActivity() != null) s.confirmPairRequest = ::confirmPairRequest
         } catch (e: Exception) {
             Log.w(TAG, "local link unavailable", e)
             runCatching { s.stop() }
@@ -136,11 +137,19 @@ object LocalLinkTarget : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityResumed(activity: Activity) {
         resumed = WeakReference(activity)
+        // Association sans code : la question ne peut s'afficher que si Appteka est à l'écran.
+        server?.confirmPairRequest = ::confirmPairRequest
     }
 
     override fun onActivityPaused(activity: Activity) {
-        if (resumed?.get() === activity) resumed = null
+        if (resumed?.get() === activity) {
+            resumed = null
+            server?.confirmPairRequest = null // le téléphone revient alors au code
+        }
     }
+
+    private fun confirmPairRequest(device: String, answer: (Boolean) -> Unit) =
+        confirm(R.string.local_target_confirm_title, app.getString(R.string.local_target_confirm_message, device), answer)
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
     override fun onActivityStarted(activity: Activity) = Unit

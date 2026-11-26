@@ -12,7 +12,7 @@ const BTN_ADD = document.getElementById('btn-add');
 const BTN_SETTINGS = document.getElementById('btn-settings');
 const BTN_EXIT = document.getElementById('btn-exit');
 const BTN_PAIR = document.getElementById('btn-pair');
-// La gélule du logo : bouton « fun » qui relance le splash gravité
+// Le logo : clic = gravité puis tuile « À propos » (version + mise à jour), voir about.js
 const BTN_FUN = document.getElementById('btn-fun');
 // Le bouton d'association n'existe que sur la TV (le portable n'affiche pas de QR)
 const HEADER_ITEMS = [BTN_FUN].concat(document.documentElement.classList.contains('mobile') ? [] : [BTN_PAIR])
@@ -75,6 +75,12 @@ function loadJson(key, def) {
     try { const v = getPref(key); return v ? JSON.parse(v) : def; } catch (e) { return def; }
 }
 
+// Canal de mise à jour mémorisé côté Android (stable, beta, test)
+function updateChannel() {
+    const c = call('getUpdateChannel');
+    return ['stable', 'beta', 'test'].includes(c) ? c : 'stable';
+}
+
 function call(fn, ...args) {
     if (window.Android && typeof window.Android[fn] === 'function') return window.Android[fn](...args.map(String));
     return undefined;
@@ -84,7 +90,7 @@ function call(fn, ...args) {
 
 let categories = [];          // [{id, name, icon}]
 const settings = Object.assign(
-    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'classic', accent: 'gold', archs: null, margin: 20 },
+    { sources: DEFAULT_SOURCES.slice(), profile: '', searchCats: DEFAULT_SOURCES.slice(), cardScale: 1, skin: 'classic', accent: 'gold', archs: null, margin: 20, bgAnim: 'medium' },
     loadJson('settings', {}) || {}
 );
 // Première installation : thème sombre ; ne pas écraser les choix existants.
@@ -681,6 +687,24 @@ const ACCENTS = {
     coral: { label: 'Corail', rgb: [255, 132, 120] },
 };
 
+// Glass clair : variante foncée de l'accent pour les textes et icônes, assez contrastée
+// (rapport ≥ 4,5:1) sur les surfaces gris perle (#c9ced1). Les fonds d'accent gardent l'accent pur.
+function accentInk(rgb) {
+    const lum = c => {
+        const [r, g, b] = c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const surface = lum([201, 206, 209]);
+    let k = 1, c = rgb;
+    while (k > 0.2 && (surface + 0.05) / (lum(c) + 0.05) < 4.5) {
+        k -= 0.04;
+        c = rgb.map(v => Math.round(v * k));
+    }
+    return `rgb(${c.join(', ')})`;
+}
+
+const BG_ANIMS = [['medium', 'Moyenne'], ['low', 'Faible'], ['off', 'Désactivée']];
+
 function applySkin() {
     // « neu » (néumorphisme clair) se pose par-dessus les feuilles du skin néumorphique
     // les deux néumorphismes partagent neu.css ; le vert ajoute la palette sombre (neu-dark)
@@ -691,6 +715,10 @@ function applySkin() {
     root.classList.toggle('green-skin', green);
     root.classList.toggle('neu-skin', neu);
     root.classList.toggle('neu-dark', settings.skin === 'green');
+    // Arrière-plan animé des thèmes Glass : moyen (défaut), faible ou désactivé.
+    const anim = BG_ANIMS.some(([id]) => id === settings.bgAnim) ? settings.bgAnim : 'medium';
+    root.classList.toggle('bg-anim-low', anim === 'low');
+    root.classList.toggle('bg-anim-off', anim === 'off');
     const rgb = ACCENTS[settings.accent]?.rgb;
     root.classList.toggle('custom-accent', Boolean(rgb));
     for (const property of ['--accent-rgb', '--accent-light-rgb', '--accent-dark']) {
@@ -715,6 +743,7 @@ function applySkin() {
             else hue = 60 * ((r - g) / delta + 4);
         }
         root.style.setProperty('--capsule-hue-rotation', (((hue + 360) % 360) - 120).toFixed(1) + 'deg');
+        root.style.setProperty('--accent-ink', accentInk(activeAccent));
     }
     document.querySelectorAll('link.skin-classic').forEach(link => { link.media = green ? 'not all' : 'all'; });
     document.querySelectorAll('link.skin-green').forEach(link => { link.media = green ? 'all' : 'not all'; });
@@ -780,13 +809,22 @@ function renderSettings(focusKey) {
             <div class="set-sub">L'interface et le contenu Appteka (catégories, descriptions) suivent la langue choisie.</div>`)}
         ${settingsSection('appearance', 'Apparence', `
             <div class="set-row set-inline" role="group" aria-label="Skins">
-                <div class="set-label set-inline-label">Skins:</div>
+                <div class="set-label set-inline-label">Thèmes :</div>
                 ${[['classic', 'Glass sombre'], ['glass-light', 'Glass clair'], ['green', 'Neuro sombre'], ['neu', 'Neuro clair']].map(([id, label]) => `
                     <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}
                     </button>`).join('')}
             </div>
+            ${settings.skin === 'classic' || settings.skin === 'glass-light' ? `
+            <div class="set-row set-inline set-spacing" role="group" aria-label="Animer l'arrière-plan">
+                <div class="set-label set-inline-label">Animer l'arrière-plan :</div>
+                ${BG_ANIMS.map(([id, label]) => `
+                    <button type="button" class="chip-toggle focusable ${(settings.bgAnim || 'medium') === id ? 'on' : ''}"
+                            data-k="bganim-${id}" data-bganim="${id}" aria-pressed="${(settings.bgAnim || 'medium') === id}">
+                        <span class="dot" aria-hidden="true"></span>${label}
+                    </button>`).join('')}
+            </div>` : ''}
             <div class="set-row set-inline set-spacing" role="group" aria-label="Accent Color">
                 <div class="set-label set-inline-label" data-no-i18n>Accent Color:</div>
                 ${Object.entries(ACCENTS).filter(([id]) => id !== 'default').map(([id, { label, rgb }]) => `
@@ -827,11 +865,15 @@ function renderSettings(focusKey) {
             <div class="set-label">Mise à jour Appteka TV</div>
             <div class="set-sub">Version installée : ${escapeHtml(String(call('installedUpdateVersion') || 'indisponible'))}</div>
             <div class="set-row" role="group" aria-label="Canal de mise à jour">
-                <button class="btn focusable" type="button" data-k="self-update-stable" data-act="self-update" data-channel="stable">Stable</button>
-                <button class="btn focusable" type="button" data-k="self-update-beta" data-act="self-update" data-channel="beta">Bêta</button>
-                <button class="btn focusable" type="button" data-k="self-update-test" data-act="self-update" data-channel="test">Test</button>
+                ${[['stable', 'Stable'], ['beta', 'Bêta'], ['test', 'Test']].map(([id, label]) => {
+                    const cur = updateChannel();
+                    return `<button type="button" class="chip-toggle focusable ${cur === id ? 'on' : ''}"
+                            data-k="self-update-${id}" data-act="self-update" data-channel="${id}" aria-pressed="${cur === id}">
+                        <span class="dot" aria-hidden="true"></span>${label}
+                    </button>`;
+                }).join('')}
             </div>
-            <div class="set-sub">Choisir un canal pour rechercher une mise à jour.</div>`)}
+            <div class="set-sub">Canal utilisé pour les mises à jour : clic sur le logo de l'accueil pour vérifier et installer.</div>`)}
         ${call('isTvDisplayForced') ? settingsSection('forcetv', 'Affichage TV forcé', `
             <div class="set-sub">Ce téléphone affiche l'interface TV. Réglage du téléphone : Forcer l'affichage TV.</div>
             <div class="set-row">
@@ -845,7 +887,7 @@ function renderSettings(focusKey) {
         </div>`;
 
     SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { if (values[i.dataset.k] != null) i.value = values[i.dataset.k]; });
-    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent], [data-lang], [data-classic]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
+    SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent], [data-bganim], [data-lang], [data-classic]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
     SETTINGS_PANEL.querySelectorAll('form').forEach(f => f.addEventListener('submit', (e) => { e.preventDefault(); onSettingsSubmit(f.dataset.form); }));
 
     const target = (keep && SETTINGS_PANEL.querySelector(`[data-k="${keep}"]`)) || SETTINGS_PANEL.querySelector('.focusable');
@@ -982,9 +1024,10 @@ function onSettingsAction(b) {
         return;
     }
     if (b.dataset.act === 'self-update') {
+        // Gonzo 26/11 : les 3 boutons choisissent le canal (mémorisé) ; la vérification
+        // se fait dans la tuile du logo et au démarrage.
         const channel = ['stable', 'beta', 'test'].includes(b.dataset.channel) ? b.dataset.channel : 'stable';
-        settingsMsg = { text: 'Recherche de mise à jour (' + channel + ') lancée…', err: false };
-        call('checkSelfUpdate', channel);
+        call('setUpdateChannel', channel);
         renderSettings('self-update-' + channel);
         return;
     }
@@ -1003,9 +1046,11 @@ function onSettingsAction(b) {
         renderSettings();
         return;
     }
-    if (skin || accent) {
+    const bgAnim = b.dataset.bganim;
+    if (skin || accent || bgAnim) {
         if (skin) settings.skin = skin;
         if (accent) settings.accent = accent;
+        if (bgAnim) settings.bgAnim = bgAnim;
         applySkin();
         saveSettings();
         renderSettings();
@@ -1042,10 +1087,10 @@ function onSettingsAction(b) {
             setTimeout(() => { updatePairButton(); renderSettings('section-tvlink'); }, 200);
             return;
         case 'export-config': {
-            const { skin, accent, cardScale, margin, archs, sources, searchCats, profile } = settings;
+            const { skin, accent, bgAnim, cardScale, margin, archs, sources, searchCats, profile } = settings;
             const json = JSON.stringify({
                 version: 1,
-                settings: { skin, accent, cardScale, margin, archs, sources, searchCats, profile },
+                settings: { skin, accent, bgAnim, cardScale, margin, archs, sources, searchCats, profile },
             }, null, 2);
             if (window.Android && typeof window.Android.exportConfig === 'function') {
                 call('exportConfig', json);
@@ -1171,7 +1216,7 @@ function updatePairButton() {
 
 function onHeaderEnter(el) {
     if (el === SEARCH_BOX) startEditing();
-    else if (el === BTN_FUN) { if (window.playGravitySplash) window.playGravitySplash(true); }
+    else if (el === BTN_FUN) { if (window.TvAbout) window.TvAbout.open(); else if (window.playGravitySplash) window.playGravitySplash(true); }
     else if (el === BTN_PAIR) call('tvLinkShowQr');
     else if (el === BTN_SCOPE) openPicker('search');
     else if (el === BTN_ADD) openPicker('rows');
@@ -1408,6 +1453,7 @@ window.onRemoteOpen = function (json) {
 // Retour (Gonzo 24/11) : depuis n'importe quel écran, retour direct à l'accueil.
 // Déjà sur l'accueil : renvoie false et Android gère le double appui pour quitter.
 window.onTvBack = function () {
+    if (window.TvAbout && window.TvAbout.close()) return true;
     let moved = false;
     if (!PAIR_MODAL.classList.contains('hidden')) { PAIR_MODAL.classList.add('hidden'); moved = true; }
     if (window.TvDetails && window.TvDetails.closeAll && window.TvDetails.closeAll()) moved = true;

@@ -38,6 +38,7 @@ object TvLinkKeeper {
         context: Context,
         host: TvLink.Host,
         confirmFiles: (String, (Boolean) -> Unit) -> Unit,
+        confirmPairRequest: ((String, (Boolean) -> Unit) -> Unit)? = null,
     ): TvLink.Server? = synchronized(this) {
         attached = host
         val app = context.applicationContext as Application
@@ -59,6 +60,7 @@ object TvLinkKeeper {
             com.tomclaw.appsend.tvlink.LinkTargetService.start(app)
         }
         current.confirmFiles = confirmFiles
+        current.confirmPairRequest = confirmPairRequest // association sans code : OK sur la TV
         current
     }
 
@@ -67,6 +69,7 @@ object TvLinkKeeper {
         if (attached === host) {
             attached = null
             server?.confirmFiles = null
+            server?.confirmPairRequest = null // écran fermé : le téléphone revient au code
         }
     }
 
@@ -79,7 +82,7 @@ object TvLinkKeeper {
     fun ensureStarted(context: Context): TvLink.Server? = synchronized(this) {
         val app = context.applicationContext as Application
         if (!::fallback.isInitialized) fallback = ClosedScreenHost(app)
-        server ?: attach(app, fallback) { _, answer -> answer(false) }
+        server ?: attach(app, fallback, confirmFiles = { _, answer -> answer(false) })
     }
 
     private fun proxy(): TvLink.Host = Proxy.newProxyInstance(

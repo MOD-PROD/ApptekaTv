@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_files_confirm_title">Dosya erişimine izin verilsin mi?</string>
+    <string name="tv_files_confirm_message">%1$s bu TV\'deki dosyalara göz atmak, kopyalamak ve silmek istiyor. İzin verilsin mi?</string>
+    <string name="tv_files_opened">📱 %1$s bu TV\'nin dosyalarını yönetiyor</string>
+    <string name="tv_files_storage_title">Depolama erişimi</string>
+    <string name="tv_files_storage_message">Telefonunuzun bu TV\'nin dosyalarını yönetmesi için Appteka TV\'nin TV depolamasına erişmesi gerekir.</string>
+    <string name="tv_files_storage_allow">İzin ver</string>
+    <string name="tv_files_storage_granted">Depolama erişimi verildi. Telefonda Yeniden dene\'ye dokunun.</string>
+    <string name="tv_files_storage_adb">Bu TV\'de \"Tüm dosyalara erişim\" ekranı yok. Bilgisayardan:\nadb shell appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
+    <string name="nav_tv_files">Dosyalar</string>
+    <string name="tv_files_title">Dosyalar · %1$s</string>
+    <string name="tv_files_no_tv">Önce mağaza ekranındaki 📺 simgesini kullanarak bir TV eşleştirin</string>
+    <string name="tv_files_connecting">%1$s bağlantısı kuruluyor…</string>
+    <string name="tv_files_waiting_tv">%1$s üzerinde isteği kabul edin…</string>
+    <string name="tv_files_refused">%1$s dosya erişimini reddetti.</string>
+    <string name="tv_files_storage_needed">%1$s üzerinde depolama erişimine izin verin, sonra Yeniden dene\'ye dokunun.</string>
+    <string name="tv_files_offline">%1$s cihazına ulaşılamıyor. TV\'de Appteka TV\'yi açık tutun ve iki cihazı aynı Wi-Fi ağına bağlayın.</string>
+    <string name="tv_files_needs_update">Dosyaları yönetmek için %1$s üzerinde Appteka TV\'yi güncelleyin (Test kanalı).</string>
+    <string name="tv_files_retry">Yeniden dene</string>
+    <string name="tv_files_empty">Boş klasör</string>
+    <string name="tv_files_upload_here">Buraya gönder</string>
+    <string name="tv_files_upload">TV\'ye dosya gönder</string>
+    <string name="tv_files_new_folder">Yeni klasör</string>
+    <string name="tv_files_volumes">Depolama</string>
+    <string name="tv_files_show_hidden">Gizli dosyaları göster</string>
+    <string name="tv_files_sort">Sırala</string>
+    <string name="tv_files_sort_name">Ad</string>
+    <string name="tv_files_sort_date">Tarih</string>
+    <string name="tv_files_sort_size">Boyut</string>
+    <string name="tv_files_refresh">Yenile</string>
+    <string name="tv_files_download">Telefona indir</string>
+    <string name="tv_files_install">TV\'ye yükle</string>
+</resources>

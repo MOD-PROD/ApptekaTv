@@ -158,7 +158,7 @@ class TvWebActivity : AppCompatActivity() {
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
         if (isTv) startTvLink()
-        if (savedInstanceState == null) updateController.check()
+        if (savedInstanceState == null) updateController.check(channel = com.tomclaw.appsend.update.UpdateChannel.get(this)) // canal choisi dans Paramètres
         handleInvite(intent)
     }
 
@@ -321,7 +321,7 @@ class TvWebActivity : AppCompatActivity() {
         }
         linkHost = host
         // Gonzo 25/11 : le serveur survit à cet écran (Retour, recréation) : plus de perte d'association.
-        tvLink = TvLinkKeeper.attach(this, host, ::confirmFiles) // ATV-09 : « Fichiers » accordé sur la TV
+        tvLink = TvLinkKeeper.attach(this, host, ::confirmFiles, ::confirmPairRequest) // ATV-09 : « Fichiers » accordé sur la TV
     }
 
     /** Ordre « ouvrir / installer » reçu pendant que l'écran était fermé. */
@@ -342,6 +342,24 @@ class TvWebActivity : AppCompatActivity() {
             .setOnDismissListener { answer(false) }
             .show()
         dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE)?.requestFocus()
+        handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
+    }
+
+    /**
+     * Gonzo 26/11 « Recherche + OK sur la TV » : un appareil du Wi-Fi demande à s'associer.
+     * Le focus est sur Accepter : un appui sur OK de la télécommande suffit.
+     */
+    private fun confirmPairRequest(device: String, answer: (Boolean) -> Unit) {
+        if (isFinishing || isDestroyed) return answer(false)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.tv_pair_confirm_title)
+            .setMessage(getString(R.string.tv_pair_confirm_message, device))
+            .setCancelable(true)
+            .setPositiveButton(R.string.tv_pair_confirm_accept) { _, _ -> answer(true) }
+            .setNegativeButton(R.string.tv_pair_confirm_refuse) { _, _ -> answer(false) }
+            .setOnDismissListener { answer(false) }
+            .show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)?.requestFocus()
         handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
     }
 
@@ -987,6 +1005,27 @@ class TvWebActivity : AppCompatActivity() {
     inner class TvJsBridge {
         @JavascriptInterface
         fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test") } ?: "stable") }
+
+        /** Canal de mise à jour mémorisé (stable, beta, test), choisi dans Paramètres › Mise à jour. */
+        @JavascriptInterface
+        fun getUpdateChannel(): String = com.tomclaw.appsend.update.UpdateChannel.get(this@TvWebActivity)
+
+        @JavascriptInterface
+        fun setUpdateChannel(channel: String) {
+            if (channel in com.tomclaw.appsend.update.UpdateChannel.CHANNELS) com.tomclaw.appsend.update.UpdateChannel.set(this@TvWebActivity, channel)
+        }
+
+        /** Tuile « À propos » (clic sur le logo) : l'état arrive dans window.onSelfUpdateState. */
+        @JavascriptInterface
+        fun aboutCheckUpdate(): Unit = runOnUiThread {
+            updateController.checkForTile(com.tomclaw.appsend.update.UpdateChannel.get(this@TvWebActivity)) { js("onSelfUpdateState", it) }
+        }
+
+        @JavascriptInterface
+        fun aboutInstallUpdate(): Unit = runOnUiThread { updateController.installFromTile { js("onSelfUpdateState", it) } }
+
+        @JavascriptInterface
+        fun aboutCancelUpdate(): Unit = runOnUiThread { updateController.cancelTile() }
 
         @JavascriptInterface
         fun installedUpdateVersion(): String = com.tomclaw.appsend.BuildConfig.VERSION_NAME + " (" + com.tomclaw.appsend.BuildConfig.VERSION_CODE + ")"
