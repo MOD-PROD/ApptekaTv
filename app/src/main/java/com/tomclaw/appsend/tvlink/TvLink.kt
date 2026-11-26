@@ -222,6 +222,33 @@ object TvLink {
     }
 
     /**
+     * Association sans code (Gonzo 26/11) : demande à un appareil vu sur le Wi-Fi d'accepter ce
+     * téléphone ; son utilisateur répond OK ou Refuser à l'écran. TLS sans empreinte connue :
+     * l'empreinte vue ici est mémorisée, comme après le code. Erreurs : « refused » (refus ou
+     * pas de réponse), « unavailable »/« busy »/« unauthorized » (pas d'écran ou ancienne version :
+     * revenir au code).
+     */
+    internal fun pairRequest(host: String, port: Int, install: String = ""): Pair<Pairing, JSONObject> {
+        validateLocalEndpoint(host, port)
+        val factory = TvTls.codeHandshakeContext().socketFactory
+        (factory.createSocket() as SSLSocket).use { socket ->
+            socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.2" || it == "TLSv1.3" }.toTypedArray()
+            socket.connect(InetSocketAddress(connectHost(host), port), TIMEOUT_MS)
+            socket.soTimeout = TIMEOUT_MS
+            socket.startHandshake()
+            val certificate = socket.session.peerCertificates.single()
+            val pin = TvFrames.digest(certificate.encoded).joinToString("") { "%02x".format(it) }
+            TvFrames.write(socket.outputStream, JSONObject().put("v", 2).put("type", "pair_request")
+                .put("device", deviceName()).put("install", install).toString())
+            socket.soTimeout = PAIR_RESPONSE_TIMEOUT_MS // l'utilisateur de la TV répond
+            val response = JSONObject(TvFrames.read(socket.inputStream))
+            check(response.optBoolean("ok")) { response.optString("error", "refused") }
+            val tv = UUID.fromString(response.getString("tv")).toString()
+            return Pairing(host, port, tv, "", pin) to response
+        }
+    }
+
+    /**
      * ATV proximité (Gonzo 25/11) : demande à un appareil vu sur le Wi-Fi d'afficher son code
      * d'association. Avant toute association : TLS sans empreinte connue, mais l'ordre ne donne
      * aucun droit ; seul le code (J-PAKE) associe ensuite. Renvoie le nom de l'appareil.
@@ -441,6 +468,17 @@ object TvLink {
         var onPairInvite: ((device: String) -> Unit)? = null
         private var lastInviteAt = 0L
 
+        /**
+         * Association sans code (Gonzo 26/11, « Recherche + OK sur la TV ») : l'utilisateur de
+         * cet appareil accepte ou refuse avec la télécommande (appelé sur le fil principal ;
+         * répondre une seule fois). Null quand aucun écran ne peut poser la question : le
+         * téléphone revient alors à l'association par code.
+         */
+        @Volatile
+        var confirmPairRequest: ((device: String, answer: (Boolean) -> Unit) -> Unit)? = null
+        private var pairRequestBusy = false
+        private var lastPairRequestAt = 0L
+
         /** Dernière erreur d'une connexion entrante (type seulement), pour le diagnostic. */
         @Volatile
         var lastError: String? = null
@@ -610,6 +648,8 @@ object TvLink {
                             val consumed = synchronized(this) { pairingWindow.finishCode(attempt) }
                             if (consumed) confirmedToken(msg) else error("expired")
                         }
+                    } else if (msg.optInt("v") == 2 && msg.optString("type") == "pair_request") {
+                        pairRequest(msg)
                     } else if (msg.optInt("v") == 2 && msg.optString("type") == "pair") {
                         val refused = synchronized(this) { checkSecret(msg) }
                         refused ?: confirmedToken(msg)
@@ -980,6 +1020,29 @@ object TvLink {
             answered.set(true) // a late answer is ignored
             if (!inTime || !accepted.get()) return error("refused")
             return synchronized(this) { issueToken(msg) }
+        }
+
+        /**
+         * Association sans code : l'appareil demande, l'utilisateur d'ici accepte à l'écran.
+         * Une seule question à la fois, au plus une toutes les 10 s (un voisin du Wi-Fi ne
+         * peut pas inonder l'écran). Hors du verrou pendant l'attente de la réponse.
+         */
+        private fun pairRequest(msg: JSONObject): JSONObject {
+            val ask = confirmPairRequest ?: return error("unavailable")
+            synchronized(this) {
+                val now = SystemClock.elapsedRealtime()
+                if (pairRequestBusy || lastPairRequestAt != 0L && now - lastPairRequestAt < INVITE_INTERVAL_MS) {
+                    return error("busy")
+                }
+                pairRequestBusy = true
+                lastPairRequestAt = now
+            }
+            try {
+                if (!askTv(ask, TvTokens.cleanDevice(msg.optString("device")))) return error("refused")
+                return synchronized(this) { issueToken(msg) }
+            } finally {
+                synchronized(this) { pairRequestBusy = false }
+            }
         }
 
         private fun issueToken(msg: JSONObject): JSONObject {

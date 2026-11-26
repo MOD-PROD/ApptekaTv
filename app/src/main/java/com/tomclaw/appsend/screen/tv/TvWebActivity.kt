@@ -321,7 +321,7 @@ class TvWebActivity : AppCompatActivity() {
         }
         linkHost = host
         // Gonzo 25/11 : le serveur survit à cet écran (Retour, recréation) : plus de perte d'association.
-        tvLink = TvLinkKeeper.attach(this, host, ::confirmFiles) // ATV-09 : « Fichiers » accordé sur la TV
+        tvLink = TvLinkKeeper.attach(this, host, ::confirmFiles, ::confirmPairRequest) // ATV-09 : « Fichiers » accordé sur la TV
     }
 
     /** Ordre « ouvrir / installer » reçu pendant que l'écran était fermé. */
@@ -342,6 +342,24 @@ class TvWebActivity : AppCompatActivity() {
             .setOnDismissListener { answer(false) }
             .show()
         dialog.getButton(android.content.DialogInterface.BUTTON_NEGATIVE)?.requestFocus()
+        handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
+    }
+
+    /**
+     * Gonzo 26/11 « Recherche + OK sur la TV » : un appareil du Wi-Fi demande à s'associer.
+     * Le focus est sur Accepter : un appui sur OK de la télécommande suffit.
+     */
+    private fun confirmPairRequest(device: String, answer: (Boolean) -> Unit) {
+        if (isFinishing || isDestroyed) return answer(false)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.tv_pair_confirm_title)
+            .setMessage(getString(R.string.tv_pair_confirm_message, device))
+            .setCancelable(true)
+            .setPositiveButton(R.string.tv_pair_confirm_accept) { _, _ -> answer(true) }
+            .setNegativeButton(R.string.tv_pair_confirm_refuse) { _, _ -> answer(false) }
+            .setOnDismissListener { answer(false) }
+            .show()
+        dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)?.requestFocus()
         handler.postDelayed({ if (dialog.isShowing) dialog.dismiss() }, 30_000L)
     }
 
