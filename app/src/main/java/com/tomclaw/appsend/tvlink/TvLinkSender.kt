@@ -94,6 +94,46 @@ class TvLinkSender(
         }
     }
 
+    /**
+     * Association sans code (Gonzo 26/11) : appui sur un appareil « À proximité », son
+     * utilisateur accepte avec OK. [fallback] : pas d'écran pour poser la question ou ancienne
+     * version de l'autre côté → association par code, comme avant.
+     */
+    fun pairNearby(host: String, port: Int, fallback: () -> Unit) {
+        var cancelled = false
+        val waiting = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.tv_pair_nearby_title)
+            .setMessage(R.string.tv_pair_confirm_on_tv)
+            .setNegativeButton(android.R.string.cancel) { _, _ -> cancelled = true }
+            .setOnCancelListener { cancelled = true }
+            .show()
+        thread {
+            val result = runCatching {
+                val (address, response) = TvLink.pairRequest(host, port, installId(preferences()))
+                val token = response.getString("token")
+                check(token.matches(Regex("[0-9a-f]{64}")))
+                check(preferences().edit().putString(address.tv, token).commit())
+                Triple(address, token, response.optString("name", "Appteka TV"))
+            }
+            activity.runOnUiThread {
+                if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
+                if (waiting.isShowing) waiting.dismiss()
+                // Annulé ici après l'accord là-bas : l'association est gardée (l'autre côté l'a acceptée).
+                result.onSuccess { (address, token, name) -> associated(address, token, name) }
+                    .onFailure {
+                        if (cancelled) return@onFailure
+                        when {
+                            it.message in listOf("unavailable", "busy", "unauthorized", "unknown") -> fallback()
+                            it.message == "refused" -> toast(R.string.tv_pair_refused)
+                            it is java.net.SocketTimeoutException || it is java.net.ConnectException ||
+                                it is java.net.NoRouteToHostException -> toast(R.string.tv_link_unreachable)
+                            else -> toast(R.string.tv_link_failed)
+                        }
+                    }
+            }
+        }
+    }
+
     fun showCodeEntry() {
         val pad = (24 * activity.resources.displayMetrics.density).toInt()
         val address = android.widget.EditText(activity).apply {
