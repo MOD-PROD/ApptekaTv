@@ -16,4 +16,5 @@
     <string name="pref_title_arch_filter">Compatible apps only</string>
     <string name="pref_summary_arch_filter">The Store hides apps that do not run on the processor of the active device (this one, or the device you control).</string>
     <string name="device_add">Add a device</string>
+    <string name="tv_nearby_none">No device found. Open Appteka on the TV, on the same Wi-Fi.</string>
 </resources>

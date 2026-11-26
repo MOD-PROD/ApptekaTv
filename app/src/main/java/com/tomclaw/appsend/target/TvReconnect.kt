@@ -119,11 +119,16 @@ object TvReconnect {
                 synchronized(found) { if (found.size < MAX_SERVICES) found += service }
             }
         }
+        // Certains téléphones filtrent le multicast Wi-Fi sans ce verrou : mDNS ne voit alors rien.
+        val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+        val lock = runCatching { wifi?.createMulticastLock("appteka-nearby")?.apply { setReferenceCounted(false); acquire() } }
+            .getOrNull()
         try {
             manager.discoverServices(TvLink.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
             Thread.sleep(waitMs)
         } catch (_: Exception) {
         } finally {
+            runCatching { lock?.release() }
             try {
                 manager.stopServiceDiscovery(listener)
             } catch (_: Exception) {
@@ -141,7 +146,10 @@ object TvReconnect {
             manager.resolveService(service, object : NsdManager.ResolveListener {
                 override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) = latch.countDown()
                 override fun onServiceResolved(info: NsdServiceInfo) {
-                    val address = info.host
+                    // Android 14 : la première adresse peut être IPv6 ; on cherche l'IPv4 du Wi-Fi.
+                    val address = if (android.os.Build.VERSION.SDK_INT >= 34) {
+                        info.hostAddresses.firstOrNull { it is Inet4Address && it.isSiteLocalAddress } ?: info.host
+                    } else info.host
                     if (address is Inet4Address && address.isSiteLocalAddress && info.port in 1..65535) {
                         val host = address.hostAddress.orEmpty()
                         if (host.isNotEmpty()) {
@@ -159,7 +167,7 @@ object TvReconnect {
         return result
     }
 
-    private const val DISCOVERY_MS = 3000L
+    private const val DISCOVERY_MS = 5000L
     private const val RESOLVE_MS = 2000L
     private const val MAX_SERVICES = 6
 }

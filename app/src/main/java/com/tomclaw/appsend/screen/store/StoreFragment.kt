@@ -173,7 +173,8 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         val known = TvTarget.known(context)
         val rows = mutableListOf<Row>()
         // Place de la section « À proximité » : après « Cet appareil » et les appareils associés.
-        val nearbyAt = if (!addMode && known.size < MAX_DEVICES) 1 + known.size else -1
+        // Gonzo 26/11 : la recherche tourne toujours, même avec 4 appareils associés (réassocier un appareil oublié).
+        val nearbyAt = if (!addMode) 1 + known.size else -1
         // Gonzo 25/11 : « Ajouter » ouvre une 2e liste avec les 4 types à associer.
         if (addMode) {
             DeviceKind.values().forEach { kind ->
@@ -254,11 +255,12 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
         if (nearbyAt >= 0) {
             val app = context.applicationContext
             val self = TvLink.localIpv4()
-            val taken = known.map { it.address.host to it.address.port }.toSet()
             kotlin.concurrent.thread(name = "nearby", isDaemon = true) {
                 val found = runCatching { com.tomclaw.appsend.target.TvReconnect.discoverNearby(app) }
                     .getOrDefault(emptyList())
-                    .filter { it.host != self && (it.host to it.port) !in taken }
+                    // Les appareils déjà associés restent listés : si la TV a oublié ce téléphone (ou a changé
+                    // d'adresse), un appui la réassocie (Gonzo 26/11 : la TV n'apparaissait pas).
+                    .filter { it.host != self }
                 activity?.runOnUiThread {
                     if (!popup.isShowing || !isAdded) return@runOnUiThread
                     val nearby = found.map { device ->
@@ -266,10 +268,14 @@ class StoreFragment : Fragment(), StorePresenter.StoreRouter, HomeFragment {
                             action = { pairNearby(device.host, device.port) })
                     }
                     rows.removeAt(nearbyAt)
+                    rows.add(nearbyAt, Row(getString(R.string.tv_nearby_section), android.R.drawable.ic_menu_search,
+                        false, false, false, true, action = {}, header = true))
                     if (nearby.isNotEmpty()) {
-                        rows.add(nearbyAt, Row(getString(R.string.tv_nearby_section), android.R.drawable.ic_menu_search,
-                            false, false, false, true, action = {}, header = true))
                         rows.addAll(nearbyAt + 1, nearby)
+                    } else {
+                        // Rien trouvé : le dire (avant, la section disparaissait sans explication).
+                        rows.add(nearbyAt + 1, Row(getString(R.string.tv_nearby_none), android.R.drawable.ic_dialog_info,
+                            false, false, false, false, action = {}, header = true))
                     }
                     adapter.notifyDataSetChanged()
                 }
