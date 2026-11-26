@@ -687,6 +687,7 @@ function applySkin() {
     const green = settings.skin === 'green' || settings.skin === 'neu';
     const neu = green;
     const root = document.documentElement;
+    root.classList.toggle('glass-light', settings.skin === 'glass-light');
     root.classList.toggle('green-skin', green);
     root.classList.toggle('neu-skin', neu);
     root.classList.toggle('neu-dark', settings.skin === 'green');
@@ -780,7 +781,7 @@ function renderSettings(focusKey) {
         ${settingsSection('appearance', 'Apparence', `
             <div class="set-row set-inline" role="group" aria-label="Skins">
                 <div class="set-label set-inline-label">Skins:</div>
-                ${[['classic', 'Noir et or'], ['green', 'Neuro sombre'], ['neu', 'Neuro clair']].map(([id, label]) => `
+                ${[['classic', 'Glass sombre'], ['glass-light', 'Glass clair'], ['green', 'Neuro sombre'], ['neu', 'Neuro clair']].map(([id, label]) => `
                     <button type="button" class="chip-toggle focusable ${settings.skin === id ? 'on' : ''}"
                             data-k="skin-${id}" data-skin="${id}" aria-pressed="${settings.skin === id}">
                         <span class="dot" aria-hidden="true"></span>${label}

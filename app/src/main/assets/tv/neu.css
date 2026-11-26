@@ -204,3 +204,20 @@ html.neu-skin.neu-dark {
 /* Cartes d'app : un peu plus d'air pour laisser respirer les ombres */
 .neu-skin .apps-row { gap: 22px; }
 .mobile.neu-skin .apps-row { gap: 14px; }
+
+/* Keep the horizontal scroller's clipping edge outside the shadow envelope.
+   Preserve the original card alignment by compensating padding with margin. */
+.neu-skin {
+    --raised: 6px 6px 20px var(--neu-dark), -6px -6px 20px var(--neu-light);
+}
+html.neu-skin:not(.neu-dark) { --neu-light: #f0f3f7; --neu-dark: #c1c7d0; }
+.neu-skin:not(.mobile) .apps-row {
+    margin-left: -14px;
+    padding-left: 30px;
+    padding-top: 32px;
+    padding-bottom: 34px;
+    margin-top: -14px;
+    margin-bottom: -12px;
+    background: transparent;
+}
+.neu-skin:not(.mobile) .row-icon { position: relative; z-index: 1; }
