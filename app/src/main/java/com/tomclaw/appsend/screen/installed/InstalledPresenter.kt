@@ -37,6 +37,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.disposables.Disposable
+import io.reactivex.rxjava3.disposables.SerialDisposable
 import io.reactivex.rxjava3.kotlin.Observables
 import io.reactivex.rxjava3.kotlin.plusAssign
 import java.util.concurrent.TimeUnit
@@ -147,7 +148,7 @@ class InstalledPresenterImpl(
     private val installStatuses = HashMap<String, InstallStatus>()
     private val detailsRequests = HashMap<String, Disposable>()
     private val downloadsStarted = HashSet<String>()
-    private val installsStarting = HashSet<String>()
+    private val installRequests = HashMap<String, Disposable>()
     private val updateStates = HashMap<String, Int>()
     private var appsRequest: Disposable? = null
     private var displayedItems: List<AppItem> = emptyList()
@@ -340,7 +341,10 @@ class InstalledPresenterImpl(
             .toList()
         // Rows of an update in progress keep their state until its relays answer.
         newItems.forEach { item ->
-            item.update?.appId?.let { appId -> item.updateState = updateStates[appId] ?: IDLE }
+            item.update?.appId?.let { appId ->
+                item.updateState = updateStates[appId] ?: IDLE
+                item.installStatus = installStatuses[appId] ?: InstallStatus.Idle
+            }
         }
 
         this.items = newItems
@@ -396,7 +400,7 @@ class InstalledPresenterImpl(
 
             else -> downloadsStarted.add(appId)
         }
-        setUpdateState(item, updateStateOf(appId, downloadState, installStatus))
+        setUpdateState(item, updateStateOf(appId, downloadState, installStatus), installStatus)
     }
 
     private fun updateStateOf(appId: String, downloadState: Int, installStatus: InstallStatus): Int {
@@ -405,10 +409,11 @@ class InstalledPresenterImpl(
         return installStatus.asDownloadState(downloadState)
     }
 
-    private fun setUpdateState(item: AppItem, state: Int) {
+    private fun setUpdateState(item: AppItem, state: Int, installStatus: InstallStatus = item.installStatus) {
         item.update?.appId?.let { updateStates[it] = state }
-        if (item.updateState == state) return
+        if (item.updateState == state && item.installStatus == installStatus) return
         item.updateState = state
+        item.installStatus = installStatus
         val position = displayedItems.indexOfFirst { it.id == item.id }
         if (position >= 0) view?.contentUpdated(position)
     }
@@ -422,14 +427,17 @@ class InstalledPresenterImpl(
      */
     private fun installWhenReady(item: AppItem, appId: String) {
         val pending = pendingInstalls[appId] ?: return
-        if (!installsStarting.add(appId)) return
+        if (appId in installRequests) return
+        val request = SerialDisposable()
+        installRequests[appId] = request
+        subscriptions += request
         val finish = { failed: Boolean ->
             pendingInstalls.remove(appId)
             if (failed) view?.showSnackbar(resourceProvider.updateFailed())
             val installStatus = installStatuses[appId] ?: InstallStatus.Idle
             setUpdateState(item, updateStateOf(appId, COMPLETED, installStatus))
         }
-        subscriptions += Observable
+        val subscription = Observable
             .interval(0, INSTALL_RETRY_DELAY_MS, TimeUnit.MILLISECONDS, schedulers.io())
             .take(INSTALL_RETRY_ATTEMPTS)
             .concatMapMaybe {
@@ -439,7 +447,7 @@ class InstalledPresenterImpl(
             }
             .firstElement()
             .observeOn(schedulers.mainThread())
-            .doFinally { installsStarting.remove(appId) }
+            .doFinally { installRequests.remove(appId)?.let { subscriptions.delete(it) } }
             .subscribe(
                 { uri ->
                     appInstaller.install(InstallRequest(key = appId, label = pending.label, uri = uri))
@@ -448,6 +456,7 @@ class InstalledPresenterImpl(
                 { finish(true) },
                 { finish(true) }
             )
+        request.set(subscription)
     }
 
     private fun onReady() {
@@ -512,6 +521,10 @@ class InstalledPresenterImpl(
         val app = items?.find { it.id == item.id } ?: return
         val update = app.update ?: return
         val appId = update.appId
+        if (app.installStatus == InstallStatus.Confirming) {
+            appInstaller.confirm(appId)
+            return
+        }
         setUpdateState(app, AWAIT)
         lateinit var request: Disposable
         request = interactor.getDetails(appId)
@@ -587,6 +600,7 @@ class InstalledPresenterImpl(
         val app = items?.find { it.id == item.id } ?: return
         val appId = app.update?.appId ?: return
         pendingInstalls.remove(appId)
+        installRequests[appId]?.let { subscriptions.remove(it) }
         val request = detailsRequests.remove(appId)
         if (request != null) {
             // Still asking for the link: nothing was downloaded yet.

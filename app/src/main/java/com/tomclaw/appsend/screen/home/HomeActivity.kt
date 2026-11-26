@@ -209,6 +209,7 @@ class HomeActivity : AppCompatActivity(), HomePresenter.HomeRouter {
 
     override fun onResume() {
         super.onResume()
+        presenter.onResume()
     }
 
     override fun onDestroy() {

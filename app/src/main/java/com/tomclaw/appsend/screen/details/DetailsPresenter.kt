@@ -468,7 +468,8 @@ class DetailsPresenterImpl(
             if (tvMode) tvVersionCode else installedVersionCode,
             moderation,
             translationData,
-            translationState
+            translationState,
+            installStatus,
         )
 
         bindItems()
@@ -794,6 +795,10 @@ class DetailsPresenterImpl(
     }
 
     override fun onInstallClick() {
+        if (installStatus == InstallStatus.Confirming) {
+            details?.info?.appId?.let { appInstaller.confirm(it) }
+            return
+        }
         bananalytics.leaveBreadcrumb("Install clicked", BreadcrumbCategory.USER_ACTION)
         val security = details?.security
         if (security?.status == SECURITY_STATUS_COMPLETED) {

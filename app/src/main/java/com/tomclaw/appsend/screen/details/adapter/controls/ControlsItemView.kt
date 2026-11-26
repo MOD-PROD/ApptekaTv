@@ -1,6 +1,7 @@
 package com.tomclaw.appsend.screen.details.adapter.controls
 
 import android.view.View
+import com.google.android.material.button.MaterialButton
 import com.tomclaw.appsend.util.adapter.BaseItemViewHolder
 import com.tomclaw.appsend.util.adapter.ItemView
 import com.tomclaw.appsend.R
@@ -15,6 +16,8 @@ interface ControlsItemView : ItemView {
 
     // ATV-03
     fun showTvInstallButton(installedOnTarget: Boolean): Boolean
+
+    fun showContinueButton()
 
     fun disableInstallButton()
 
@@ -48,7 +51,7 @@ interface ControlsItemView : ItemView {
 
 class ControlsItemViewHolder(view: View) : BaseItemViewHolder(view), ControlsItemView {
 
-    private val installButton: View = view.findViewById(R.id.install_button)
+    private val installButton: MaterialButton = view.findViewById(R.id.install_button)
     private val updateButton: View = view.findViewById(R.id.update_button)
     private val launchButton: View = view.findViewById(R.id.launch_button)
     private val removeButton: View = view.findViewById(R.id.remove_button)
@@ -69,6 +72,12 @@ class ControlsItemViewHolder(view: View) : BaseItemViewHolder(view), ControlsIte
     }
 
     override fun showInstallButton() {
+        installButton.setText(R.string.install)
+        installButton.show()
+    }
+
+    override fun showContinueButton() {
+        installButton.setText(R.string.continue_installation)
         installButton.show()
     }
 

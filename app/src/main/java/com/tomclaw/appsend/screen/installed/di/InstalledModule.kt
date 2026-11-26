@@ -2,6 +2,7 @@ package com.tomclaw.appsend.screen.installed.di
 
 import android.content.Context
 import android.os.Bundle
+import com.tomclaw.appsend.dto.DeviceInfo
 import com.tomclaw.appsend.util.adapter.ItemBinder
 import com.tomclaw.appsend.util.adapter.AdapterPresenter
 import com.tomclaw.appsend.util.adapter.SimpleAdapterPresenter
@@ -97,6 +98,7 @@ class InstalledModule(
         apkStorage: ApkStorage,
         streamsProvider: StreamsProvider,
         infoProvider: InstalledInfoProvider,
+        device: DeviceInfo,
         schedulers: SchedulersFactory,
         tvBridge: InstalledTvBridge,
     ): InstalledInteractor = InstalledInteractorImpl(
@@ -105,6 +107,7 @@ class InstalledModule(
         apkStorage,
         streamsProvider,
         infoProvider,
+        device,
         schedulers,
         tvBridge,
     )
