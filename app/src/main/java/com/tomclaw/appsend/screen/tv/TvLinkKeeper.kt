@@ -82,7 +82,7 @@ object TvLinkKeeper {
     fun ensureStarted(context: Context): TvLink.Server? = synchronized(this) {
         val app = context.applicationContext as Application
         if (!::fallback.isInitialized) fallback = ClosedScreenHost(app)
-        server ?: attach(app, fallback) { _, answer -> answer(false) }
+        server ?: attach(app, fallback, confirmFiles = { _, answer -> answer(false) })
     }
 
     private fun proxy(): TvLink.Host = Proxy.newProxyInstance(
