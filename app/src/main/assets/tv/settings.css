@@ -142,3 +142,26 @@ html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
    (bleu clair) pour les distinguer des catégories, quel que soit le thème. */
 .cell.flag { --accent: #4fc3f7; --accent-rgb: 79, 195, 247; --accent-light: #8fdcff; --accent-dark: #0288d1; }
 .cell.flag .cell-name { color: #8fdcff; }
+
+/* Tuile « À propos » (clic sur le logo) : posée au-dessus des éléments tombés. */
+.about-tile {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 210;
+    width: 560px;
+    max-width: calc(100vw - 32px);
+    overflow-y: auto;
+    box-sizing: border-box;
+    text-align: center;
+}
+.about-logo { display: block; height: 54px; max-width: 80%; margin: 0 auto 10px; object-fit: contain; }
+.about-line { font-size: 14px; color: var(--muted); margin: 2px 0; }
+.about-status { font-size: 16px; font-weight: 700; color: var(--text); margin: 14px 0 12px; }
+.about-status.err { color: #fca5a5; }
+.about-progress { height: 8px; border-radius: 4px; background: rgba(127, 127, 127, 0.25); overflow: hidden; margin: 0 0 14px; }
+.about-bar { height: 100%; background: var(--accent); transition: width .2s linear; }
+.about-actions { justify-content: center; flex-wrap: wrap; }
+.about-hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
+.glass-light .about-status.err, .neu-skin .about-status.err { color: #b91c1c; }
+.glass-light .about-bar, .neu-skin .about-bar { background: var(--accent-ink, var(--accent)); }

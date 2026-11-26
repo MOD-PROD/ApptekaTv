@@ -12,7 +12,7 @@ const BTN_ADD = document.getElementById('btn-add');
 const BTN_SETTINGS = document.getElementById('btn-settings');
 const BTN_EXIT = document.getElementById('btn-exit');
 const BTN_PAIR = document.getElementById('btn-pair');
-// La gélule du logo : bouton « fun » qui relance le splash gravité
+// Le logo : clic = gravité puis tuile « À propos » (version + mise à jour), voir about.js
 const BTN_FUN = document.getElementById('btn-fun');
 // Le bouton d'association n'existe que sur la TV (le portable n'affiche pas de QR)
 const HEADER_ITEMS = [BTN_FUN].concat(document.documentElement.classList.contains('mobile') ? [] : [BTN_PAIR])
@@ -73,6 +73,12 @@ function setPref(key, value) {
 }
 function loadJson(key, def) {
     try { const v = getPref(key); return v ? JSON.parse(v) : def; } catch (e) { return def; }
+}
+
+// Canal de mise à jour mémorisé côté Android (stable, beta, test)
+function updateChannel() {
+    const c = call('getUpdateChannel');
+    return ['stable', 'beta', 'test'].includes(c) ? c : 'stable';
 }
 
 function call(fn, ...args) {
@@ -859,11 +865,15 @@ function renderSettings(focusKey) {
             <div class="set-label">Mise à jour Appteka TV</div>
             <div class="set-sub">Version installée : ${escapeHtml(String(call('installedUpdateVersion') || 'indisponible'))}</div>
             <div class="set-row" role="group" aria-label="Canal de mise à jour">
-                <button class="btn focusable" type="button" data-k="self-update-stable" data-act="self-update" data-channel="stable">Stable</button>
-                <button class="btn focusable" type="button" data-k="self-update-beta" data-act="self-update" data-channel="beta">Bêta</button>
-                <button class="btn focusable" type="button" data-k="self-update-test" data-act="self-update" data-channel="test">Test</button>
+                ${[['stable', 'Stable'], ['beta', 'Bêta'], ['test', 'Test']].map(([id, label]) => {
+                    const cur = updateChannel();
+                    return `<button type="button" class="chip-toggle focusable ${cur === id ? 'on' : ''}"
+                            data-k="self-update-${id}" data-act="self-update" data-channel="${id}" aria-pressed="${cur === id}">
+                        <span class="dot" aria-hidden="true"></span>${label}
+                    </button>`;
+                }).join('')}
             </div>
-            <div class="set-sub">Choisir un canal pour rechercher une mise à jour.</div>`)}
+            <div class="set-sub">Canal utilisé pour les mises à jour : clic sur le logo de l'accueil pour vérifier et installer.</div>`)}
         ${call('isTvDisplayForced') ? settingsSection('forcetv', 'Affichage TV forcé', `
             <div class="set-sub">Ce téléphone affiche l'interface TV. Réglage du téléphone : Forcer l'affichage TV.</div>
             <div class="set-row">
@@ -1014,9 +1024,10 @@ function onSettingsAction(b) {
         return;
     }
     if (b.dataset.act === 'self-update') {
+        // Gonzo 26/11 : les 3 boutons choisissent le canal (mémorisé) ; la vérification
+        // se fait dans la tuile du logo et au démarrage.
         const channel = ['stable', 'beta', 'test'].includes(b.dataset.channel) ? b.dataset.channel : 'stable';
-        settingsMsg = { text: 'Recherche de mise à jour (' + channel + ') lancée…', err: false };
-        call('checkSelfUpdate', channel);
+        call('setUpdateChannel', channel);
         renderSettings('self-update-' + channel);
         return;
     }
@@ -1205,7 +1216,7 @@ function updatePairButton() {
 
 function onHeaderEnter(el) {
     if (el === SEARCH_BOX) startEditing();
-    else if (el === BTN_FUN) { if (window.playGravitySplash) window.playGravitySplash(true); }
+    else if (el === BTN_FUN) { if (window.TvAbout) window.TvAbout.open(); else if (window.playGravitySplash) window.playGravitySplash(true); }
     else if (el === BTN_PAIR) call('tvLinkShowQr');
     else if (el === BTN_SCOPE) openPicker('search');
     else if (el === BTN_ADD) openPicker('rows');
@@ -1442,6 +1453,7 @@ window.onRemoteOpen = function (json) {
 // Retour (Gonzo 24/11) : depuis n'importe quel écran, retour direct à l'accueil.
 // Déjà sur l'accueil : renvoie false et Android gère le double appui pour quitter.
 window.onTvBack = function () {
+    if (window.TvAbout && window.TvAbout.close()) return true;
     let moved = false;
     if (!PAIR_MODAL.classList.contains('hidden')) { PAIR_MODAL.classList.add('hidden'); moved = true; }
     if (window.TvDetails && window.TvDetails.closeAll && window.TvDetails.closeAll()) moved = true;

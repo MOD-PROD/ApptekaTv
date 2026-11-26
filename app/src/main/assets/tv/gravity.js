@@ -1,10 +1,13 @@
 // Intro visuelle. Les éléments interactifs restent dans leur état d'origine.
-// force = true : lancé à la main (gélule du logo).
+// force = true : lancé à la main.
+// options.stay (Gonzo 26/11, clic sur le logo) : les éléments tombent et RESTENT en bas ;
+// options.onLanded(layer, pieces) est appelé une fois tout posé. Renvoie { close() }.
 // ATV (vraie TV, 24/11) : sur la box le splash ne se lançait pas. Le réglage Android
 // « Supprimer les animations » (ou une échelle d'animation à 0, courante sur les box)
 // donne prefers-reduced-motion: reduce dans la WebView, et l'intro était sautée.
 // Sur la TV, l'intro joue quand même (3 s, n'importe quelle touche la coupe).
-window.playGravitySplash = function (force) {
+window.playGravitySplash = function (force, options) {
+    const stay = !!(options && options.stay);
     if (!Element.prototype.animate) { console.log('[gravity] Web Animations indisponible'); return; }
     const tv = !document.documentElement.classList.contains('mobile');
     if (!force && !tv && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -55,6 +58,7 @@ window.playGravitySplash = function (force) {
     });
 
     let timer;
+    let closing = false;
     function finish() {
         clearTimeout(timer);
         screen.classList.remove('gravity-running');
@@ -69,14 +73,28 @@ window.playGravitySplash = function (force) {
 
     document.body.appendChild(layer);
     screen.classList.add('gravity-running');
+    for (const { piece, frames, delay } of animations) piece.animate(frames, { duration: 2300, delay, fill: 'both' });
+    if (stay) {
+        // setTimeout plutôt que Animation.finished (absent des vieilles WebView de box).
+        const end = Math.max(...animations.map(a => a.delay)) + 2300 + 60;
+        setTimeout(() => {
+            if (layer.isConnected && !closing && options.onLanded) options.onLanded(layer, animations.map(a => a.piece));
+        }, end);
+        return {
+            close() {
+                if (closing) return;
+                closing = true;
+                layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' });
+                setTimeout(finish, 260);
+            },
+        };
+    }
     window.addEventListener('keydown', skip, true);
     timer = setTimeout(finish, 3000);   // intro de 3 s au total
-    for (const { piece, frames, delay } of animations) {
-        piece.animate(frames, { duration: 2300, delay, fill: 'both' });
-    }
     setTimeout(() => {
         if (!layer.isConnected) return;
         screen.classList.remove('gravity-running');
         layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' });
     }, 2700);
+    return { close: finish };
 };
