@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_link_title">TV\'ye gönder</string>
+    <string name="tv_link_searching">Wi-Fi\'nizde Appteka TV aranıyor…</string>
+    <string name="tv_link_none_found">Appteka TV bulunamadı. Appteka TV\'nin televizyonda açık olduğundan ve her iki cihazın aynı Wi-Fi\'de olduğundan emin olun.</string>
+    <string name="tv_link_enter_address">TV adresini girin…</string>
+    <string name="tv_link_address_hint">Appteka TV ayarlarında gösterilen IP adresi (Telefon bağlantısı bölümü).</string>
+    <string name="tv_link_choose_tv">TV seçin</string>
+    <string name="tv_link_pair_title">%1$s ile eşleştir</string>
+    <string name="tv_link_pair_message">TV\'de gösterilen 4 haneli kodu girin.</string>
+    <string name="tv_link_bad_code">Yanlış veya süresi dolmuş kod, tekrar deneyin.</string>
+    <string name="tv_link_action_open">TV\'de uygulama sayfasını aç</string>
+    <string name="tv_link_action_install">TV\'ye yükle</string>
+    <string name="tv_link_send_title">%1$s → %2$s</string>
+    <string name="tv_link_sent">%1$s cihazına gönderildi</string>
+    <string name="tv_link_failed">TV isteği reddetti.</string>
+    <string name="tv_link_unreachable">Cihaza ulaşılamıyor. Appteka cihazda açık mı? İki cihaz aynı Wi-Fi ağına bağlı mı?</string>
+</resources>

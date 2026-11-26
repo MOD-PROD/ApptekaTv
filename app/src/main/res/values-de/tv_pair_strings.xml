@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_pair_title">Gerät koppeln</string>
+    <string name="tv_pair_scan">QR-Code scannen</string>
+    <string name="tv_pair_enter">Code eingeben</string>
+    <string name="tv_pair_confirm">Koppeln</string>
+    <string name="tv_pair_address_hint">Geräteadresse (IP:Port)</string>
+    <string name="tv_pair_code_hint">8-stelliger Code</string>
+    <string name="tv_pair_code_failed">Code falsch oder abgelaufen. Pairing auf dem anderen Gerät erneut öffnen.</string>
+    <string name="tv_pair_display_code">Pairing-Code: %1$s</string>
+    <string name="tv_pair_display_address">TV-Adresse: %1$s</string>
+    <string name="tv_link_paired_notice">Telefon gekoppelt: %1$s. Vergessen unter Einstellungen → Telefonverbindung, falls das nicht Sie waren.</string>
+    <string name="tv_pair_confirm_on_tv">Pairing auf dem TV akzeptieren…</string>
+    <string name="tv_pair_confirm_title">Dieses Telefon koppeln?</string>
+    <string name="tv_pair_confirm_message">%1$s möchte Appteka TV steuern. Nur akzeptieren, wenn es Ihr Telefon ist.</string>
+    <string name="tv_pair_confirm_accept">Akzeptieren</string>
+    <string name="tv_pair_confirm_refuse">Ablehnen</string>
+</resources>

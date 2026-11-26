@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tv_link_title">An TV senden</string>
+    <string name="tv_link_searching">Suche nach Appteka TV in Ihrem WLAN…</string>
+    <string name="tv_link_none_found">Kein Appteka TV gefunden. Stellen Sie sicher, dass Appteka TV auf dem Fernseher geöffnet ist und beide Geräte im selben WLAN sind.</string>
+    <string name="tv_link_enter_address">TV-Adresse eingeben…</string>
+    <string name="tv_link_address_hint">IP-Adresse aus den Appteka-TV-Einstellungen (Abschnitt Telefonverbindung).</string>
+    <string name="tv_link_choose_tv">TV auswählen</string>
+    <string name="tv_link_pair_title">Mit %1$s koppeln</string>
+    <string name="tv_link_pair_message">Geben Sie den 4-stelligen Code ein, der auf dem TV angezeigt wird.</string>
+    <string name="tv_link_bad_code">Falscher oder abgelaufener Code, erneut versuchen.</string>
+    <string name="tv_link_action_open">App-Seite auf dem TV öffnen</string>
+    <string name="tv_link_action_install">Auf dem TV installieren</string>
+    <string name="tv_link_send_title">%1$s → %2$s</string>
+    <string name="tv_link_sent">An %1$s gesendet</string>
+    <string name="tv_link_failed">Der TV hat die Anfrage abgelehnt.</string>
+    <string name="tv_link_unreachable">Gerät nicht erreichbar. Ist Appteka darauf geöffnet, im selben WLAN?</string>
+</resources>

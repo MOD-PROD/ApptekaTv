@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="atv_update_check">Nach Updates suchen</string>
+    <string name="atv_update_summary">%1$s — %2$s (%3$d) · Kanal %4$s</string>
+    <string name="atv_update_channel_title">Update-Kanal</string>
+    <string name="atv_channel_stable">Stabil</string>
+    <string name="atv_channel_beta">Beta</string>
+    <string name="atv_channel_test">Test</string>
+    <string name="atv_update_none">Kein Update verfügbar (%1$s)</string>
+    <string name="atv_update_title">%1$s — Update</string>
+    <string name="atv_update_versions">Installierte Version: %1$s\nVerfügbare Version: %2$s</string>
+    <string name="atv_update_later">Später</string>
+    <string name="atv_update_download">Herunterladen</string>
+    <string name="atv_update_check_failed">Update-Prüfung fehlgeschlagen (%1$s)</string>
+    <string name="atv_update_allow_install">Erlauben Sie %1$s die Installation von Apps und starten Sie das Update erneut.</string>
+    <string name="atv_update_allow">Erlauben</string>
+    <string name="atv_update_setting_unavailable">Einstellung nicht verfügbar</string>
+    <string name="atv_update_downloading">Wird heruntergeladen</string>
+    <string name="atv_update_failed">Download oder Prüfung fehlgeschlagen (%1$s)</string>
+    <string name="atv_update_install_failed">Installation fehlgeschlagen: %1$s</string>
+    <string name="atv_update_confirm">Bestätigen Sie die Installation im Android-Dialog, der sich öffnet.</string>
+    <string name="tv_connected_to">Verbunden mit %1$s</string>
+    <string name="tv_connected_back">TV verbunden: %1$s. Zurück zum Telefon.</string>
+    <string name="atv_internal_storage">Interner Speicher</string>
+    <string name="atv_force_tv_title">TV-Ansicht erzwingen</string>
+    <string name="atv_force_tv_summary">Zeigt die TV-Oberfläche auf diesem Telefon oder Tablet im Querformat. Zurück: TV-Einstellungen, Zurück zur Telefonansicht.</string>
+</resources>

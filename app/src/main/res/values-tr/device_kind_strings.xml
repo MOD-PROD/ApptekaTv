@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="device_kind_phone">Telefon</string>
+    <string name="device_kind_tablet">Tablet</string>
+    <string name="device_kind_tv">TV</string>
+    <string name="device_kind_box">Android TV kutusu</string>
+    <string name="device_kind_auto">Otomatik (%1$s)</string>
+    <string name="device_kind_this">Bu cihaz: %1$s</string>
+    <string name="device_kind_remote">%1$s: %2$s</string>
+    <string name="device_kind_hint">Cihaz seçmek için dokunun. Ayarları açmak için bağlı cihaza uzun basın.</string>
+    <string name="device_settings_icon">Simge</string>
+    <string name="device_settings_rename">Yeniden adlandır</string>
+    <string name="device_settings_delete">Sil</string>
+    <string name="device_delete_confirm">%1$s silinsin mi? Yeniden eşleştirmeniz gerekir.</string>
+    <string name="store_header">App Store - %1$s</string>
+    <string name="store_header_tv">TV App Store - %1$s</string>
+</resources>
