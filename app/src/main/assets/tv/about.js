@@ -102,15 +102,13 @@ window.TvAbout = (function () {
         renderedState = s;
         tile.innerHTML = `
             <img class="about-logo" src="logo-store.webp" alt="Appteka TV Store">
-            <div class="modal-title">À propos</div>
             <div class="about-line">Version installée : ${esc(version)}</div>
             <div class="about-line">Canal de mise à jour : ${esc(ch)}</div>
             <div class="about-status ${s === 'error' ? 'err' : ''}" aria-live="polite">${esc(status)}</div>
             ${progress}
-            <div class="modal-row about-actions">
-                ${buttons.map(([act, label, cls]) => `<button type="button" class="btn focusable ${cls || ''}" data-act="${act}">${esc(label)}</button>`).join('')}
-            </div>
-            <div class="about-hint">Le canal se choisit dans Paramètres › Mise à jour.</div>`;
+            <div class="modal-row about-actions" style="justify-content:center">
+                ${buttons.map(([act, label, cls]) => { const round = act === "check" || act === "close"; const glyph = act === "close" ? `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>` : `<svg viewBox="0 0 48 48" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M42 14A20 20 0 1 0 44 26M42 4v10H32"/><path d="M9 16l10-5 10 5-10 5zM9 16v13l10 5V21M29 16v5"/><path d="M24 28a8 8 0 0 1 16 0v9H24zM26 21l-2-3M38 21l2-3M29 26h.1M35 26h.1M32 30v5m-3-3 3 3 3-3"/></svg>`; return `<button type="button" class="btn focusable ${cls || ''}" data-act="${act}" aria-label="${esc(label)}" title="${esc(label)}" ${round ? 'style="border-radius:50%;width:64px;height:64px;min-width:64px;max-width:64px;flex:0 0 64px;padding:0;display:inline-flex;align-items:center;justify-content:center"' : ""}>${round ? glyph : esc(label)}</button>`; }).join('')}
+            </div>`;
         tile.querySelectorAll('button').forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
         const again = focusedAct && tile.querySelector(`[data-act="${focusedAct}"]`);
         (again || tile.querySelector('.btn.primary') || tile.querySelector('button')).focus();
