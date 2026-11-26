@@ -90,6 +90,8 @@ class InstalledPresenterUpdateTest {
         override fun showContent() = Unit
         override fun contentUpdated() = Unit
         override fun contentUpdated(position: Int) = Unit
+        // ATV : titre « Send to » (aucune TV associée dans ce test).
+        override fun setSendTarget(name: String?) = Unit
     }
 
     private val presenter = InstalledPresenterImpl(

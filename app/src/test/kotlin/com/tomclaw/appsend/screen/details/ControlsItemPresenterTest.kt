@@ -52,7 +52,8 @@ class ControlsItemPresenterTest {
         T::class.java.cast(
             Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, method, _ ->
                 calls += method.name
-                null
+                // ATV : showTvInstallButton renvoie un Boolean (pas de TV choisie ici → false).
+                if (method.returnType == java.lang.Boolean.TYPE) false else null
             }
         )
     )
