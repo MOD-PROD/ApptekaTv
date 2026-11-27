@@ -637,4 +637,6 @@
     <string name="install_failed_android_too_old">Cette appli nécessite une version plus récente d\'Android.</string>
     <string name="install_failed_app_too_old">Cette appli est trop ancienne pour ta version d\'Android.</string>
     <string name="install_action_free_space">Libérer de l\'espace</string>
+    <string name="tv_files_copy">Copier</string>
+    <string name="tv_files_paste">Coller ici</string>
 </resources>
