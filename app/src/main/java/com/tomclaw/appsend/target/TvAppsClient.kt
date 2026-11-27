@@ -106,6 +106,15 @@ class TvAppsClient(private val context: Context, val connection: TvLinkSender.Co
             )
         )
 
+    /** Déplace [paths] vers [destDir] sur la TV (Couper / Coller). */
+    fun fsMove(paths: List<String>, destDir: String): JSONObject {
+        val response = TvLink.request(
+            connection.address,
+            order("fs_move").put("paths", org.json.JSONArray(paths)).put("path", destDir),
+        )
+        return if (response.has("failedPaths")) response else checked(response)
+    }
+
     /** Copie le fichier [path] de la TV dans [sink]. */
     fun fsPull(path: String, sink: java.io.OutputStream, progress: (Long, Long) -> Unit): JSONObject =
         checked(TvLink.pull(connection.address, order("fs_pull").put("path", path), sink, progress, 0..TvFiles.MAX_FILE_BYTES))

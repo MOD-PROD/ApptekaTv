@@ -78,6 +78,8 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     private var entries: List<Entry> = emptyList()
     private val selected = LinkedHashSet<String>()
     private var clipboard: List<String> = emptyList()
+    /** "copy" ou "cut". */
+    private var clipboardMode: String = "copy"
     private var copying = false
     private var showHidden = false
     private var sort = SORT_NAME
@@ -115,6 +117,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         transferProgress = findViewById(R.id.tv_files_transfer_progress)
 
         clipboard = savedInstanceState?.getStringArrayList("clipboard") ?: emptyList()
+        clipboardMode = savedInstanceState?.getString("clipboardMode") ?: "copy"
         path = savedInstanceState?.getString(STATE_PATH)
         showHidden = savedInstanceState?.getBoolean(STATE_HIDDEN) ?: false
         sort = savedInstanceState?.getInt(STATE_SORT) ?: SORT_NAME
@@ -167,6 +170,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putStringArrayList("clipboard", ArrayList(clipboard))
+        outState.putString("clipboardMode", clipboardMode)
         outState.putString(STATE_PATH, path)
         outState.putBoolean(STATE_HIDDEN, showHidden)
         outState.putInt(STATE_SORT, sort)
@@ -267,13 +271,15 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         toolbar.menu.clear()
         if (selected.isNotEmpty()) {
             toolbar.inflateMenu(R.menu.tv_files_selection_menu)
-            toolbar.menu.add(0, MENU_COPY, 0, R.string.tv_files_copy).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            toolbar.menu.add(0, MENU_CUT, 0, R.string.tv_files_cut).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            toolbar.menu.add(0, MENU_COPY, 1, R.string.tv_files_copy).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
             toolbar.menu.findItem(R.id.tv_files_menu_download)?.isVisible = !backend.local
             toolbar.setNavigationOnClickListener { clearSelection() }
         } else {
             toolbar.inflateMenu(R.menu.tv_files_menu)
             if (clipboard.isNotEmpty()) {
-                toolbar.menu.add(0, MENU_PASTE, 0, R.string.tv_files_paste).apply {
+                val pasteLabel = if (clipboardMode == "cut") R.string.tv_files_paste_move else R.string.tv_files_paste
+                toolbar.menu.add(0, MENU_PASTE, 0, pasteLabel).apply {
                     isEnabled = writable && !copying
                     setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
                 }
@@ -293,9 +299,10 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     private fun onMenu(item: MenuItem): Boolean {
         when (item.itemId) {
-            MENU_COPY -> { clipboard = selected.toList(); clearSelection() }
+            MENU_CUT -> { clipboard = selected.toList(); clipboardMode = "cut"; clearSelection() }
+            MENU_COPY -> { clipboard = selected.toList(); clipboardMode = "copy"; clearSelection() }
             MENU_PASTE -> paste()
-            MENU_CLEAR_COPY -> { clipboard = emptyList(); showMenu() }
+            MENU_CLEAR_COPY -> { clipboard = emptyList(); clipboardMode = "copy"; showMenu() }
             R.id.tv_files_menu_volumes -> chooseRoot()
             R.id.tv_files_menu_mkdir -> askName(getString(R.string.tv_files_new_folder), "") { name ->
                 val dir = path ?: return@askName
@@ -327,15 +334,43 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         val dest = path ?: return
         if (!writable || copying || clipboard.isEmpty()) return
         val sources = clipboard.toList()
+        val mode = clipboardMode
         copying = true
         showMenu()
         refresh.isRefreshing = true
         background({
-            try { backend.copy(sources, dest) }
-            finally { runOnUiThread { copying = false; showMenu() } }
+            try {
+                if (mode == "cut") backend.move(sources, dest)
+                else backend.copy(sources, dest)
+            } finally {
+                runOnUiThread { copying = false; showMenu() }
+            }
         }) { response ->
             refresh.isRefreshing = false
-            if (response.optBoolean("ok")) clipboard = emptyList()
+            if (mode == "cut") {
+                val failed = response.optJSONArray("failedPaths")
+                if (failed != null && failed.length() > 0) {
+                    clipboard = (0 until failed.length()).map { failed.optString(it) }.filter { it.isNotEmpty() }
+                } else if (response.optBoolean("ok") ||
+                    (response.optInt("moved", 0) > 0 && response.optInt("failed", 0) == 0)
+                ) {
+                    clipboard = emptyList()
+                    clipboardMode = "copy"
+                }
+                if (!response.optBoolean("ok")) {
+                    val items = response.optJSONArray("items")
+                    val retained = (0 until (items?.length() ?: 0)).count {
+                        items?.optJSONObject(it)?.optBoolean("copied_not_deleted") == true
+                    }
+                    if (retained > 0) {
+                        toast(getString(R.string.tv_files_move_retained, retained))
+                    } else {
+                        showError(TvRemoteException(response.optString("error", "refused")))
+                    }
+                }
+            } else if (response.optBoolean("ok")) {
+                clipboard = emptyList()
+            }
             reload()
         }
     }
@@ -691,6 +726,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     }
 
     companion object {
+        private const val MENU_CUT = 0x7002
         private const val MENU_COPY = 0x7f0f7a01
         private const val MENU_PASTE = 0x7f0f7a02
         private const val MENU_CLEAR_COPY = 0x7f0f7a03
