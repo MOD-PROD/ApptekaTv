@@ -187,7 +187,7 @@ object TvLink {
         value.length in 1..200 && !value.startsWith(".") && value.none { it == '/' || it == '\\' || it < ' ' }
 
     /** ATV-09 : ordres « Fichiers » traités hors du verrou de la liaison (hors flux). */
-    internal val FS_TYPES = setOf("fs_access", "fs_list", "fs_mkdir", "fs_rename", "fs_delete", "fs_install")
+    internal val FS_TYPES = setOf("fs_access", "fs_list", "fs_mkdir", "fs_rename", "fs_delete", "fs_install", "fs_copy")
 
     /** Ordres « Downloaded » : traités hors du verrou de la liaison (lecture des archives). */
     /** ATV (compte Appteka de la TV depuis le téléphone) : la TV appelle le serveur Appteka avant de répondre. */
@@ -785,6 +785,15 @@ object TvLink {
                     TvFiles.delete(roots, paths).also { result ->
                         paths.take(20).forEach { log(entry.device, "delete", it) }
                         if (!result.optBoolean("ok")) Log.w(TAG, "fs_delete partial: ${result.optString("error")}")
+                    }
+                }
+                "fs_copy" -> {
+                    val array = msg.optJSONArray("paths") ?: return error("bad_request")
+                    if (array.length() !in 1..500) return error("bad_request")
+                    val paths = (0 until array.length()).map { array.optString(it) }
+                    TvFiles.copy(roots, paths, path).also { result ->
+                        paths.take(20).forEach { log(entry.device, "copy", it + " → " + path) }
+                        if (!result.optBoolean("ok")) Log.w(TAG, "fs_copy partial: ${result.optString("error")}")
                     }
                 }
                 "fs_install" -> {
