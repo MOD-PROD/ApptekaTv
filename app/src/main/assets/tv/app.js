@@ -771,6 +771,12 @@ function openSettings() {
 }
 
 function closeSettings() {
+    if (!IS_MOBILE && expandedSettings) {
+        const previous = expandedSettings;
+        expandedSettings = null;
+        renderSettings('section-' + previous);
+        return;
+    }
     SETTINGS.classList.add('hidden');
     BTN_SETTINGS.focus();
 }
@@ -886,6 +892,28 @@ function renderSettings(focusKey) {
             </button>
         </div>`;
 
+    if (!IS_MOBILE) {
+        const sections = Array.from(SETTINGS_PANEL.querySelectorAll(':scope > .set-section'));
+        const forced = sections.find(el => el.querySelector('[data-section="forcetv"]'));
+        const classic = sections.find(el => el.querySelector('[data-section="classic"]'));
+        if (forced && classic) {
+            const body = classic.querySelector('.set-section-body');
+            const extra = forced.querySelector('.set-section-body');
+            while (extra.firstChild) body.appendChild(extra.firstChild);
+            forced.remove();
+        }
+        const grid = document.createElement('div');
+        grid.className = 'settings-tile-grid';
+        const selected = expandedSettings && SETTINGS_PANEL.querySelector('[data-section="' + expandedSettings + '"]');
+        SETTINGS_PANEL.classList.toggle('settings-grid-home', !selected);
+        if (!selected) {
+            Array.from(SETTINGS_PANEL.querySelectorAll(':scope > .set-section')).forEach(el => grid.appendChild(el));
+            SETTINGS_PANEL.appendChild(grid);
+        } else {
+            const section = selected.closest('.set-section');
+            Array.from(SETTINGS_PANEL.querySelectorAll(':scope > .set-section')).forEach(el => { if (el !== section) el.hidden = true; });
+        }
+    } else SETTINGS_PANEL.classList.remove('settings-grid-home');
     SETTINGS_PANEL.querySelectorAll('input[data-k]').forEach(i => { if (values[i.dataset.k] != null) i.value = values[i.dataset.k]; });
     SETTINGS_PANEL.querySelectorAll('[data-act], [data-abi], [data-section], [data-skin], [data-accent], [data-bganim], [data-lang], [data-classic]').forEach(b => b.addEventListener('click', () => onSettingsAction(b)));
     SETTINGS_PANEL.querySelectorAll('form').forEach(f => f.addEventListener('submit', (e) => { e.preventDefault(); onSettingsSubmit(f.dataset.form); }));
