@@ -158,7 +158,13 @@ class TvWebActivity : AppCompatActivity() {
         setupWebView()
         webView.loadUrl("file:///android_asset/tv/index.html")
         if (isTv) startTvLink()
-        if (savedInstanceState == null) updateController.check(channel = com.tomclaw.appsend.update.UpdateChannel.get(this)) // canal choisi dans Paramètres
+        if (savedInstanceState == null) {
+            updateController.checkForTile(com.tomclaw.appsend.update.UpdateChannel.get(this)) { state ->
+                if (state["state"] == "available") {
+                    Toast.makeText(this, getString(R.string.atv_update_title, applicationInfo.loadLabel(packageManager).toString()) + " · " + state["versionName"] + " (" + state["versionCode"] + ")", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         handleInvite(intent)
     }
 
@@ -1004,7 +1010,7 @@ class TvWebActivity : AppCompatActivity() {
 
     inner class TvJsBridge {
         @JavascriptInterface
-        fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.check(manual = true, channel = channel.takeIf { it in setOf("stable", "beta", "test") } ?: "stable") }
+        fun checkSelfUpdate(channel: String): Unit = runOnUiThread { updateController.checkForTile(channel.takeIf { it in setOf("stable", "beta", "test") } ?: "stable") { js("onSelfUpdateState", it) } }
 
         /** Canal de mise à jour mémorisé (stable, beta, test), choisi dans Paramètres › Mise à jour. */
         @JavascriptInterface
