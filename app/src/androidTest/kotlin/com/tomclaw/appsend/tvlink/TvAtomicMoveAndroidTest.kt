@@ -15,7 +15,17 @@ class TvAtomicMoveAndroidTest {
     @Test
     fun movesTheOpenFileWithoutReplacingAnotherFile() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val root = File.createTempFile("atomic-move-", null, context.cacheDir).canonicalFile
+        checkMove(context.cacheDir)
+    }
+
+    @Test
+    fun movesWithinEmulatedExternalStorage() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        checkMove(checkNotNull(context.getExternalFilesDir(null)))
+    }
+
+    private fun checkMove(parent: File) {
+        val root = File.createTempFile("atomic-move-", null, parent).canonicalFile
         check(root.delete() && root.mkdir())
         try {
             val destination = File(root, "destination").apply { check(mkdir()) }
