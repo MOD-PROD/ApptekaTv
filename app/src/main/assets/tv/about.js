@@ -76,6 +76,18 @@ window.TvAbout = (function () {
         const version = android('installedUpdateVersion') || 'indisponible';
         const ch = CHANNEL_LABELS[state.channel] || CHANNEL_LABELS[channel()];
         const s = state.state;
+        if (s === 'downloading' && renderedState === s) {
+            const percent = Math.max(0, Math.min(100, Number(state.progress) || 0));
+            const bar = tile.querySelector('.about-bar');
+            const statusNode = tile.querySelector('.about-status');
+            const counter = tile.querySelector('[data-act="cancel"] span');
+            if (bar && statusNode && counter) {
+                bar.style.width = percent + '%';
+                statusNode.textContent = 'Téléchargement… ' + percent + ' %';
+                counter.textContent = percent + '%';
+                return;
+            }
+        }
         let status = '';
         let buttons = [];
         let progress = '';
