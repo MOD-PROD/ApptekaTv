@@ -639,7 +639,13 @@
     <string name="install_action_free_space">Libérer de l\'espace</string>
     <string name="tv_files_cut">Couper</string>
     <string name="tv_files_paste_move">Déplacer ici</string>
-    <string name="tv_files_move_retained">Suppression des sources incomplète. Copies vérifiées conservées : %1$d.</string>
+    <string name="tv_files_move_permission">Autorisation refusée. L’élément concerné reste en place.</string>
+    <string name="tv_files_move_cross_volume">Le déplacement entre deux volumes est indisponible. L’élément concerné reste en place.</string>
+    <string name="tv_files_move_no_space">Espace insuffisant pour déplacer l’élément. Il reste en place.</string>
+    <string name="tv_files_move_unsupported">Cet appareil ou ce stockage ne permet pas un déplacement sûr. L’élément concerné reste en place.</string>
+    <string name="tv_files_move_interrupted">Déplacement interrompu. Actualisez le dossier pour vérifier le résultat.</string>
+    <string name="tv_files_move_connection_lost">Connexion perdue. Actualisez les dossiers source et destination pour vérifier le résultat avant de réessayer.</string>
+    <string name="tv_files_move_failed">L’élément n’a pas pu être déplacé en toute sécurité. Actualisez le dossier pour vérifier le résultat.</string>
     <string name="tv_files_copy">Copier</string>
     <string name="tv_files_paste">Coller ici</string>
 </resources>

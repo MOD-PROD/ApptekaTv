@@ -46,6 +46,16 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" || echo "platform 37 indisponible, AGP tentera le téléchargement"
 
+      - name: Install native build tools
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724" "cmake;3.22.1"
+
+      - name: Build host implementation for filesystem unit tests
+        run: |
+          cc -shared -fPIC -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" \
+            app/src/main/cpp/atomic_move.c -o "$RUNNER_TEMP/libatv_move.so"
+          echo "ATV_MOVE_TEST_LIBRARY=$RUNNER_TEMP/libatv_move.so" >> "$GITHUB_ENV"
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 

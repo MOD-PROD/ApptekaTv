@@ -340,8 +340,13 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         refresh.isRefreshing = true
         background({
             try {
-                if (mode == "cut") backend.move(sources, dest)
-                else backend.copy(sources, dest)
+                if (mode == "cut") {
+                    try {
+                        backend.move(sources, dest)
+                    } catch (_: java.io.IOException) {
+                        throw TvRemoteException("move_connection_lost")
+                    }
+                } else backend.copy(sources, dest)
             } finally {
                 runOnUiThread { copying = false; showMenu() }
             }
@@ -358,15 +363,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
                     clipboardMode = "copy"
                 }
                 if (!response.optBoolean("ok")) {
-                    val items = response.optJSONArray("items")
-                    val retained = (0 until (items?.length() ?: 0)).count {
-                        items?.optJSONObject(it)?.optBoolean("copied_not_deleted") == true
-                    }
-                    if (retained > 0) {
-                        toast(getString(R.string.tv_files_move_retained, retained))
-                    } else {
-                        showError(TvRemoteException(response.optString("error", "refused")))
-                    }
+                    showError(TvRemoteException(response.optString("error", "move_failed")))
                 }
             } else if (response.optBoolean("ok")) {
                 clipboard = emptyList()
@@ -674,6 +671,13 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     }
 
     private fun describe(error: Throwable): String = when ((error as? TvRemoteException)?.code) {
+        "move_permission" -> getString(R.string.tv_files_move_permission)
+        "move_cross_volume" -> getString(R.string.tv_files_move_cross_volume)
+        "move_no_space" -> getString(R.string.tv_files_move_no_space)
+        "move_unsupported" -> getString(R.string.tv_files_move_unsupported)
+        "move_interrupted" -> getString(R.string.tv_files_move_interrupted)
+        "move_connection_lost" -> getString(R.string.tv_files_move_connection_lost)
+        "move_failed" -> getString(R.string.tv_files_move_failed)
         "read_only" -> getString(R.string.tv_files_read_only)
         "exists" -> getString(R.string.tv_files_exists)
         "storage" -> getString(R.string.tv_no_space, backend.name)

@@ -652,7 +652,13 @@
     <string name="install_action_free_space">Free up space</string>
     <string name="tv_files_cut">Cut</string>
     <string name="tv_files_paste_move">Move here</string>
-    <string name="tv_files_move_retained">Source removal incomplete. Verified copies kept: %1$d.</string>
+    <string name="tv_files_move_permission">Permission denied. The requested item remains in place.</string>
+    <string name="tv_files_move_cross_volume">Moving between storage volumes is unavailable. The requested item remains in place.</string>
+    <string name="tv_files_move_no_space">There is insufficient space to move the item. It remains in place.</string>
+    <string name="tv_files_move_unsupported">This device or storage does not support a safe move. The requested item remains in place.</string>
+    <string name="tv_files_move_interrupted">The move was interrupted. Refresh the folder to check the result.</string>
+    <string name="tv_files_move_connection_lost">Connection lost. Refresh the source and destination folders to check the result before retrying.</string>
+    <string name="tv_files_move_failed">The item could not be moved safely. Refresh the folder to check the result.</string>
     <string name="tv_files_copy">Copy</string>
     <string name="tv_files_paste">Paste here</string>
 </resources>

@@ -141,161 +141,93 @@ object TvFiles {
             .put("copied", copied).put("failed", failed).put("items", results)
     }
 
+    /** Moves each entry in one filesystem operation, without a copy/delete fallback. */
+    fun move(roots: List<File>, paths: List<String>, destDir: String): JSONObject =
+        move(roots, paths, destDir, TvAtomicMove::move)
 
-    /** Copie vérifiée avant suppression, pour un déplacement local ou distant. */
-    @Synchronized
-    fun move(roots: List<File>, paths: List<String>, destDir: String): JSONObject {
-        if (paths.isEmpty() || paths.size > 500) return error("bad_request")
-        val dest = movePath(roots, File(destDir)) ?: return error("bad_path")
-        if (!dest.isDirectory) return error("not_found")
-
-        val canonicalRoots = roots.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
-        val sources = paths.distinct().map { movePath(roots, File(it)) ?: return error("bad_path") }
-        if (sources.any { it in canonicalRoots }) return error("bad_path")
-
-        val destCanon = runCatching { dest.canonicalFile }.getOrNull() ?: return error("bad_path")
-        for (src in sources) {
-            val srcCanon = runCatching { src.canonicalFile }.getOrNull() ?: return error("bad_path")
-            if (srcCanon == destCanon || destCanon.path.startsWith(srcCanon.path + "/")) {
-                return error("bad_path")
-            }
-        }
-
-        val budget = intArrayOf(MAX_COPY)
-        var moved = 0
-        var failed = 0
-        val results = JSONArray()
-        val failedPaths = JSONArray()
-
-        for (source in sources) {
-            if (!source.exists()) {
-                failed++
-                failedPaths.put(source.path)
-                continue
-            }
-            if (source.parentFile?.canonicalFile == destCanon) {
-                moved++
-                results.put(JSONObject().put("from", source.path).put("to", source.path).put("name", source.name))
-                continue
-            }
-            val name = TvFsPaths.freeName(dest, source.name)
-            val target = File(dest, name)
-            val created = mutableListOf<File>()
-            val verified = mutableListOf<Pair<File, File>>()
-            val complete = runCatching {
-                TvFsPaths.validName(name) &&
-                    copyTree(source, target, roots, budget, created) &&
-                    verifyTree(source, target, roots, verified, intArrayOf(created.size))
-            }.getOrDefault(false)
-            if (!complete) {
-                for (file in created.asReversed()) {
-                    if (movePath(roots, file) != null) file.delete()
-                }
-                failed++
-                failedPaths.put(source.path)
-                continue
-            }
-
-            val item = JSONObject().put("from", source.path).put("to", target.path).put("name", name)
-            var deleted = 0
-            for ((from, to) in verified) {
-                // Recheck each entry before removing it. Never enumerate new entries for deletion.
-                val removed = runCatching {
-                    movePath(roots, from) != null && movePath(roots, to) != null &&
-                        (if (to.isDirectory) from.isDirectory && from.list()?.isEmpty() == true
-                         else sameContent(from, to)) && from.delete()
-                }.getOrDefault(false)
-                if (!removed) break
-                deleted++
-            }
-            if (deleted == verified.size) {
-                moved++
-            } else {
-                failed++
-                failedPaths.put(source.path)
-                item.put("copied_not_deleted", true).put("deletedEntries", deleted)
-            }
-            results.put(item)
-        }
-
-        val response = if (failed == 0) ok().put("moved", moved).put("items", results)
-        else error(if (budget[0] <= 0) "too_many" else "read_only")
-            .put("moved", moved).put("failed", failed).put("items", results)
-        if (failedPaths.length() > 0) response.put("failedPaths", failedPaths)
-        return response
-    }
-
-    private fun movePath(roots: List<File>, file: File): File? =
-        TvFsPaths.resolve(roots, file.path)?.takeIf { it == file.absoluteFile }
-
-    private fun verifyTree(
-        source: File,
-        target: File,
+    internal fun move(
         roots: List<File>,
-        verified: MutableList<Pair<File, File>>,
-        budget: IntArray,
-    ): Boolean {
-        if (--budget[0] < 0 || movePath(roots, source) == null || movePath(roots, target) == null) return false
-        if (source.isDirectory) {
-            val children = source.listFiles() ?: return false
-            val targets = target.listFiles()?.associateBy { it.name } ?: return false
-            if (children.size != targets.size) return false
-            for (child in children) {
-                val counterpart = targets[child.name] ?: return false
-                if (!verifyTree(child, counterpart, roots, verified, budget)) return false
+        paths: List<String>,
+        destDir: String,
+        rename: (File, File) -> String?,
+    ): JSONObject {
+        if (paths.isEmpty() || paths.size > 500) return error("bad_request")
+        val dest = movePath(roots, destDir) ?: return error("bad_path")
+        if (!dest.isDirectory) return error("not_found")
+        val canonicalRoots = roots.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
+        val items = JSONArray()
+        val failedPaths = JSONArray()
+        var firstError: String? = null
+        var moved = 0
+        for (path in paths.distinct()) {
+            val source = movePath(roots, path)
+            val problem = when {
+                source == null -> "bad_path"
+                !source.exists() -> "not_found"
+                source.name.endsWith(PART_SUFFIX) || TvFsPaths.inside(source, dest) -> "bad_path"
+                canonicalRoots.any { root ->
+                    val android = File(root, "Android")
+                    TvFsPaths.inside(source, root) || TvFsPaths.inside(source, android) ||
+                        (source.parentFile == root && source.name.equals("Android", ignoreCase = true))
+                } -> "bad_path"
+                else -> null
             }
-        } else if (!sameContent(source, target)) {
-            return false
-        }
-        verified.add(source to target)
-        return true
-    }
-
-    private fun sameContent(source: File, target: File): Boolean {
-        if (!source.isFile || !target.isFile || source.length() != target.length()) return false
-        val length = source.length()
-        val modified = source.lastModified()
-        return digest(source, length).contentEquals(digest(target, length)) &&
-            source.length() == length && target.length() == length && source.lastModified() == modified
-    }
-
-    private fun digest(file: File, length: Long): ByteArray {
-        require(length in 0..MAX_FILE_BYTES)
-        val hash = java.security.MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(65536)
-            var remaining = length
-            while (remaining > 0) {
-                val count = input.read(buffer, 0, minOf(remaining, buffer.size.toLong()).toInt())
-                check(count > 0)
-                hash.update(buffer, 0, count)
-                remaining -= count
+            val item = JSONObject().put("from", path)
+            val failure = if (problem != null || source == null) problem ?: "bad_path"
+            else if (source.parentFile == dest) {
+                item.put("to", source.path).put("name", source.name)
+                null
+            } else {
+                moveToFreeName(roots, source, dest, rename, item)
             }
-            check(input.read() == -1)
+            if (failure == null) moved++ else {
+                if (firstError == null) firstError = failure
+                failedPaths.put(path)
+                item.put("error", failure)
+            }
+            items.put(item)
         }
-        return hash.digest()
+        val response = firstError?.let { error(it).put("failedPaths", failedPaths).put("failed", failedPaths.length()) } ?: ok()
+        return response.put("moved", moved).put("items", items)
     }
 
-    private fun copyTree(source: File, target: File, roots: List<File>, budget: IntArray, created: MutableList<File>? = null, depth: Int = 0): Boolean {
+    private fun moveToFreeName(
+        roots: List<File>,
+        source: File,
+        dest: File,
+        rename: (File, File) -> String?,
+        item: JSONObject,
+    ): String? {
+        val collisions = mutableSetOf<String>()
+        repeat(16) {
+            val name = TvFsPaths.freeName(dest, source.name) { it.exists() || it.name in collisions }
+            val target = File(dest, name)
+            if (!TvFsPaths.validName(name) || movePath(roots, target.path) == null) return "bad_path"
+            val error = rename(source, target)
+            if (error == null) item.put("to", target.path).put("name", name)
+            if (error != "exists") return error
+            collisions.add(name)
+        }
+        return "exists"
+    }
+
+    private fun movePath(roots: List<File>, path: String): File? =
+        TvFsPaths.resolve(roots, path)?.takeIf { it == File(path).absoluteFile }
+
+    private fun copyTree(source: File, target: File, roots: List<File>, budget: IntArray): Boolean {
         if (--budget[0] < 0) return false
-        if (created != null && (depth > 128 || source.name.endsWith(PART_SUFFIX) ||
-                movePath(roots, source) == null || movePath(roots, target) == null)
-        ) return false
         // Sécurité : le chemin cible doit rester sous une racine.
         if (TvFsPaths.resolve(roots, target.path) == null) return false
 
         if (source.isDirectory) {
             if (isSymlink(source)) return false
-            if (created != null) {
-                if (!target.mkdir()) return false
-                created.add(target)
-            } else if (!target.exists() && !target.mkdir()) return false
+            if (!target.exists() && !target.mkdir()) return false
             if (!target.isDirectory) return false
             val children = source.listFiles() ?: return false
             for (child in children) {
-                if (created == null && child.name.endsWith(PART_SUFFIX)) continue
+                if (child.name.endsWith(PART_SUFFIX)) continue
                 val childTarget = File(target, child.name)
-                if (!copyTree(child, childTarget, roots, budget, created, depth + 1)) return false
+                if (!copyTree(child, childTarget, roots, budget)) return false
             }
             return true
         }
@@ -306,32 +238,15 @@ object TvFiles {
         if (target.parentFile?.usableSpace ?: 0L < source.length() + SPACE_MARGIN) return false
 
         return try {
-            if (created != null) {
-                if (!target.createNewFile()) return false
-                created.add(target)
-            }
             FileInputStream(source).use { input ->
                 FileOutputStream(target).use { output ->
-                    if (created == null) {
-                        input.copyTo(output)
-                    } else {
-                        val buffer = ByteArray(65536)
-                        var remaining = source.length()
-                        require(remaining in 0..MAX_FILE_BYTES)
-                        while (remaining > 0) {
-                            val count = input.read(buffer, 0, minOf(remaining, buffer.size.toLong()).toInt())
-                            check(count > 0)
-                            output.write(buffer, 0, count)
-                            remaining -= count
-                        }
-                        check(input.read() == -1)
-                    }
+                    input.copyTo(output)
                     output.fd.sync()
                 }
             }
             true
         } catch (_: Exception) {
-            if (created == null) target.delete()
+            target.delete()
             false
         }
     }
