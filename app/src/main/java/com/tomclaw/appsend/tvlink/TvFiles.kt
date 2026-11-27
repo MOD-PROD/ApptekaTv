@@ -123,9 +123,10 @@ object TvFiles {
                 continue
             }
             val name = TvFsPaths.freeName(dest, source.name)
-            val target = TvFsPaths.resolve(roots, File(dest, name).path) ?: run {
+            val target = TvFsPaths.resolve(roots, File(dest, name).path)
+            if (target == null) {
                 failed++
-                return@for
+                continue
             }
             if (copyTree(source, target, roots, budget)) {
                 copied++
