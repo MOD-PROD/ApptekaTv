@@ -165,3 +165,11 @@ html:not(.mobile) #settings-panel .set-section-body:not([hidden]) {
 .about-hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
 .glass-light .about-status.err, .neu-skin .about-status.err { color: #b91c1c; }
 .glass-light .about-bar, .neu-skin .about-bar { background: var(--accent-ink, var(--accent)); }
+
+/* Fixed TV settings dashboard: two columns, four rows. */
+html:not(.mobile) #settings-panel.settings-grid-home { display:flex; flex-direction:column; height:90vh; max-height:90vh; box-sizing:border-box; overflow:hidden; }
+html:not(.mobile) .settings-tile-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(4,minmax(0,1fr)); gap:12px; flex:1 1 0; min-height:0; padding:6px; }
+html:not(.mobile) .settings-tile-grid > .set-section { margin:0; padding:0; min-height:0; min-width:0; display:flex; }
+html:not(.mobile) .settings-tile-grid > .set-section > button { width:100%; height:100%; min-height:0; box-sizing:border-box; justify-content:center; text-align:center; white-space:normal; }
+html:not(.mobile) .settings-tile-grid .set-disclosure > span { display:none; }
+html:not(.mobile) .settings-tile-grid .set-section-body { display:none; }
