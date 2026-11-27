@@ -108,7 +108,7 @@ window.TvAbout = (function () {
             status = state.phase === 'download' ? `Téléchargement impossible (${state.code})` : `Vérification impossible (${state.code})`;
             buttons = [[state.phase === 'download' ? 'install' : 'check', 'Réessayer']];
         }
-        buttons.push(['close', 'Fermer']);
+        // La touche Retour ferme la tuile ; aucun bouton de fermeture supplémentaire.
         // Même état (progression) : le focus reste sur le même bouton ; nouvel état : bouton principal.
         const focusedAct = s === renderedState && tile.contains(document.activeElement) ? document.activeElement.dataset.act : null;
         renderedState = s;
@@ -123,7 +123,7 @@ window.TvAbout = (function () {
             </div>`;
         tile.querySelectorAll('button').forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
         const again = focusedAct && tile.querySelector(`[data-act="${focusedAct}"]`);
-        (again || tile.querySelector('.btn.primary') || tile.querySelector('button')).focus();
+        (again || tile.querySelector('.btn.primary') || tile.querySelector('button'))?.focus();
     }
 
     function act(a) {
