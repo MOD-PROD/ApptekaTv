@@ -77,6 +77,8 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     private var writable = false
     private var entries: List<Entry> = emptyList()
     private val selected = LinkedHashSet<String>()
+    private var clipboard: List<String> = emptyList()
+    private var copying = false
     private var showHidden = false
     private var sort = SORT_NAME
     private val adapter = FilesAdapter()
@@ -112,6 +114,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         transferText = findViewById(R.id.tv_files_transfer_text)
         transferProgress = findViewById(R.id.tv_files_transfer_progress)
 
+        clipboard = savedInstanceState?.getStringArrayList("clipboard") ?: emptyList()
         path = savedInstanceState?.getString(STATE_PATH)
         showHidden = savedInstanceState?.getBoolean(STATE_HIDDEN) ?: false
         sort = savedInstanceState?.getInt(STATE_SORT) ?: SORT_NAME
@@ -163,6 +166,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+        outState.putStringArrayList("clipboard", ArrayList(clipboard))
         outState.putString(STATE_PATH, path)
         outState.putBoolean(STATE_HIDDEN, showHidden)
         outState.putInt(STATE_SORT, sort)
@@ -232,6 +236,7 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         retry.isVisible = false
         message.text = getString(R.string.tv_files_empty)
         upload.isVisible = writable
+        showMenu()
         updateTitle()
     }
 
@@ -262,10 +267,18 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
         toolbar.menu.clear()
         if (selected.isNotEmpty()) {
             toolbar.inflateMenu(R.menu.tv_files_selection_menu)
+            toolbar.menu.add(0, MENU_COPY, 0, R.string.tv_files_copy).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
             toolbar.menu.findItem(R.id.tv_files_menu_download)?.isVisible = !backend.local
             toolbar.setNavigationOnClickListener { clearSelection() }
         } else {
             toolbar.inflateMenu(R.menu.tv_files_menu)
+            if (clipboard.isNotEmpty()) {
+                toolbar.menu.add(0, MENU_PASTE, 0, R.string.tv_files_paste).apply {
+                    isEnabled = writable && !copying
+                    setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+                }
+                toolbar.menu.add(0, MENU_CLEAR_COPY, 1, android.R.string.cancel).isEnabled = !copying
+            }
             toolbar.menu.findItem(R.id.tv_files_menu_hidden)?.isChecked = showHidden
             toolbar.menu.findItem(
                 when (sort) {
@@ -280,6 +293,9 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
 
     private fun onMenu(item: MenuItem): Boolean {
         when (item.itemId) {
+            MENU_COPY -> { clipboard = selected.toList(); clearSelection() }
+            MENU_PASTE -> paste()
+            MENU_CLEAR_COPY -> { clipboard = emptyList(); showMenu() }
             R.id.tv_files_menu_volumes -> chooseRoot()
             R.id.tv_files_menu_mkdir -> askName(getString(R.string.tv_files_new_folder), "") { name ->
                 val dir = path ?: return@askName
@@ -305,6 +321,23 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
             else -> return false
         }
         return true
+    }
+
+    private fun paste() {
+        val dest = path ?: return
+        if (!writable || copying || clipboard.isEmpty()) return
+        val sources = clipboard.toList()
+        copying = true
+        showMenu()
+        refresh.isRefreshing = true
+        background({
+            try { backend.copy(sources, dest) }
+            finally { runOnUiThread { copying = false; showMenu() } }
+        }) { response ->
+            refresh.isRefreshing = false
+            if (response.optBoolean("ok")) clipboard = emptyList()
+            reload()
+        }
     }
 
     private fun chooseRoot() {
@@ -658,6 +691,9 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
     }
 
     companion object {
+        private const val MENU_COPY = 0x7f0f7a01
+        private const val MENU_PASTE = 0x7f0f7a02
+        private const val MENU_CLEAR_COPY = 0x7f0f7a03
         private const val STATE_PATH = "path"
         private const val STATE_HIDDEN = "hidden"
         private const val STATE_SORT = "sort"
