@@ -343,6 +343,8 @@ class TvFilesActivity : AppCompatActivity(), TvFileTransfers.Listener {
                 if (mode == "cut") {
                     try {
                         backend.move(sources, dest)
+                    } catch (error: TvRemoteException) {
+                        throw error
                     } catch (_: java.io.IOException) {
                         throw TvRemoteException("move_connection_lost")
                     }
