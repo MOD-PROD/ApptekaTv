@@ -46,6 +46,16 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" || echo "platform 37 indisponible, AGP tentera le téléchargement"
 
+      - name: Install native build tools
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.3.13750724" "cmake;3.22.1"
+
+      - name: Build host implementation for filesystem unit tests
+        run: |
+          cc -shared -fPIC -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" \
+            app/src/main/cpp/atomic_move.c -o "$RUNNER_TEMP/libatv_move.so"
+          echo "ATV_MOVE_TEST_LIBRARY=$RUNNER_TEMP/libatv_move.so" >> "$GITHUB_ENV"
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
@@ -64,6 +74,23 @@ jobs:
 
       - name: Build debug APK
         run: ./gradlew assembleStandardDebug --stacktrace
+
+      - name: Enable emulator acceleration
+        if: github.ref == 'refs/heads/atv/files-cut-paste-integration'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Check atomic moves on Android
+        if: github.ref == 'refs/heads/atv/files-cut-paste-integration'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: ./gradlew connectedStandardDebugAndroidTest --stacktrace
 
       - name: Find APK
         id: apk

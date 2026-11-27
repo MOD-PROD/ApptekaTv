@@ -3,6 +3,8 @@ package com.tomclaw.appsend.tvlink
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 /**
  * ATV-09 (fichiers à distance) : opérations sur les fichiers de la TV, en java.io pur.
@@ -14,6 +16,7 @@ object TvFiles {
     const val MAX_FILE_BYTES = 64L * 1024 * 1024 * 1024
     private const val MAX_ENTRIES = 5000
     private const val MAX_DELETE = 20_000
+    private const val MAX_COPY = 20_000
     private const val SPACE_MARGIN = 20L * 1024 * 1024
     const val PART_SUFFIX = ".atvpart"
 
@@ -83,6 +86,169 @@ object TvFiles {
             file.listFiles()?.forEach { if (!deleteTree(it, budget)) return false }
         }
         return file.delete()
+    }
+
+    /**
+     * Copie native sur la TV de [paths] vers le dossier [destDir].
+     * Gère fichiers et dossiers (récursif), doublons via freeName, budget d'éléments.
+     * Refuse de copier une racine ou un chemin qui sortirait des racines autorisées.
+     */
+    fun copy(roots: List<File>, paths: List<String>, destDir: String): JSONObject {
+        if (paths.isEmpty() || paths.size > 500) return error("bad_request")
+        val dest = TvFsPaths.resolve(roots, destDir) ?: return error("bad_path")
+        if (!dest.isDirectory) return error("not_found")
+        if (!dest.canWrite()) return error("read_only")
+
+        val canonicalRoots = roots.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
+        val sources = paths.map { TvFsPaths.resolve(roots, it) ?: return error("bad_path") }
+        if (sources.any { it in canonicalRoots }) return error("bad_path")
+
+        // Empêcher de copier un dossier dans lui-même ou un de ses descendants.
+        val destCanon = runCatching { dest.canonicalFile }.getOrNull() ?: return error("bad_path")
+        for (src in sources) {
+            val srcCanon = runCatching { src.canonicalFile }.getOrNull() ?: return error("bad_path")
+            if (srcCanon == destCanon || destCanon.path.startsWith(srcCanon.path + "/")) {
+                return error("bad_path")
+            }
+        }
+
+        val budget = intArrayOf(MAX_COPY)
+        var copied = 0
+        var failed = 0
+        val results = JSONArray()
+
+        for (source in sources) {
+            if (!source.exists()) {
+                failed++
+                continue
+            }
+            val name = TvFsPaths.freeName(dest, source.name)
+            val target = TvFsPaths.resolve(roots, File(dest, name).path)
+            if (target == null) {
+                failed++
+                continue
+            }
+            if (copyTree(source, target, roots, budget)) {
+                copied++
+                results.put(JSONObject().put("from", source.path).put("to", target.path).put("name", name))
+            } else {
+                failed++
+            }
+        }
+
+        return if (failed == 0) ok().put("copied", copied).put("items", results)
+        else error(if (budget[0] <= 0) "too_many" else "read_only")
+            .put("copied", copied).put("failed", failed).put("items", results)
+    }
+
+    /** Moves each entry in one filesystem operation, without a copy/delete fallback. */
+    fun move(roots: List<File>, paths: List<String>, destDir: String): JSONObject =
+        move(roots, paths, destDir, TvAtomicMove::move)
+
+    internal fun move(
+        roots: List<File>,
+        paths: List<String>,
+        destDir: String,
+        rename: (File, File) -> String?,
+    ): JSONObject {
+        if (paths.isEmpty() || paths.size > 500) return error("bad_request")
+        val dest = movePath(roots, destDir) ?: return error("bad_path")
+        if (!dest.isDirectory) return error("not_found")
+        val canonicalRoots = roots.mapNotNull { runCatching { it.canonicalFile }.getOrNull() }
+        val items = JSONArray()
+        val failedPaths = JSONArray()
+        var firstError: String? = null
+        var moved = 0
+        for (path in paths.distinct()) {
+            val source = movePath(roots, path)
+            val problem = when {
+                source == null -> "bad_path"
+                !source.exists() -> "not_found"
+                source.name.endsWith(PART_SUFFIX) || TvFsPaths.inside(source, dest) -> "bad_path"
+                canonicalRoots.any { root ->
+                    val android = File(root, "Android")
+                    TvFsPaths.inside(source, root) || TvFsPaths.inside(source, android) ||
+                        (source.parentFile == root && source.name.equals("Android", ignoreCase = true))
+                } -> "bad_path"
+                else -> null
+            }
+            val item = JSONObject().put("from", path)
+            val failure = if (problem != null || source == null) problem ?: "bad_path"
+            else if (source.parentFile == dest) {
+                item.put("to", source.path).put("name", source.name)
+                null
+            } else {
+                moveToFreeName(roots, source, dest, rename, item)
+            }
+            if (failure == null) moved++ else {
+                if (firstError == null) firstError = failure
+                failedPaths.put(path)
+                item.put("error", failure)
+            }
+            items.put(item)
+        }
+        val response = firstError?.let { error(it).put("failedPaths", failedPaths).put("failed", failedPaths.length()) } ?: ok()
+        return response.put("moved", moved).put("items", items)
+    }
+
+    private fun moveToFreeName(
+        roots: List<File>,
+        source: File,
+        dest: File,
+        rename: (File, File) -> String?,
+        item: JSONObject,
+    ): String? {
+        val collisions = mutableSetOf<String>()
+        repeat(16) {
+            val name = TvFsPaths.freeName(dest, source.name) { it.exists() || it.name in collisions }
+            val target = File(dest, name)
+            if (!TvFsPaths.validName(name) || movePath(roots, target.path) == null) return "bad_path"
+            val error = rename(source, target)
+            if (error == null) item.put("to", target.path).put("name", name)
+            if (error != "exists") return error
+            collisions.add(name)
+        }
+        return "exists"
+    }
+
+    private fun movePath(roots: List<File>, path: String): File? =
+        TvFsPaths.resolve(roots, path)?.takeIf { it == File(path).absoluteFile }
+
+    private fun copyTree(source: File, target: File, roots: List<File>, budget: IntArray): Boolean {
+        if (--budget[0] < 0) return false
+        // Sécurité : le chemin cible doit rester sous une racine.
+        if (TvFsPaths.resolve(roots, target.path) == null) return false
+
+        if (source.isDirectory) {
+            if (isSymlink(source)) return false
+            if (!target.exists() && !target.mkdir()) return false
+            if (!target.isDirectory) return false
+            val children = source.listFiles() ?: return false
+            for (child in children) {
+                if (child.name.endsWith(PART_SUFFIX)) continue
+                val childTarget = File(target, child.name)
+                if (!copyTree(child, childTarget, roots, budget)) return false
+            }
+            return true
+        }
+
+        // Fichier
+        if (!source.isFile || !source.canRead()) return false
+        if (source.length() > MAX_FILE_BYTES) return false
+        if (target.parentFile?.usableSpace ?: 0L < source.length() + SPACE_MARGIN) return false
+
+        return try {
+            FileInputStream(source).use { input ->
+                FileOutputStream(target).use { output ->
+                    input.copyTo(output)
+                    output.fd.sync()
+                }
+            }
+            true
+        } catch (_: Exception) {
+            target.delete()
+            false
+        }
     }
 
     /** Lien symbolique : son chemin canonique diffère de celui de son nom dans le dossier parent. */

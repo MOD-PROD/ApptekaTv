@@ -92,4 +92,163 @@ class TvFilesTest {
         assertEquals("not_found", TvFiles.readable(roots, "${root.path}/Movies").second!!.getString("error"))
         assertEquals("bad_path", TvFiles.readable(roots, "${outside.path}/keep.txt").second!!.getString("error"))
     }
+
+    @Test
+    fun `move preserves nested files empty files and existing destination`() {
+        requireNativeMove()
+        val roots = setUp()
+        val destination = File(root, "Destination").apply { mkdir() }
+        File(destination, "Movies").apply { mkdir() }
+        File(destination, "Movies/keep").writeText("keep")
+        val source = File(root, "Movies")
+        File(source, "Nested").apply { mkdir() }
+        File(source, "Nested/empty").writeBytes(byteArrayOf())
+        val other = File(root, ".hidden")
+
+        val result = TvFiles.move(roots, listOf(source.path, other.path), destination.path)
+
+        assertEquals(2, result.getInt("moved"))
+        assertFalse(source.exists())
+        assertFalse(other.exists())
+        assertEquals("keep", File(destination, "Movies/keep").readText())
+        assertEquals("film", File(destination, "Movies (1)/film.mkv").readText())
+        assertTrue(File(destination, "Movies (1)/Nested/empty").isFile)
+        assertEquals(0L, File(destination, "Movies (1)/Nested/empty").length())
+        assertEquals("h", File(destination, ".hidden").readText())
+    }
+
+    @Test
+    fun `same directory is unchanged and descendant is refused`() {
+        val roots = setUp()
+        val directory = File(root, "Movies")
+        assertEquals(1, TvFiles.move(roots, listOf(directory.path), root.path).getInt("moved"))
+        assertFalse(File(root, "Movies (1)").exists())
+        val child = File(directory, "nested").apply { mkdir() }
+        assertEquals("bad_path", TvFiles.move(roots, listOf(directory.path), child.path).getString("error"))
+        assertEquals("film", File(directory, "film.mkv").readText())
+    }
+
+    @Test
+    fun `move keeps failed sources and does not remove an existing collision`() {
+        requireNativeMove()
+        val roots = setUp()
+        val destination = File(root, "Destination").apply { mkdir() }
+        val source = File(root, "Movies")
+        val part = File(source, ".incoming.atvpart").apply { writeText("unfinished") }
+        File(destination, "Movies").apply { mkdir() }
+        File(destination, "Movies/keep").writeText("keep")
+        val other = File(root, ".hidden")
+
+        val result = TvFiles.move(roots, listOf(part.path, other.path), destination.path)
+
+        assertFalse(result.getBoolean("ok"))
+        assertEquals(1, result.getInt("moved"))
+        assertEquals(part.path, result.getJSONArray("failedPaths").getString(0))
+        assertEquals("unfinished", File(source, ".incoming.atvpart").readText())
+        assertEquals("film", File(source, "film.mkv").readText())
+        assertEquals("keep", File(destination, "Movies/keep").readText())
+        assertFalse(File(destination, "Movies (1)").exists())
+    }
+
+    @Test
+    fun `move preserves nested links without following them and refuses directly addressed links`() {
+        requireNativeMove()
+        val roots = setUp()
+        val destination = File(root, "Destination").apply { mkdir() }
+        val source = File(root, "Movies")
+        val link = File(source, "alias")
+        Files.createSymbolicLink(link.toPath(), File(root, ".hidden").toPath())
+
+        assertEquals("bad_path", TvFiles.move(roots, listOf(link.path), destination.path).getString("error"))
+        assertTrue(TvFiles.move(roots, listOf(source.path), destination.path).getBoolean("ok"))
+        assertEquals("h", File(root, ".hidden").readText())
+        assertTrue(Files.isSymbolicLink(File(destination, "Movies/alias").toPath()))
+    }
+
+    @Test
+    fun `destination created after choosing a name survives a competing move`() {
+        requireNativeMove()
+        val roots = setUp()
+        val source = File(root, "Movies/film.mkv")
+        val destination = File(root, "Destination").apply { mkdir() }
+        var first = true
+
+        val result = TvFiles.move(roots, listOf(source.path), destination.path) { from, to ->
+            if (first) {
+                first = false
+                val writer = Thread { to.writeText("concurrent") }
+                writer.start()
+                writer.join()
+            }
+            TvAtomicMove.move(from, to)
+        }
+
+        assertTrue(result.getBoolean("ok"))
+        assertEquals("concurrent", File(destination, "film.mkv").readText())
+        assertEquals("film", File(destination, "film (1).mkv").readText())
+        assertFalse(source.exists())
+    }
+
+    @Test
+    fun `an open writer continues writing to the moved inode`() {
+        requireNativeMove()
+        val roots = setUp()
+        val source = File(root, "Movies/film.mkv")
+        java.io.FileOutputStream(source, true).use { writer ->
+            assertTrue(TvFiles.move(roots, listOf(source.path), root.path).getBoolean("ok"))
+            writer.write("-concurrent".toByteArray())
+        }
+        assertEquals("film-concurrent", File(root, "film.mkv").readText())
+        assertFalse(source.exists())
+    }
+
+    @Test
+    fun `permission space and interruption errors never trigger a copy or deletion`() {
+        val roots = setUp()
+        val source = File(root, "Movies/film.mkv")
+        for (failure in listOf("move_permission", "move_no_space", "move_interrupted", "move_cross_volume")) {
+            val result = TvFiles.move(roots, listOf(source.path), root.path) { _, _ -> failure }
+            assertEquals(failure, result.getString("error"))
+            assertEquals(source.path, result.getJSONArray("failedPaths").getString(0))
+            assertEquals("film", source.readText())
+            assertFalse(File(root, source.name).exists())
+        }
+    }
+
+    @Test
+    fun `native permission denial keeps the source`() {
+        requireNativeMove()
+        org.junit.Assume.assumeTrue(System.getProperty("user.name") != "root")
+        val roots = setUp()
+        val source = File(root, "Movies/film.mkv")
+        val destination = File(root, "Destination").apply { mkdir() }
+        assertTrue(destination.setWritable(false))
+        try {
+            val result = TvFiles.move(roots, listOf(source.path), destination.path)
+            assertEquals("move_permission", result.getString("error"))
+            assertEquals("film", source.readText())
+            assertFalse(File(destination, source.name).exists())
+        } finally {
+            destination.setWritable(true)
+        }
+    }
+
+    @Test
+    fun `interrupted worker leaves source and destination intact`() {
+        requireNativeMove()
+        val roots = setUp()
+        val source = File(root, "Movies/film.mkv")
+        Thread.currentThread().interrupt()
+        try {
+            assertEquals("move_interrupted", TvFiles.move(roots, listOf(source.path), root.path).getString("error"))
+        } finally {
+            Thread.interrupted()
+        }
+        assertEquals("film", source.readText())
+        assertFalse(File(root, source.name).exists())
+    }
+
+    private fun requireNativeMove() {
+        org.junit.Assume.assumeTrue(System.getenv("ATV_MOVE_TEST_LIBRARY") != null)
+    }
 }

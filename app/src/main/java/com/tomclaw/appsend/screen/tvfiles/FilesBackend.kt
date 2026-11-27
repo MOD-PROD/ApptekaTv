@@ -26,6 +26,8 @@ interface FilesBackend {
     fun rename(path: String, name: String): JSONObject
     fun delete(paths: List<String>): JSONObject
     fun install(path: String): JSONObject
+    fun copy(paths: List<String>, destDir: String): JSONObject
+    fun move(paths: List<String>, destDir: String): JSONObject
 }
 
 class RemoteFilesBackend(val client: TvAppsClient) : FilesBackend {
@@ -37,6 +39,8 @@ class RemoteFilesBackend(val client: TvAppsClient) : FilesBackend {
     override fun rename(path: String, name: String) = client.fsRename(path, name)
     override fun delete(paths: List<String>) = client.fsDelete(paths)
     override fun install(path: String) = client.fsInstall(path)
+    override fun copy(paths: List<String>, destDir: String) = client.fsCopy(paths, destDir)
+    override fun move(paths: List<String>, destDir: String) = client.fsMove(paths, destDir)
 }
 
 class LocalFilesBackend(context: Context) : FilesBackend {
@@ -68,6 +72,11 @@ class LocalFilesBackend(context: Context) : FilesBackend {
     override fun mkdir(parent: String, name: String) = checked(TvFiles.mkdir(roots(), parent, name))
     override fun rename(path: String, name: String) = checked(TvFiles.rename(roots(), path, name))
     override fun delete(paths: List<String>) = checked(TvFiles.delete(roots(), paths))
+    override fun copy(paths: List<String>, destDir: String) = checked(TvFiles.copy(roots(), paths, destDir))
+    override fun move(paths: List<String>, destDir: String): JSONObject {
+        val response = TvFiles.move(roots(), paths, destDir)
+        return if (response.has("failedPaths")) response else checked(response)
+    }
 
     /** Fichier local vérifié (sous une racine, lisible), pour l'ouvrir ou l'installer. */
     override fun install(path: String): JSONObject {
