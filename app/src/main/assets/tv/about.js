@@ -46,7 +46,6 @@ window.TvAbout = (function () {
         if (!gravity) window.addEventListener('keydown', onKey, true);
         place(pieces);
         render();
-        check();
     }
 
     // La tuile se pose juste au-dessus du plus haut élément tombé.
@@ -80,17 +79,18 @@ window.TvAbout = (function () {
         let status = '';
         let buttons = [];
         let progress = '';
-        if (s === 'checking' || s === 'idle') status = "Recherche d'une mise à jour…";
+        if (s === 'idle') { status = 'Rechercher une mise à jour'; buttons = [['check', 'Rechercher une mise à jour']]; }
+        else if (s === 'checking') { status = "Recherche d'une mise à jour…"; buttons = [['wait', 'Recherche en cours']]; }
         else if (s === 'uptodate') { status = 'Appteka TV est à jour.'; buttons = [['check', 'Rechercher à nouveau']]; }
         else if (s === 'available') {
             status = `Nouvelle version disponible : ${state.versionName} (${state.versionCode})`;
-            buttons = [['install', 'Télécharger et installer', 'primary']];
+            buttons = [['install', 'Télécharger et installer']];
         } else if (s === 'downloading') {
             status = `Téléchargement… ${state.progress || 0} %`;
             progress = `<div class="about-progress"><div class="about-bar" style="width:${Math.max(0, Math.min(100, state.progress || 0))}%"></div></div>`;
             buttons = [['cancel', 'Annuler']];
         } else if (s === 'installing') { status = "Confirme l'installation dans la fenêtre Android."; buttons = [['install', 'Télécharger et installer']]; }
-        else if (s === 'permission') { status = "Autorise l'installation d'applications pour Appteka TV, puis réessaie."; buttons = [['install', 'Réessayer', 'primary']]; }
+        else if (s === 'permission') { status = "Autorise l'installation d'applications pour Appteka TV, puis réessaie."; buttons = [['install', 'Réessayer']]; }
         else if (s === 'busy') { status = 'Une recherche est déjà en cours.'; buttons = [['check', 'Réessayer']]; }
         else if (s === 'error') {
             status = state.phase === 'download' ? `Téléchargement impossible (${state.code})` : `Vérification impossible (${state.code})`;
@@ -107,7 +107,7 @@ window.TvAbout = (function () {
             <div class="about-status ${s === 'error' ? 'err' : ''}" aria-live="polite">${esc(status)}</div>
             ${progress}
             <div class="modal-row about-actions" style="justify-content:center">
-                ${buttons.map(([act, label, cls]) => { const round = act === "check" || act === "close"; const glyph = act === "close" ? `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>` : `<svg viewBox="0 0 48 48" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M42 14A20 20 0 1 0 44 26M42 4v10H32"/><path d="M9 16l10-5 10 5-10 5zM9 16v13l10 5V21M29 16v5"/><path d="M24 28a8 8 0 0 1 16 0v9H24zM26 21l-2-3M38 21l2-3M29 26h.1M35 26h.1M32 30v5m-3-3 3 3 3-3"/></svg>`; return `<button type="button" class="btn focusable ${cls || ''}" data-act="${act}" aria-label="${esc(label)}" title="${esc(label)}" ${round ? 'style="border-radius:50%;width:64px;height:64px;min-width:64px;max-width:64px;flex:0 0 64px;padding:0;display:inline-flex;align-items:center;justify-content:center"' : ""}>${round ? glyph : esc(label)}</button>`; }).join('')}
+                ${buttons.map(([act, label, cls]) => { const round = true; const glyph = act === "close" ? `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>` : `<svg viewBox="0 0 48 48" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M42 14A20 20 0 1 0 44 26M42 4v10H32"/><path d="M9 16l10-5 10 5-10 5zM9 16v13l10 5V21M29 16v5"/><path d="M24 28a8 8 0 0 1 16 0v9H24zM26 21l-2-3M38 21l2-3M29 26h.1M35 26h.1M32 30v5m-3-3 3 3 3-3"/></svg>`; const icon = act === "install" ? `<svg viewBox="0 0 48 48" width="56" height="56" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 5v27M12 20l12 12 12-12M6 34v9h36v-9"/></svg>` : act === "cancel" ? `<span>${Math.max(0, Math.min(100, state.progress || 0))}%</span>` : glyph; return `<button type="button" class="btn focusable ${cls || ''}" data-act="${act}" aria-label="${esc(label)}" title="${esc(label)}" ${round ? 'style="border-radius:50%;width:64px;height:64px;min-width:64px;max-width:64px;flex:0 0 64px;padding:0;display:inline-flex;align-items:center;justify-content:center"' : ""}>${icon}</button>`; }).join('')}
             </div>`;
         tile.querySelectorAll('button').forEach(b => b.addEventListener('click', () => act(b.dataset.act)));
         const again = focusedAct && tile.querySelector(`[data-act="${focusedAct}"]`);
@@ -116,8 +116,8 @@ window.TvAbout = (function () {
 
     function act(a) {
         if (a === 'close') close();
-        else if (a === 'check') check();
-        else if (a === 'install') { state = { state: 'downloading', progress: 0 }; render(); android('aboutInstallUpdate'); }
+        else if (a === 'check' && state.state !== 'checking' && state.state !== 'downloading') check();
+        else if (a === 'install' && ['available', 'permission', 'error', 'installing'].includes(state.state)) { state = { state: 'downloading', progress: 0 }; render(); android('aboutInstallUpdate'); }
         else if (a === 'cancel') android('aboutCancelUpdate');
     }
 
