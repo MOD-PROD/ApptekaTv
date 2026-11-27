@@ -97,6 +97,15 @@ class TvAppsClient(private val context: Context, val connection: TvLinkSender.Co
     fun fsInstall(path: String): JSONObject =
         checked(TvLink.request(connection.address, order("fs_install").put("path", path)))
 
+    /** Copie native sur la TV de [paths] vers le dossier [destDir]. */
+    fun fsCopy(paths: List<String>, destDir: String): JSONObject =
+        checked(
+            TvLink.request(
+                connection.address,
+                order("fs_copy").put("paths", org.json.JSONArray(paths)).put("path", destDir),
+            )
+        )
+
     /** Copie le fichier [path] de la TV dans [sink]. */
     fun fsPull(path: String, sink: java.io.OutputStream, progress: (Long, Long) -> Unit): JSONObject =
         checked(TvLink.pull(connection.address, order("fs_pull").put("path", path), sink, progress, 0..TvFiles.MAX_FILE_BYTES))
