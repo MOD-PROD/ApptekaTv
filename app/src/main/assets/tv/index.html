@@ -1,1 +1,130 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <!-- Mise en page de référence 960 px de large, mise à l’échelle de tout écran (720p, 1080p, 4K, box basse densité) -->
+    <meta name="viewport" content="width=960, user-scalable=no">
+    <title>Appteka TV</title>
+    <!-- Portable : largeur réelle de l'écran et interface tactile ; TV : référence 960 px -->
+    <script>
+        (function () {
+            var tv = true;
+            try { tv = !window.Android || typeof window.Android.isTv !== 'function' || window.Android.isTv(); } catch (e) { /* TV par défaut */ }
+            if (!tv) {
+                document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, viewport-fit=cover');
+                document.documentElement.classList.add('mobile');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="style.css" class="skin-classic">
+    <link rel="stylesheet" href="details.css" class="skin-classic">
+    <link rel="stylesheet" href="glass-light.css" class="skin-classic">
+    <link rel="stylesheet" href="green.css" class="skin-green" media="not all">
+    <link rel="stylesheet" href="green-details.css" class="skin-green" media="not all">
+    <link rel="stylesheet" href="settings.css">
+    <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="neu.css" class="skin-neu" media="not all">
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="safe-area">
+        <header class="header">
+            <div class="logo"><button class="logo-fun logo-fun-wide" id="btn-fun" type="button" title="À propos"><img class="logo-store" src="logo-store.webp" alt="Appteka TV Store"></button></div>
+            <div class="header-right">
+                <!-- ATV : trois raccourcis (même actions que la barre Store téléphone) -->
+                <button class="hbtn glass tv-only" id="btn-files" type="button" title="Explorateur de fichiers">
+                    <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><circle cx="15.5" cy="14.5" r="3.2"/><path d="M17.7 16.7L20 19"/></svg>
+                </button>
+                <button class="hbtn glass tv-only" id="btn-distro" type="button" title="Gestion et installation des APK">
+                    <svg viewBox="0 0 24 24"><path d="M4 7h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M12 11v6"/><path d="M9 14l3 3 3-3"/></svg>
+                </button>
+                <button class="hbtn glass tv-only" id="btn-installed" type="button" title="Gestion des applications">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                </button>
+                <!-- TV : QR / code d'association du portable (remplace « Liaison portable » des Paramètres) -->
+                <button class="hbtn glass tv-only" id="btn-pair" type="button" title="Associer un portable">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
+                </button>
+                <button class="hbtn glass" id="btn-scope" type="button" title="Catégories de recherche">
+                    <svg viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg>
+                    <span class="hbtn-badge" id="scope-count"></span>
+                </button>
+                <form class="search-box glass" id="search-box" tabindex="0" autocomplete="off">
+                    <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    <input id="search-input" class="search-input" type="search" tabindex="-1"
+                           enterkeyhint="search" placeholder="Rechercher une application…">
+                </form>
+                <button class="hbtn glass" id="btn-add" type="button" title="Catégories affichées">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <button class="hbtn glass" id="btn-settings" type="button" title="Paramètres">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <button class="hbtn glass exit" id="btn-exit" type="button" title="Quitter">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="content" id="rows"></main>
+
+        <footer class="footer" id="status"></footer>
+    </div>
+
+    <!-- Damier des catégories : 5 lignes × 9 colonnes -->
+    <div id="picker" class="picker hidden">
+        <div class="picker-head">
+            <div class="picker-title" id="picker-title">Catégories</div>
+            <button class="close-btn mobile-only" type="button" id="picker-close" aria-label="Fermer">✕</button>
+            <div class="picker-hint" id="picker-hint">OK : afficher / masquer · Retour : valider</div>
+        </div>
+        <div class="picker-grid" id="picker-grid"></div>
+    </div>
+
+    <!-- Saisie du profil Store -->
+    <div id="store-editor" class="modal hidden">
+        <div class="modal-box glass">
+            <div class="modal-title">Profil Appteka</div>
+            <div class="modal-text">Numéro du profil dont tu veux voir les applications
+                (ex. 325988 pour appteka.store/profile/325988). Laisse vide pour retirer.</div>
+            <form class="modal-row" id="store-form" autocomplete="off">
+                <input id="store-input" class="modal-input" type="text" inputmode="numeric"
+                       enterkeyhint="done" placeholder="N° de profil" tabindex="0">
+                <button id="store-save" class="btn primary" type="submit">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TV : association d'un portable -->
+    <div id="pair-modal" class="modal hidden">
+        <div class="modal-box glass pair-box">
+            <div class="modal-title">Associer un portable</div>
+            <div class="modal-text" id="pair-text"></div>
+            <div class="pair-code" id="pair-code" data-no-i18n></div>
+            <div class="modal-text">Saisis ce code dans Appteka sur le portable. Retour pour refuser.</div>
+        </div>
+    </div>
+
+    <!-- Paramètres -->
+    <div id="settings" class="settings hidden">
+        <div class="settings-panel glass" id="settings-panel"></div>
+    </div>
+
+    <!-- Fiche application -->
+    <div id="details" class="details hidden"></div>
+    <!-- Store d'un auteur -->
+    <div id="author" class="author hidden"></div>
+    <div id="viewer" class="viewer hidden" tabindex="-1">
+        <img alt="">
+        <div class="viewer-hint"></div>
+    </div>
+
+    <script src="i18n.js"></script>
+    <script src="nav.js"></script>
+    <script src="gravity.js"></script>
+    <script src="about.js"></script>
+    <script src="app.js"></script>
+    <script src="details.js"></script>
+</body>
+</html>
