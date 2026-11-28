@@ -1,1 +1,3 @@
-PLACEHOLDER_WILL_FAIL
+package com.tomclaw.appsend.screen.tv
+
+// TEMP: full file will follow
